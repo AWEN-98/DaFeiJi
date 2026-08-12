@@ -1,0 +1,53 @@
+# Unity standard gitignore
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Asset meta files should be kept (required by Unity)
+# But ignore stray .meta for non-asset files
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D generated memory snapshots
+*.memsnap
+
+# Crash reports
+sysinfo.txt
+crashlytics-build.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Visual Studio / Rider cache
+.vs/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generated save files (local test runs)
+*.save
+*.save.bak
+*.save.tmp
+*.corrupt

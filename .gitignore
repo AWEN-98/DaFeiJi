@@ -1,0 +1,35 @@
+# ===== WorkBuddy 本地数据（含隐私/本地路径，勿提交） =====
+.workbuddy/
+
+# ===== 操作系统垃圾文件 =====
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.lnk
+
+# ===== Unity 工程产物（如后续打开 Unity 会生成，勿提交） =====
+[Ll]ibrary/
+[Ll]ogs/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Uu]serSettings/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+[Uu]nityLockFile
+*.apk
+*.aab
+
+# ===== 依赖与构建产物 =====
+node_modules/
+dist/
+out/
+build/
+*.log
