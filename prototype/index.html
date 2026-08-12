@@ -44,6 +44,66 @@
   .tut-step { margin: 8px 0; padding-left: 28px; position: relative; line-height: 1.7; }
   .tut-step b { color: #2BD4C4; }
   .tut-step .n { position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #2BD4C4; color: #06231f; font-size: 12px; font-weight: 700; text-align: center; line-height: 20px; }
+  .slotrow { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .slotbox { background: rgba(10,20,38,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px; flex: 1; min-width: 160px; }
+  .slotbox .stitle { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .equipped { font-size: 13px; color: #cfe9e6; margin-bottom: 6px; }
+  .art { font-size: 12px; padding: 5px 7px; border-radius: 8px; margin: 3px 0; cursor: pointer; border: 1px solid rgba(255,255,255,0.08); transition: .12s; }
+  .art:hover { border-color: rgba(43,212,196,0.6); transform: translateY(-1px); }
+  .art.on { border-color: #2BD4C4; box-shadow: 0 0 10px rgba(43,212,196,0.3); }
+  .art .an { font-weight: 700; } .art .rar { font-size: 11px; opacity: .85; }
+  .artline { display: flex; justify-content: space-between; align-items: center; }
+  .mini { font-size: 11px; color: #8fa6b3; }
+  /* ---- 基地控制台 v2 ---- */
+  .base-panel { max-width: 920px; padding: 20px 24px; }
+  .base-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .res-bar { display: flex; gap: 10px; }
+  .res-item { background: rgba(10,20,38,0.9); border: 1px solid rgba(43,212,196,0.25); border-radius: 10px; padding: 6px 14px; display: flex; align-items: baseline; gap: 7px; }
+  .res-item b { font-size: 19px; color: #FFC24B; text-shadow: 0 0 10px rgba(255,194,75,0.35); }
+  .res-item .res-lab { color: #8fa6b3; font-size: 11px; }
+  .tabs { display: flex; gap: 4px; margin: 14px 0 2px; border-bottom: 1px solid rgba(43,212,196,0.22); }
+  .tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: #8fa6b3; font-size: 14px; font-weight: 700; padding: 9px 15px; cursor: pointer; transition: .15s; margin-bottom: -1px; }
+  .tab:hover { color: #cfe9e6; }
+  .tab.on { color: #2BD4C4; border-bottom-color: #2BD4C4; text-shadow: 0 0 10px rgba(43,212,196,0.45); }
+  .tab-pane { display: none; margin-top: 10px; }
+  .tab-pane.on { display: block; }
+  .base-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(43,212,196,0.15); display: flex; gap: 10px; align-items: center; }
+  .go-btn { flex: 1; text-align: center; font-size: 18px; padding: 14px; background: linear-gradient(135deg,#FFC24B,#e8942a); color: #231a05; box-shadow: 0 0 20px rgba(255,194,75,0.3); }
+  .go-btn:hover { filter: brightness(1.08); }
+  #metaInfo { margin: 4px 0 0; font-size: 12px; color: #8fa6b3; }
+  /* ---- 基地 v3：氛围与视觉重做 ---- */
+  #base { background:
+    repeating-linear-gradient(0deg, rgba(43,212,196,0.045) 0 1px, transparent 1px 46px),
+    repeating-linear-gradient(90deg, rgba(43,212,196,0.045) 0 1px, transparent 1px 46px),
+    radial-gradient(ellipse at 50% -15%, rgba(43,212,196,0.16), transparent 62%),
+    radial-gradient(ellipse at 50% 115%, rgba(255,194,75,0.10), transparent 55%),
+    rgba(6,10,22,0.93); }
+  .base-panel { background: rgba(13,22,40,0.92); border-color: rgba(43,212,196,0.5); box-shadow: 0 0 60px rgba(43,212,196,0.22), inset 0 0 40px rgba(43,212,196,0.05); }
+  .tab-pane.on { animation: fadeIn .22s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* 机体大图卡 */
+  .acft-grid { display: flex; gap: 14px; margin-top: 10px; }
+  .acft-card { flex: 1; min-width: 170px; background: rgba(8,16,32,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 12px; cursor: pointer; text-align: center; transition: .18s; }
+  .acft-card:hover { transform: translateY(-3px); border-color: rgba(43,212,196,0.6); }
+  .acft-card.picked { border-color: #2BD4C4; box-shadow: 0 0 22px rgba(43,212,196,0.45), inset 0 0 18px rgba(43,212,196,0.08); }
+  .acft-card.locked { opacity: .45; cursor: not-allowed; }
+  .acft-ship { height: 72px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+  .acft-ship svg { width: 108px; height: 58px; filter: drop-shadow(0 0 8px currentColor); }
+  .acft-card.picked .acft-ship svg { animation: shipPulse 1.6s ease-in-out infinite; }
+  @keyframes shipPulse { 0%,100% { filter: drop-shadow(0 0 6px currentColor); } 50% { filter: drop-shadow(0 0 16px currentColor); } }
+  .acft-name { font-size: 17px; font-weight: 800; }
+  .acft-desc { font-size: 12px; color: #8fa6b3; margin: 2px 0 6px; }
+  .acft-stats { font-size: 11px; color: #a9c2cf; line-height: 1.7; }
+  .acft-lock { font-size: 12px; color: #FFC24B; margin-top: 6px; }
+  /* 军械库装备面板 */
+  .slotpanel { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+  .slotcard { background: rgba(8,16,32,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 10px 12px; }
+  .slot-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .slot-ico { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .slot-ico svg { width: 20px; height: 20px; }
+  .slot-name { font-weight: 700; font-size: 14px; }
+  .equipbox { border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; border: 1px dashed rgba(255,255,255,0.18); min-height: 44px; display: flex; align-items: center; gap: 8px; }
+  .equipbox.has { border-style: solid; border-color: rgba(43,212,196,0.65); box-shadow: 0 0 12px rgba(43,212,196,0.22); background: rgba(43,212,196,0.06); }
 </style>
 </head>
 <body>
@@ -59,7 +119,7 @@
       <button id="titleStart" class="btn">开始游戏 ▶</button>
       <button id="titleHelp" class="btn ghost">怎么玩</button>
     </div>
-    <div class="muted" style="margin-top:14px">目标：搜刮战利品 → 击败 BOSS → 安全撤离带回。攒灵玉永久强化，越打越强。</div>
+    <div class="muted" style="margin-top:14px">目标：搜刮战利品 → 击败 BOSS → 安全撤离带回<b>法器</b>。基地装载法器、熔炼升稀、研究院解锁，越打越强。</div>
   </div>
 </div>
 
@@ -67,31 +127,60 @@
 <div id="tutorial" class="overlay">
   <div class="panel" style="max-width:600px;">
     <h2>新手教学</h2>
-    <div class="tut-step"><span class="n">1</span>移动：<b>WASD</b> 或方向键。瞄准：鼠标。开火：按住<b>左键</b>。冲刺无敌：<b>Shift</b>。</div>
+    <div class="tut-step"><span class="n">1</span>移动：<b>WASD</b> 或方向键。瞄准：鼠标。开火：按住<b>左键</b>。冲刺无敌：<b>Shift</b>。按 <b>N</b> 静音/开声。</div>
     <div class="tut-step"><span class="n">2</span>地图上有<b>宝箱</b>（木/银/金/紫秘宝 4 种），<b>撞上去即开箱</b>爆出多件<b>命名战利品</b>（灵玉砂/玄铁/梼杌鳞…按稀有度命名，金/紫宝箱必出稀有！会惊动远处守卫）。</div>
-    <div class="tut-step"><span class="n">3</span>左下<b>小地图</b>：灰点=木箱，浅蓝=银箱，金点=金箱，紫点=秘宝；绿块=撤离点，红点=敌人，紫点圆=BOSS。底部 3 格=<b>丹药</b>。</div>
+    <div class="tut-step"><span class="n">3</span>左下<b>小地图</b>：灰点=木箱，浅蓝=银箱，金点=金箱，紫点=秘宝；<b>绿块=撤离点</b>，红点=敌人，紫点圆=BOSS。底部 3 格=<b>丹药</b>。</div>
     <div class="tut-step"><span class="n">4</span>每击杀 5 个，弹出<b>3 选 1 符文</b>（火/水/雷/风/煞 5 系共 28 枚：散射/穿透/追踪/爆裂/暴击/吸血/召唤炮台…）。集齐 3 枚同系触发<b>系共鸣 +10% 伤害</b>。</div>
     <div class="tut-step"><span class="n">5</span>按 <b>M</b> 开背包：点 2 个<b>同色</b>战利品→2合1 升阶；凑齐 3 个同色点「⚡3合1」升级并+随机词条（白→绿→蓝→紫→橙）。</div>
     <div class="tut-step"><span class="n">6</span>搜够 4 个点触发 <b>BOSS</b>；敌人新增<b>炮艇(高血慢速)/游医(治疗友军)/分裂体(死亡分裂)</b>。第 3 层登场第 2 个 Boss <b>穷奇·掠食</b>（突进+召唤），前两层层是梼杌。</div>
-    <div class="tut-step"><span class="n">7</span>开箱/拾取概率掉落<b>丹药</b>（震爆弹/玄冰盾/回元丹/凝时符），按 <b>Q</b> 使用。飞进绿色<b>撤离点</b>停留约 2.5 秒即<b>成功带出 100%</b>；被打死损失 85%。按 <b>P/ESC</b> 可暂停并弃局(损失70%)。</div>
-    <div class="tut-step"><span class="n">8</span>回基地可用灵玉<b>永久强化</b>（生命/伤害/护盾…），并解锁更多<b>机体</b>（青隼直射/玄龟散射/赤鸾高速追踪）。</div>
+    <div class="tut-step"><span class="n">7</span>开箱/拾取概率掉落<b>丹药</b>（震爆弹/玄冰盾/回元丹/凝时符），按 <b>Q</b> 使用。撤离=搜打撤核心：捡到战利品后地图会出现<b>绿色撤离点</b>，<b>飞进去站住读条 2.8 秒</b>即带出全部战利品；中途离开读条会回落。<b>贪心多搜刮 vs 早点撤离，风险自担</b>。被打死损失85%，按 <b>P/ESC</b> 可暂停并弃局(损失70%)。</div>
+    <div class="tut-step"><span class="n">8</span>回基地「<b>军械库</b>」把带回的<b>法器</b>装载到 4 槽（武器/护甲/核心/弹药）<b>实改数值</b>；「<b>熔炼台</b>」2 件同槽合成升稀或回收换灵玉；「<b>研究院</b>」花灵玉解锁永久被动。灵玉来自击杀与回收，越打越强。</div>
     <div style="margin-top:14px; text-align:right;"><button id="tutorialClose" class="btn">明白了</button></div>
   </div>
 </div>
 
-<!-- 基地 -->
+<!-- 基地（控制台 v2：Tab 分区） -->
 <div id="base" class="overlay">
-  <div class="panel">
-    <h1 style="font-size:24px;">基地</h1>
+  <div class="panel base-panel">
+    <div class="base-head">
+      <h1 style="font-size:24px;">空域基地</h1>
+      <div class="res-bar">
+        <div class="res-item"><b id="resJade">0</b><span class="res-lab">灵玉</span></div>
+        <div class="res-item"><b id="resArsenal">0</b><span class="res-lab">法器</span></div>
+        <div class="res-item"><b id="resProgress">1/3</b><span class="res-lab">层</span></div>
+      </div>
+    </div>
     <div id="metaInfo"></div>
-    <h2>选择难度层级</h2>
-    <div id="tierRow"></div>
-    <h2>选择出击机体</h2>
-    <div id="aircraftList"></div>
-    <h2>永久强化商店（花灵玉）</h2>
-    <div id="shopList"></div>
-    <div style="margin-top:14px">
-      <button id="startBtn" class="btn">出击 ▶</button>
+    <div class="tabs">
+      <button class="tab on" data-tab="hangar">机库</button>
+      <button class="tab" data-tab="arsenal">军械库</button>
+      <button class="tab" data-tab="forge">熔炼台</button>
+      <button class="tab" data-tab="lab">研究院</button>
+      <button class="tab" data-tab="codex">图鉴</button>
+    </div>
+    <div class="tab-pane on" id="tab-hangar">
+      <h2>选择难度层级</h2>
+      <div id="tierRow"></div>
+      <h2>选择出击机体</h2>
+      <div id="aircraftList"></div>
+      <h2>永久强化商店（花灵玉）</h2>
+      <div id="shopList"></div>
+    </div>
+    <div class="tab-pane" id="tab-arsenal">
+      <div class="muted" style="margin-top:4px">把带回的法器装载到 4 槽，出击时实打实叠加数值。点击已装备的法器可卸下。</div>
+      <div id="arsenalList"></div>
+    </div>
+    <div class="tab-pane" id="tab-forge">
+      <div id="forgeList" style="margin-top:4px"></div>
+    </div>
+    <div class="tab-pane" id="tab-lab">
+      <div id="researchList" style="margin-top:4px"></div>
+    </div>
+    <div class="tab-pane" id="tab-codex">
+      <div id="codexBox" class="muted" style="margin-top:4px; line-height:1.9;"></div>
+    </div>
+    <div class="base-foot">
+      <button id="startBtn" class="btn go-btn">出击 ▶</button>
       <button id="helpBtn" class="btn ghost">怎么玩</button>
     </div>
   </div>
@@ -137,6 +226,7 @@
   </div>
 </div>
 
+<script src="audio-data.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
