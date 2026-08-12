@@ -236,9 +236,7 @@
     }
     function setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 0.85; for (var p in audios) { audios[p].volume = m ? 0 : 0.7; } }
     function isMuted() { return muted; }
-    function toggleBgm() { /* BGM 素材留待正式版（Unity）接入，原型阶段无背景音乐 */ }
-    function isBgmOn() { return false; }
-    return { unlock: unlock, sfx: sfx, setMuted: setMuted, isMuted: isMuted, toggleBgm: toggleBgm, isBgmOn: isBgmOn };
+    return { unlock: unlock, sfx: sfx, setMuted: setMuted, isMuted: isMuted };
   })();
 
   // ========== 元进度·装备系统（A 入库装备 / B 熔炼台 / C 研究院+图鉴）==========
@@ -412,7 +410,6 @@
     AudioSys.unlock();
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === 'n') { AudioSys.setMuted(!AudioSys.isMuted()); banner = { text: '声音 ' + (AudioSys.isMuted() ? '已静音' : '已开启') + '（按 N 切换）', life: 1.4 }; return; }
-    if (e.key.toLowerCase() === 'b') { banner = { text: '背景音乐素材将随正式版接入（原型暂留白，按 N 可静音）', life: 2.2 }; return; }
     if (scene === 'mission') {
       if (e.key === '1') chooseBuff(0);
       if (e.key === '2') chooseBuff(1);
@@ -466,7 +463,7 @@
       consumables: []
     };
     bullets = []; enemies = []; loot = []; resetParticles(); resetFloaters(); nodes = [];
-    extractPoints = []; exfil = null; boss = null; bossSpawned = false;
+    extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {} };
     spawnTimer = 2.5; buffTimer = 0; buffPending = false; buffHold = 0; buffSafe = 0; extractUnlocked = false; gameTime = 0; hintTimer = 6; banner = null; runeCount = 0; killForBuff = runeNextReq(0); screenFlash = { color: '#fff', a: 0 };
     enemiesSlowT = 0;
@@ -682,7 +679,11 @@
     mergeSel.push(idx);
     if (mergeSel.length === 2) {
       var i = mergeSel[0], j = mergeSel[1];
-      if (run.loot[i].rarity === run.loot[j].rarity && run.loot[i].rarity !== 'orange') {
+      if (run.loot[i].rarity !== run.loot[j].rarity) {
+        // 颜色不同：放弃前一次选择，以刚点中的为起点，立即反馈
+        mergeSel = [j]; refreshSel(); return;
+      }
+      if (run.loot[i].rarity !== 'orange') {
         var ri = RAR.indexOf(run.loot[i].rarity);
         var sl = run.loot[i].slot || pickSlot();
         run.loot.splice(j, 1); run.loot.splice(i, 1); run.loot.push({ rarity: RAR[ri + 1], name: pickName(RAR[ri + 1]), slot: sl });
@@ -710,7 +711,7 @@
     var affix = randi(0, 3);
     if (affix === 0) player.dmg = Math.min(220, player.dmg * 1.05);
     else if (affix === 1) player.fireRate = Math.min(15, player.fireRate * 1.05);
-    else if (affix === 2) player.maxhp += 8;
+    else if (affix === 2) { player.maxhp += 8; player.hp += 8; }
     else player.bulletSpeed *= 1.05;
     burst(player.x, player.y, RARCOL[RAR[ri + 1]], 14);
     AudioSys.sfx.merge();
@@ -1017,9 +1018,9 @@
     if (extractUnlocked && extractPoints.length) {
       var ez = extractPoints[0];
       var inside = player.x > ez.x && player.x < ez.x + ez.w && player.y > ez.y && player.y < ez.y + ez.h;
-      if (inside) { ez.prog = Math.min(1, ez.prog + dt / 2.8); if (ez.prog >= 1) { AudioSys.sfx.extract(); finishRun('success'); } }
-      else ez.prog = Math.max(0, ez.prog - dt / 4);
-    }
+      if (inside) { exfil = true; ez.prog = Math.min(1, ez.prog + dt / 2.8); if (ez.prog >= 1) { AudioSys.sfx.extract(); finishRun('success'); } }
+      else { exfil = false; ez.prog = Math.max(0, ez.prog - dt / 4); }
+    } else { exfil = false; }
 
     // 敌人
     for (var i = enemies.length - 1; i >= 0; i--) {
@@ -1123,7 +1124,7 @@
               if (bl.burn > 0) { en.burn = Math.max(en.burn || 0, bl.burn); en.burnT = 3; }
               if (bl.lifesteal > 0) { var h1 = Math.round(bl.dmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + h1); floatText(player.x, player.y - 20, '+' + h1, '#8FD8C0', 'heal'); }
               if (bl.pierce > 0) { bl.pierce--; } else { bullets.splice(b, 1); consumed = true; }
-              if (en.hp <= 0) { onEnemyDeath(en); }
+              if (en.hp <= 0) { onEnemyDeath(en); ei--; } // 敌人被移除，回退索引避免跳过下一个
               if (bl.pierce <= 0) break;
             }
           }
@@ -1425,7 +1426,7 @@
     if (!extractPoints || !extractPoints.length) return;
     for (var pi = 0; pi < extractPoints.length; pi++) {
       var z = extractPoints[pi], cx = z.x + z.w / 2, cy = z.y + z.h / 2;
-      var col = z.mode === 'risky' ? COL.gold : COL.extract;
+      var col = COL.extract;
       // 进度填充（站住读条越高越亮）
       ctx.fillStyle = 'rgba(143,216,192,' + (0.16 + 0.44 * z.prog) + ')';
       ctx.fillRect(z.x, z.y, z.w, z.h);
@@ -1475,7 +1476,7 @@
     if (extractPoints) for (var mpi = 0; mpi < extractPoints.length; mpi++) {
       var mz = extractPoints[mpi];
       var pulse = 1.4 + Math.sin(gameTime * 5) * 0.9; // 呼吸脉冲，撤离点更醒目
-      ctx.fillStyle = mz.mode === 'risky' ? COL.gold : COL.extract;
+      ctx.fillStyle = COL.extract;
       ctx.fillRect(mx + mz.x * sx - pulse * 0.5, my + mz.y * sy - pulse * 0.5, mz.w * sx + pulse, mz.h * sy + pulse);
     }
     if (boss) { ctx.fillStyle = '#B37FD0'; ctx.beginPath(); ctx.arc(mx + boss.x * sx, my + boss.y * sy, 4, 0, 7); ctx.fill(); }
@@ -1878,7 +1879,7 @@
       if (el) el.className = 'tab-pane' + (panes[j] === name ? ' on' : '');
     }
   }
-  function startMission() { newRun(selectedAircraft, selectedTier); showScene('mission'); }
+  function startMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); }
   function showResult(outcome, kept, lostLoot, killReward, unlockedNew) {
     var label = outcome === 'success' ? '撤离成功' : (outcome === 'abandon' ? '主动弃局' : '阵亡');
     document.getElementById('resultTitle').textContent = outcome === 'success' ? '撤离成功！' : (outcome === 'abandon' ? '已弃局撤离' : '机体被击毁…');
