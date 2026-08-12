@@ -17,20 +17,20 @@
   function roundRectPath(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
   var COL = {
-    bg: '#0b1020', grid: 'rgba(43,212,196,0.06)', player: '#2BD4C4', playerEdge: '#062b29',
-    bulletP: '#9fefff', enemy: '#FF3B5C', enemyEdge: '#51101d', bulletE: '#ff8a5b',
-    extract: '#3CFFA0', gold: '#FFC24B', node: '#FFC24B', elite: '#FFD24B',
-    ink: '#0E1424', paper: '#F4EFE6', jade: '#3CFFA0', iron: '#7A8794', sha: '#D11A2A'
+    bg: '#0D0F12', grid: 'rgba(95,191,163,0.06)', player: '#5FBFA3', playerEdge: '#0A2E26',
+    bulletP: '#A8E8D5', enemy: '#C94F4F', enemyEdge: '#3D1515', bulletE: '#E8907C',
+    extract: '#8FD8C0', gold: '#C9A227', node: '#C9A227', elite: '#D9B64A',
+    ink: '#0E1424', paper: '#F4EFE6', jade: '#8FD8C0', iron: '#7A8794', sha: '#B03A3A'
   };
   var RAR = ['white', 'green', 'blue', 'purple', 'orange'];
   var RARNAME = { white: '普通', green: '精良', blue: '稀有', purple: '史诗', orange: '传说' };
-  var RARCOL = { white: '#e8e8e8', green: '#4caf50', blue: '#3aa0ff', purple: '#b06bff', orange: '#ff9d2e' };
+  var RARCOL = { white: '#D8D6CE', green: '#4E9A7E', blue: '#4E8FC7', purple: '#8A6FB8', orange: '#D98A3D' };
   var RARVAL = [10, 25, 60, 140, 320];
   var TIERNAME = ['入门', '进阶', '深渊'];
-  var ELEMCOL = { '火': '#FF5C3B', '水': '#3AA0FF', '雷': '#FFD24B', '风': '#6BE6A0', '煞': '#B06BFF' };
+  var ELEMCOL = { '火': '#C94F3E', '水': '#4E8FC7', '雷': '#D9B64A', '风': '#5FBFA3', '煞': '#8A6FB8' };
 
   // ---------- 打击感 & 特效基础设施（美术圣经 visual-feel-vfx.md §2/§6）----------
-  var BULLET_COL = { player: '#9fefff', enemy: '#ff8a5b', boss: '#ff5c7a', buff: '#FFE9A8' };
+  var BULLET_COL = { player: '#A8E8D5', enemy: '#E8907C', boss: '#D96A7E', buff: '#FFE9A8' };
 
   // 粒子对象池：512 硬上限，环形回收最老，杜绝每帧 new / push / splice
   var POOL = 512;
@@ -125,10 +125,15 @@
         var ir = ctx.createBuffer(2, len, rate);
         for (var ch = 0; ch < 2; ch++) {
           var d = ir.getChannelData(ch);
-          for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+          var prev = 0;
+          for (var i = 0; i < len; i++) {
+            var ns = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+            prev = prev * 0.72 + ns * 0.28; // 一阶低通：削掉高频沙沙，混响变"暖"
+            d[i] = prev;
+          }
         }
         convolver.buffer = ir;
-        reverbGain = ctx.createGain(); reverbGain.gain.value = 0.32; reverbGain.connect(master);
+        reverbGain = ctx.createGain(); reverbGain.gain.value = 0.24; reverbGain.connect(master);
         convolver.connect(reverbGain);
       } catch (e) { ctx = null; }
     }
@@ -182,27 +187,44 @@
       try { a.currentTime = 0; var pr = a.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
     }
     var sfx = {
-      shoot: function () { var n = performance.now(); if (n - shootLast < 80) return; shootLast = n; tone(300, 0.1, 'sine', 0.14, { slideTo: 90 }); noise(0.04, 0.07, 2400); },
-      hit: function () { noise(0.05, 0.09, 1800); tone(150, 0.08, 'sine', 0.09, { slideTo: 55 }); },
-      crit: function () { tone(560, 0.12, 'sine', 0.12, { slideTo: 180 }); noise(0.04, 0.06, 3200); tone(840, 0.08, 'sine', 0.05, { slideTo: 300 }); },
-      explode: function () { tone(95, 0.6, 'sine', 0.26, { slideTo: 28 }); noise(0.5, 0.2, 500); tone(60, 0.5, 'triangle', 0.1, { slideTo: 30, lp: 350 }); },
-      enemyDie: function () { tone(240, 0.18, 'sine', 0.11, { slideTo: 65 }); noise(0.1, 0.07, 1200); },
-      eliteDie: function () { tone(140, 0.45, 'sine', 0.2, { slideTo: 38 }); noise(0.32, 0.15, 700); tone(80, 0.4, 'triangle', 0.09, { slideTo: 35, lp: 400 }); },
-      chestOpen: function () { tone(330, 0.4, 'sine', 0.13, { slideTo: 150 }); tone(660, 0.3, 'sine', 0.05, { slideTo: 330, when: 0.06 }); },
-      pickup: function (rarity) { var idx = RAR.indexOf(rarity); if (idx < 0) idx = 0; var f = 330 + idx * 85; tone(f, 0.22, 'sine', 0.09); tone(f * 1.5, 0.25, 'sine', 0.05, { when: 0.05 }); },
-      runePick: function () { tone(392, 0.16, 'sine', 0.11); tone(494, 0.18, 'sine', 0.11, { when: 0.1 }); tone(587, 0.3, 'sine', 0.1, { when: 0.2 }); },
-      merge: function () { tone(330, 0.16, 'sine', 0.11); tone(440, 0.18, 'sine', 0.11, { when: 0.1 }); tone(554, 0.28, 'sine', 0.1, { when: 0.2 }); },
+      shoot: function () { var n = performance.now(); if (n - shootLast < 80) return; shootLast = n; tone(650 + Math.random() * 120, 0.07, 'triangle', 0.1, { slideTo: 300 }); noise(0.02, 0.05, 3600); },
+      hit: function () { noise(0.04, 0.08, 2000); tone(260, 0.05, 'sine', 0.07, { slideTo: 120 }); },
+      crit: function () { tone(950, 0.08, 'triangle', 0.11, { slideTo: 420 }); noise(0.03, 0.06, 4200); },
+      explode: function () { tone(110, 0.5, 'sine', 0.24, { slideTo: 30 }); noise(0.4, 0.18, 500); noise(0.07, 0.08, 2600); },
+      enemyDie: function () { tone(420, 0.14, 'triangle', 0.09, { slideTo: 140 }); noise(0.07, 0.06, 1800); },
+      eliteDie: function () { tone(180, 0.42, 'sine', 0.18, { slideTo: 50 }); noise(0.3, 0.14, 800); tone(360, 0.18, 'triangle', 0.07, { slideTo: 160 }); },
+      chestOpen: function () { tone(392, 0.09, 'sine', 0.1); tone(494, 0.09, 'sine', 0.1, { when: 0.07 }); tone(587, 0.09, 'sine', 0.1, { when: 0.14 }); tone(784, 0.16, 'sine', 0.11, { when: 0.21 }); },
+      pickup: function (rarity) { var idx = RAR.indexOf(rarity); if (idx < 0) idx = 0; var f = 440 + idx * 95; tone(f, 0.09, 'sine', 0.08); tone(f * 1.5, 0.11, 'sine', 0.06, { when: 0.05 }); },
+      runePick: function () { tone(523, 0.12, 'triangle', 0.11); tone(659, 0.13, 'triangle', 0.11, { when: 0.1 }); tone(784, 0.24, 'triangle', 0.1, { when: 0.2 }); },
+      merge: function () { tone(494, 0.12, 'triangle', 0.11); tone(622, 0.13, 'triangle', 0.11, { when: 0.1 }); tone(740, 0.24, 'triangle', 0.1, { when: 0.2 }); },
       bossRoar: function () { tone(70, 1.1, 'sawtooth', 0.16, { slideTo: 35, lp: 200 }); noise(0.7, 0.12, 320); tone(45, 1.1, 'sine', 0.12, { slideTo: 26 }); },
-      bossPhase: function () { tone(160, 0.5, 'sine', 0.13, { slideTo: 55 }); noise(0.3, 0.1, 420); },
+      bossPhase: function () { tone(200, 0.45, 'sine', 0.13, { slideTo: 65 }); noise(0.3, 0.1, 420); },
       bossDie: function () { tone(100, 1.2, 'sine', 0.24, { slideTo: 26 }); noise(1.0, 0.2, 400); tone(55, 1.1, 'triangle', 0.1, { slideTo: 25, lp: 280 }); },
-      playerHit: function () { tone(140, 0.2, 'sine', 0.13, { slideTo: 50 }); noise(0.1, 0.08, 900); },
-      playerDie: function () { tone(200, 1.0, 'sawtooth', 0.13, { slideTo: 38, lp: 500 }); noise(0.6, 0.12, 420); },
-      dash: function () { tone(180, 0.12, 'sine', 0.06, { slideTo: 420 }); },
+      playerHit: function () { tone(200, 0.16, 'square', 0.1, { slideTo: 85, lp: 1200 }); noise(0.08, 0.08, 1100); },
+      playerDie: function () { tone(300, 0.8, 'sawtooth', 0.12, { slideTo: 45, lp: 600 }); noise(0.55, 0.13, 460); },
+      dash: function () {
+        // 冲刺"嗖"：噪声 + 带通扫频（380→4400Hz），空气被划开的感觉
+        if (!ctx || muted) return;
+        var t0 = ctx.currentTime, dur = 0.16;
+        var len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+        var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        var src = ctx.createBufferSource(); src.buffer = buf;
+        var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+        f.frequency.setValueAtTime(380, t0);
+        f.frequency.exponentialRampToValueAtTime(4400, t0 + dur);
+        var g = ctx.createGain(); g.gain.setValueAtTime(0.13, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        src.connect(f); f.connect(g); send(g);
+        src.start(t0); src.stop(t0 + dur + 0.03);
+      },
       extract: function () { playFile('extract'); },
-      bomb: function () { tone(120, 0.55, 'sine', 0.22, { slideTo: 30 }); noise(0.45, 0.17, 550); },
-      shield: function () { tone(300, 0.25, 'sine', 0.1, { slideTo: 600 }); },
-      heal: function () { tone(260, 0.22, 'sine', 0.09, { slideTo: 520 }); tone(390, 0.28, 'sine', 0.05, { slideTo: 780, when: 0.08 }); },
-      slow: function () { tone(400, 0.5, 'sine', 0.08, { slideTo: 90 }); },
+      bomb: function () { tone(120, 0.5, 'sine', 0.2, { slideTo: 30 }); noise(0.42, 0.16, 550); },
+      shield: function () { tone(400, 0.22, 'sine', 0.1, { slideTo: 800 }); },
+      heal: function () { tone(380, 0.2, 'sine', 0.09, { slideTo: 720 }); tone(570, 0.24, 'sine', 0.06, { slideTo: 1000, when: 0.08 }); },
+      slow: function () { tone(500, 0.45, 'sine', 0.08, { slideTo: 120 }); },
+      stolen: function () { tone(300, 0.18, 'sawtooth', 0.11, { slideTo: 480, lp: 2200 }); tone(480, 0.22, 'sawtooth', 0.09, { slideTo: 300, lp: 2000, when: 0.14 }); },
       ui: function () { playFile('ui'); }
     };
     function unlock() {
@@ -223,7 +245,7 @@
   // 战利品不再融化成单一货币，而是变成跨局「法器」资产，可装备实改数值
   var SLOTS = ['weapon', 'armor', 'core', 'ammo'];
   var SLOTNAME = { weapon: '武器', armor: '护甲', core: '核心', ammo: '弹药' };
-  var SLOTCOL = { weapon: '#FF7A59', armor: '#5AA9FF', core: '#B27BFF', ammo: '#3CFFA0' };
+  var SLOTCOL = { weapon: '#FF7A59', armor: '#5AA9FF', core: '#B27BFF', ammo: '#8FD8C0' };
   function pickSlot() { return SLOTS[randi(0, 3)]; }
   var artSeq = 0;
   function rollMods(slot, rarity) {
@@ -305,8 +327,8 @@
   // pellets: 基础弹片数; homing: 是否天生追踪; spread: 散射角
   var AIRCRAFT = {
     a: { id: 'a', name: '青隼', desc: '突击·直射', hp: 100, speed: 235, fireRate: 4.5, dmg: 11, bulletSpeed: 520, color: COL.player, unlockCost: 0, pellets: 1, homing: false, spread: 0 },
-    b: { id: 'b', name: '玄龟', desc: '重装·散射', hp: 165, speed: 180, fireRate: 3.8, dmg: 13, bulletSpeed: 470, color: '#7fd1c0', unlockCost: 300, pellets: 3, homing: false, spread: 0.26 },
-    c: { id: 'c', name: '赤鸾', desc: '游侠·高速追踪', hp: 72, speed: 275, fireRate: 6.5, dmg: 10, bulletSpeed: 600, color: '#ff9bb0', unlockCost: 800, pellets: 1, homing: true, spread: 0 }
+    b: { id: 'b', name: '玄龟', desc: '重装·散射', hp: 165, speed: 180, fireRate: 3.8, dmg: 13, bulletSpeed: 470, color: '#7EAD9A', unlockCost: 300, pellets: 3, homing: false, spread: 0.26 },
+    c: { id: 'c', name: '赤鸾', desc: '游侠·高速追踪', hp: 72, speed: 275, fireRate: 6.5, dmg: 10, bulletSpeed: 600, color: '#D08A9A', unlockCost: 800, pellets: 1, homing: true, spread: 0 }
   };
   var UPGRADES = [
     { key: 'hp', name: '生命强化', desc: '+22 最大HP/级', max: 6, cost: function (l) { return 140 * (l + 1); } },
@@ -317,15 +339,15 @@
   ];
   // 机体剪影（SVG，基地机库大图卡用）
   var SHIP_SVG = {
-    a: '<svg viewBox="0 0 110 60"><path d="M55 2 L104 52 L74 40 L55 58 L36 40 L6 52 Z" fill="currentColor" opacity="0.92"/><path d="M55 2 L74 40 L55 58 L36 40 Z" fill="#06231f" opacity="0.38"/></svg>',
-    b: '<svg viewBox="0 0 110 60"><path d="M55 4 L102 42 Q55 60 8 42 Z" fill="currentColor" opacity="0.92"/><rect x="46" y="10" width="18" height="32" rx="5" fill="#06231f" opacity="0.38"/></svg>',
-    c: '<svg viewBox="0 0 110 60"><path d="M55 2 L100 36 L86 48 L55 32 L24 48 L10 36 Z" fill="currentColor" opacity="0.92"/><path d="M55 2 L86 48 L55 32 L24 48 Z" fill="#06231f" opacity="0.38"/></svg>'
+    a: '<svg viewBox="0 0 110 60"><path d="M55 2 L104 52 L74 40 L55 58 L36 40 L6 52 Z" fill="currentColor" opacity="0.92"/><path d="M55 2 L74 40 L55 58 L36 40 Z" fill="#0A2E26" opacity="0.38"/></svg>',
+    b: '<svg viewBox="0 0 110 60"><path d="M55 4 L102 42 Q55 60 8 42 Z" fill="currentColor" opacity="0.92"/><rect x="46" y="10" width="18" height="32" rx="5" fill="#0A2E26" opacity="0.38"/></svg>',
+    c: '<svg viewBox="0 0 110 60"><path d="M55 2 L100 36 L86 48 L55 32 L24 48 L10 36 Z" fill="currentColor" opacity="0.92"/><path d="M55 2 L86 48 L55 32 L24 48 Z" fill="#0A2E26" opacity="0.38"/></svg>'
   };
   // 军械库槽位图标（SVG）
   var SLOT_SVG = {
     weapon: '<svg viewBox="0 0 20 20"><path d="M2 14 L10 6 L18 14 L14 18 L10 12 L6 18 Z" fill="' + SLOTCOL.weapon + '"/></svg>',
     armor: '<svg viewBox="0 0 20 20"><path d="M10 2 L17 5 V11 Q17 16 10 19 Q3 16 3 11 V5 Z" fill="' + SLOTCOL.armor + '"/></svg>',
-    core: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="' + SLOTCOL.core + '"/><circle cx="10" cy="10" r="3" fill="#06231f" opacity="0.5"/></svg>',
+    core: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" fill="' + SLOTCOL.core + '"/><circle cx="10" cy="10" r="3" fill="#0A2E26" opacity="0.5"/></svg>',
     ammo: '<svg viewBox="0 0 20 20"><rect x="4" y="7" width="12" height="6" rx="3" fill="' + SLOTCOL.ammo + '"/><rect x="8" y="3" width="4" height="4" fill="' + SLOTCOL.ammo + '" opacity="0.6"/></svg>'
   };
 
@@ -416,6 +438,7 @@
   // ---------- 全局状态 ----------
   var scene = 'title';
   var baseTab = 'hangar';
+  var tipTimer = 0, tipEl = null;
   var paused = false;
   var player, bullets, enemies, loot, nodes, particles, floaters, extractPoints, exfil, boss, bossSpawned;
   var run, spawnTimer, buffTimer, buffPending, buffHold, buffSafe, extractUnlocked, gameTime, hintTimer, banner, killForBuff, runeCount, screenFlash;
@@ -449,6 +472,7 @@
     enemiesSlowT = 0;
     placeNodes(6 + tier);
     applyEquipped(); // 把已装备法器 + 研究院被动实打实叠到这局属性上
+    if (meta.runs === 0) showTip('<b>目标：</b>搜刮战利品 → 撤离带回法器。WASD 移动 · 鼠标瞄准 · 按住<b>左键</b>射击', 6);
   }
 
   function placeNodes(n) {
@@ -468,10 +492,10 @@
   }
   // ---------- 宝箱分级与开箱反馈 ----------
   var CHESTS = {
-    wood:   { key: 'wood',   name: '木箱', color: '#9aa7b0', edge: '#5b6470', glow: 6,  min: 2, max: 3, floor: 1, flash: '#cdd8e2', guard: 1 },
-    silver: { key: 'silver', name: '银箱', color: '#cfe3ee', edge: '#7fa6c0', glow: 11, min: 3, max: 4, floor: 2, flash: '#dff0ff', guard: 1 },
-    gold:   { key: 'gold',   name: '金箱', color: '#FFC24B', edge: '#a9791a', glow: 16, min: 4, max: 6, floor: 3, flash: '#FFC24B', guard: 2 },
-    secret: { key: 'secret', name: '秘宝', color: '#c98bff', edge: '#6a2fb0', glow: 24, min: 5, max: 7, floor: 4, flash: '#c98bff', guard: 2 }
+    wood:   { key: 'wood',   name: '木箱', color: '#8B95A0', edge: '#5b6470', glow: 6,  min: 2, max: 3, floor: 1, flash: '#cdd8e2', guard: 1 },
+    silver: { key: 'silver', name: '银箱', color: '#CFE0DC', edge: '#7fa6c0', glow: 11, min: 3, max: 4, floor: 2, flash: '#dff0ff', guard: 1 },
+    gold:   { key: 'gold',   name: '金箱', color: '#C9A227', edge: '#8A6A1E', glow: 16, min: 4, max: 6, floor: 3, flash: '#C9A227', guard: 2 },
+    secret: { key: 'secret', name: '秘宝', color: '#8A6FB8', edge: '#6a2fb0', glow: 24, min: 5, max: 7, floor: 4, flash: '#8A6FB8', guard: 2 }
   };
   function rollChestTier() {
     var secretW = 0.04 + (run.tier - 1) * 0.02, r = Math.random();
@@ -500,13 +524,16 @@
   function pickArchetype(tier) {
     var r = Math.random();
     var ram = 0.26, shoot = 0.22, turret = 0.08 + tier * 0.03, heal = 0.07 + tier * 0.02, gunship = 0.07 + tier * 0.04, split = 0.07 + tier * 0.02;
-    var sum = ram + shoot + turret + heal + gunship + split; r *= sum;
+    // 劫掠者：只在玩家已捡到战利品时才进入抽卡池（没东西可偷就不浪费出场）
+    var looter = (run && run.loot.length > 0) ? (0.06 + tier * 0.02) : 0;
+    var sum = ram + shoot + turret + heal + gunship + split + looter; r *= sum;
     if (r < ram) return 'ram'; r -= ram;
     if (r < shoot) return 'shoot'; r -= shoot;
     if (r < turret) return 'turret'; r -= turret;
     if (r < heal) return 'heal'; r -= heal;
     if (r < gunship) return 'gunship'; r -= gunship;
-    return 'split';
+    if (r < split) return 'split'; r -= split;
+    return 'looter';
   }
   function spawnEnemy(x, y, etier) {
     var ex = x, ey = y;
@@ -519,20 +546,23 @@
     var arche = pickArchetype(etier);
     var elite = !x && Math.random() < 0.08;
     var baseHp = (16 + etier * 9) * tierMul();
-    if (arche === 'turret') baseHp *= 2.2; else if (arche === 'heal') baseHp *= 1.25; else if (arche === 'split') baseHp *= 0.9; else if (arche === 'gunship') baseHp *= 3.4;
+    if (arche === 'turret') baseHp *= 2.2; else if (arche === 'heal') baseHp *= 1.25; else if (arche === 'split') baseHp *= 0.9; else if (arche === 'gunship') baseHp *= 3.4; else if (arche === 'looter') baseHp *= 1.15;
     if (elite) baseHp *= 3;
-    var r = arche === 'turret' ? 22 : (arche === 'gunship' ? 30 : (arche === 'split' ? 22 : (arche === 'heal' ? 20 : (arche === 'ram' ? 15 : 17))));
-    var ecol = arche === 'heal' ? COL.extract : (arche === 'split' ? RARCOL.purple : COL.enemy);
-    var eedge = arche === 'heal' ? COL.ink : (arche === 'split' ? '#2a0a2a' : COL.enemyEdge);
+    var RAD = { turret: 22, gunship: 30, split: 22, heal: 20, looter: 17, ram: 15 };
+    var r = RAD[arche] || 17;
+    var ecol = arche === 'heal' ? COL.extract : (arche === 'split' ? RARCOL.purple : (arche === 'looter' ? '#E0B84A' : COL.enemy));
+    var eedge = arche === 'heal' ? COL.ink : (arche === 'split' ? '#2a0a2a' : (arche === 'looter' ? '#8a5f1a' : COL.enemyEdge));
     var e = {
       x: ex, y: ey, vx: 0, vy: 0, hp: baseHp, maxhp: baseHp, r: r,
       fireCd: rand(1.6, 3.0), tier: etier, arche: arche, ram: arche === 'ram' || arche === 'split',
       elite: elite, healCd: rand(2.5, 4.5), burst: 0,
+      zig: arche === 'looter' ? rand(0, 6.28) : 0, fleeing: false, lootStolen: null,
       rarity: elite ? (Math.random() < 0.5 ? 'purple' : 'blue') : rollRarity(etier),
       flash: 0, wake: 0, dmgMul: tierDmgMul() * (elite ? 1.2 : 1),
       burn: 0, burnT: 0, small: false, col: ecol, edge: eedge, bigBullet: arche === 'gunship',
       hitT: 0, hitMag: 0
     };
+    if (arche === 'looter' && !run.looterWarned) { run.looterWarned = true; banner = { text: '⚠ 劫掠者出现！它会偷走你已捡的战利品，快击落它夺回！', life: 3.2 }; AudioSys.sfx.stolen(); }
     enemies.push(e); return e;
   }
   function nearestEnemy(x, y) {
@@ -565,6 +595,17 @@
     f.alive = true; f.x = x; f.y = y; f.text = text; f.color = color; f.style = style;
     f.maxLife = 1.1; f.life = 1.1; f.vy = -22;
   }
+  // 任务式引导：底部目标提示卡（新手局按阶段弹出，不一次性灌输）
+  function showTip(text, dur) {
+    if (!tipEl) tipEl = document.getElementById('tipCard');
+    tipTimer = dur || 4;
+    if (tipEl) { tipEl.innerHTML = text; tipEl.style.display = 'block'; tipEl.style.animation = 'none'; void tipEl.offsetWidth; tipEl.style.animation = ''; }
+  }
+  function hasMergeable() {
+    var cnt = {};
+    for (var i = 0; i < run.loot.length; i++) { var r = run.loot[i].rarity; if (r === 'orange') continue; cnt[r] = (cnt[r] || 0) + 1; if (cnt[r] >= 2) return true; }
+    return false;
+  }
 
   // 安全窗口：玩家身边短暂无威胁（无敌弹/无敌怪贴脸）才允许弹出符文，避免中途掐断连招
   // 符文充能节奏：越往后越稀（依次叠加），并有总数上限，避免全程被打断式喂奶
@@ -582,10 +623,16 @@
     buffChoices = []; var pool = RUNES.slice();
     for (var i = 0; i < 3; i++) { var k = randi(0, pool.length - 1); buffChoices.push(pool.splice(k, 1)[0]); }
     paused = true; document.getElementById('buffOverlay').style.display = 'flex'; document.getElementById('buffList').innerHTML = '';
+    var haveParts = [];
+    for (var e in player.elements) if (player.elements[e] > 0) haveParts.push(e + '×' + player.elements[e]);
+    var bhEl = document.getElementById('buffHave');
+    if (bhEl) bhEl.innerHTML = haveParts.length ? ('已持有：' + haveParts.join(' · ') + '（3 枚同系触发共鸣 +10% 伤害）') : '尚未持有符文 · 3 枚同系触发共鸣 +10% 伤害';
     buffChoices.forEach(function (b, idx) {
       var el = document.createElement('div'); el.className = 'card';
       el.style.borderColor = ELEMCOL[b.elem];
-      el.innerHTML = '<div class="big" style="color:' + ELEMCOL[b.elem] + '">' + b.elem + '</div><div class="bname">' + b.name + '</div><div class="muted">' + b.desc + '</div>';
+      var have = player.elements[b.elem] || 0;
+      el.innerHTML = '<div class="big" style="color:' + ELEMCOL[b.elem] + '">' + b.elem + '</div><div class="bname">' + b.name + '</div><div class="muted">' + b.desc + '</div>' +
+        (have > 0 ? '<div class="buff-have">已有 ' + have + ' 枚·' + b.elem + '系（3 枚触发共鸣）</div>' : '<div class="buff-meta">' + b.elem + '系 · 3 枚触发共鸣 +10% 伤害</div>');
       el.onclick = function () { chooseBuff(idx); };
       document.getElementById('buffList').appendChild(el);
     });
@@ -680,10 +727,10 @@
 
   // ---------- 丹药消耗品 ----------
   function addConsumable(key) {
-    if (player.consumables.length >= 3) { floatText(player.x, player.y - 24, '丹药已满', '#ff9d2e'); return; }
+    if (player.consumables.length >= 3) { floatText(player.x, player.y - 24, '丹药已满', '#D98A3D'); return; }
     player.consumables.push(key);
     var c = CONSUMABLES[key];
-    floatText(player.x, player.y - 24, '获得丹药：' + c.name, '#ffd24b');
+    floatText(player.x, player.y - 24, '获得丹药：' + c.name, '#D9B64A');
     banner = { text: '获得丹药：' + c.name + '（按 Q 使用）', life: 1.4 };
   }
   function useConsumable() {
@@ -693,14 +740,14 @@
       for (var b = bullets.length - 1; b >= 0; b--) { if (bullets[b].from === 'enemy') bullets.splice(b, 1); }
       for (var i = enemies.length - 1; i >= 0; i--) { enemies[i].hp -= 35; enemies[i].flash = 0.1; if (enemies[i].hp <= 0) onEnemyDeath(enemies[i]); }
       if (boss && boss.wake <= 0) { boss.hp -= 35; boss.flash = 0.1; boss.hitT = 0.15; boss.hitMag = 1.8; }
-      burst(player.x, player.y, '#ffd24b', 22); screenFlash = { color: '#ffd24b', a: 0.4 };
+      burst(player.x, player.y, '#D9B64A', 22); screenFlash = { color: '#D9B64A', a: 0.4 };
       addShake(6, 220, 110, true); addFreeze(60);
       AudioSys.sfx.bomb();
     } else if (key === 'shield') {
-      player.shield = player.maxshield; player.iframe = 1.5; burst(player.x, player.y, '#3aa0ff', 14);
+      player.shield = player.maxshield; player.iframe = 1.5; burst(player.x, player.y, '#4E8FC7', 14);
       AudioSys.sfx.shield();
     } else if (key === 'heal') {
-      player.hp = Math.min(player.maxhp, player.hp + player.maxhp * 0.4); burst(player.x, player.y, '#3CFFA0', 14);
+      player.hp = Math.min(player.maxhp, player.hp + player.maxhp * 0.4); burst(player.x, player.y, '#8FD8C0', 14);
       AudioSys.sfx.heal();
     } else if (key === 'slow') {
       enemiesSlowT = 3; enemiesSlowFactor = 0.4; banner = { text: '凝时！敌人减速', life: 1.4 };
@@ -718,20 +765,26 @@
     do { x = rand(W * 0.15, W * 0.85); y = rand(H * 0.12, H * 0.5); t++; } while (dist2(x, y, player.x, player.y) < 300 * 300 && t < 40);
     extractPoints = [{ x: x, y: y, w: 120, h: 120, prog: 0, mode: 'safe' }];
     banner = { text: '撤离点已开启！搜够了就飞进绿框带出（站住读条 2.8s，离开会回落）', life: 3 };
+    if (meta.runs === 0) showTip('<b>撤离点已开启！</b>飞入<b>绿色区域</b>站住 2.8 秒即带出全部战利品（中途离开读条回落）', 5.5);
   }
   function tryExtract() { /* 读条在 update 中处理，飞入即生效 */ }
 
   // ---------- 暂停 ----------
-  function togglePause() { if (document.getElementById('pauseOverlay').style.display === 'flex') { closePause(); return; } paused = true; document.getElementById('pauseOverlay').style.display = 'flex'; }
+  function togglePause() {
+    if (document.getElementById('pauseOverlay').style.display === 'flex') { closePause(); return; }
+    paused = true; document.getElementById('pauseOverlay').style.display = 'flex';
+    var st = document.getElementById('pauseStats');
+    if (st && run) st.innerHTML = '本局：击杀 <b>' + run.kills + '</b> · 战利品 <b>' + run.loot.length + '</b> 件 · 已搜刮 <b>' + run.nodes + '/' + (3 + run.tier) + '</b> 点 · <b>' + Math.floor(run.time) + '</b> 秒';
+  }
   function closePause() { document.getElementById('pauseOverlay').style.display = 'none'; paused = false; }
 
   // ---------- Boss ----------
   function bossPhaseColor(b) {
-    if (b.kind === 'qiongqi') return b.phase >= 2 ? '#ff5c7a' : COL.sha;
+    if (b.kind === 'qiongqi') return b.phase >= 2 ? '#D96A7E' : COL.sha;
     // 梼杌：紫秘宝 → 转赤 → 煞红（越来越危险的可读信号）
     if (b.phase === 3) return COL.sha;
-    if (b.phase === 2) return '#ff7a99';
-    return '#b06bff';
+    if (b.phase === 2) return '#D08A9A';
+    return '#8A6FB8';
   }
   function setBossPhase(b, p) {
     if (b.phase === p) return;
@@ -752,7 +805,7 @@
       summonCd: 6, dashCd: 4, dashing: 0, dashWarn: 0, summonWarn: 0, invuln: 0, hitT: 0, hitMag: 0 };
     banner = { text: qiongqi ? '⚠ 穷奇·掠食 来袭！（突进+召唤）' : '⚠ BOSS 来袭！击败可获大量战利品', life: 2.4 };
     // 出场反馈：暗角收拢 + 煞红闪 + 重抖
-    addShake(6, 480, 160, true); addTint('#D11A2A', 0.25); bossVig = 1.2; screenFlash = { color: '#D11A2A', a: 0.25 };
+    addShake(6, 480, 160, true); addTint('#B03A3A', 0.25); bossVig = 1.2; screenFlash = { color: '#B03A3A', a: 0.25 };
     AudioSys.sfx.bossRoar();
   }
   function updateBoss(dt) {
@@ -817,8 +870,8 @@
     run.killedBoss = true; if (!meta.bossCleared) meta.bossCleared = true; saveMeta();
     run.enemyKills.boss = (run.enemyKills.boss || 0) + 1;
     // 死亡反馈：白闪 + 大爆裂双环 + 长抖 + 长顿帧
-    burst(boss.x, boss.y, '#ff5cf0', 30, { ring: true, ringR: 90, r0: 10 });
-    burst(boss.x, boss.y, '#D11A2A', 16, { ring: true, ringR: 60 });
+    burst(boss.x, boss.y, '#B37FD0', 30, { ring: true, ringR: 90, r0: 10 });
+    burst(boss.x, boss.y, '#B03A3A', 16, { ring: true, ringR: 60 });
     addShake(6, 420, 150, true); addFreeze(180); addTint('#ffffff', 0.4); screenFlash = { color: '#ffffff', a: 0.4 };
     AudioSys.sfx.bossDie();
     var drops = boss.kind === 'qiongqi'
@@ -826,7 +879,7 @@
       : ['purple', 'purple', 'orange', 'blue', 'blue', 'green'];
     for (var i = 0; i < drops.length; i++) dropLoot(boss.x + rand(-45, 45), boss.y + rand(-45, 45), drops[i]);
     if (boss.kind === 'qiongqi') dropLoot(boss.x, boss.y, 'orange'); // 穷奇牙
-    floatText(boss.x, boss.y - 30, 'BOSS 击破！', '#ff5cf0');
+    floatText(boss.x, boss.y - 30, 'BOSS 击破！', '#B37FD0');
     banner = { text: '★ BOSS 击破！搜刮战利品并撤离带出', life: 2.6 };
     boss = null;
   }
@@ -873,6 +926,7 @@
     if (enemiesSlowT > 0) enemiesSlowT -= dt;
     if (hintTimer > 0) hintTimer -= dt;
     if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
+    if (tipTimer > 0) { tipTimer -= dt; if (tipTimer <= 0 && tipEl) tipEl.style.display = 'none'; }
 
     // 符文：充满后缓冲到“安全窗口”才弹出，避免中途硬暂停掐断爽感
     if (buffPending && !overlaysOpen()) {
@@ -973,6 +1027,7 @@
       if (e.burnT > 0) { e.hp -= e.burn * dt; e.burnT -= dt; if (e.hp <= 0) { onEnemyDeath(e); continue; } }
       if (e.wake > 0) { e.wake -= dt; continue; }
       if (e.arche === 'looter') {
+        if (e.hitT > 0) e.hitT -= dt;
         e.zig += dt * 6;
         var tx2, ty2;
         if (e.fleeing) { tx2 = e.x + (e.x - W / 2); ty2 = e.y + (e.y - H / 2); } else { tx2 = player.x; ty2 = player.y; }
@@ -984,10 +1039,13 @@
           if (run.loot.length > 0) {
             var st = run.loot.pop(); run.picked = Math.max(0, run.picked - 1);
             e.lootStolen = st; e.fleeing = true;
-            floatText(player.x, player.y - 26, '战利品被夺!', COL.sha, 'crit'); addShake(3.5, 200, 80);
+            floatText(player.x, player.y - 26, '战利品被夺!', COL.sha, 'crit'); addShake(3.5, 200, 80); AudioSys.sfx.stolen();
           } else { e.fleeing = true; }
         }
-        if (e.fleeing && (e.x < -10 || e.x > W + 10 || e.y < -10 || e.y > H + 10)) { var li = enemies.indexOf(e); if (li >= 0) enemies.splice(li, 1); }
+        if (e.fleeing && (e.x < -10 || e.x > W + 10 || e.y < -10 || e.y > H + 10)) {
+          if (e.lootStolen) floatText(player.x, player.y - 40, '战利品被带走了…', '#D96A7E', 'crit');
+          var li = enemies.indexOf(e); if (li >= 0) enemies.splice(li, 1);
+        }
         continue;
       }
       var dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1;
@@ -1022,7 +1080,7 @@
         if (e.healCd <= 0) {
           var healed = false;
           for (var h = 0; h < enemies.length; h++) { var o = enemies[h]; if (o !== e && dist2(o.x, o.y, e.x, e.y) < 130 * 130 && o.hp < o.maxhp) { o.hp = Math.min(o.maxhp, o.hp + 22); healed = true; } }
-          if (healed) { burst(e.x, e.y, '#3CFFA0', 8, { ring: true, ringR: 30 }); }
+          if (healed) { burst(e.x, e.y, '#8FD8C0', 8, { ring: true, ringR: 30 }); }
           e.healCd = 3.5;
         }
       }
@@ -1046,7 +1104,7 @@
           AudioSys.sfx.hit();
           burst(bl.x, bl.y, BULLET_COL.boss, bl.crit ? 10 : 6, { smin: 80, smax: 240, lmin: 0.2, lmax: 0.35 });
           floatText(boss.x, boss.y - boss.r - 8, '-' + Math.round(bl.dmg), bl.crit ? BULLET_COL.buff : '#F4EFE6', bl.crit ? 'crit' : 'normal');
-          if (bl.lifesteal > 0) { var hb = Math.round(bl.dmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + hb); floatText(player.x, player.y - 20, '+' + hb, '#3CFFA0', 'heal'); }
+          if (bl.lifesteal > 0) { var hb = Math.round(bl.dmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + hb); floatText(player.x, player.y - 20, '+' + hb, '#8FD8C0', 'heal'); }
           if (boss.hp <= 0) killBoss();
           if (bl.pierce > 0) bl.pierce--; else { bullets.splice(b, 1); consumed = true; }
         }
@@ -1060,10 +1118,10 @@
               burst(bl.x, bl.y, bl.crit ? BULLET_COL.buff : COL.enemy, bl.crit ? 10 : 5, { smin: 60, smax: bl.crit ? 260 : 200, lmin: 0.18, lmax: bl.crit ? 0.4 : 0.32 });
               if (bl.crit) { addTint('#ffffff', 0.12); spawnRing(en.x, en.y, '#FFE9A8', 22); floatText(en.x, en.y - en.r - 6, '暴击 -' + dnum, BULLET_COL.buff, 'crit'); }
               else { floatText(en.x, en.y - en.r - 6, '-' + dnum, '#F4EFE6', 'normal'); }
-              if (bl.explode > 0) { for (var ex2 = 0; ex2 < enemies.length; ex2++) { if (ex2 !== ei && dist2(en.x, en.y, enemies[ex2].x, enemies[ex2].y) < bl.explode * bl.explode) { enemies[ex2].hp -= bl.dmg * 0.6; enemies[ex2].flash = 0.06; enemies[ex2].hitT = 0.08; enemies[ex2].hitMag = 1.5; } } burst(bl.x, bl.y, '#ff9d2e', 10); AudioSys.sfx.explode(); }
+              if (bl.explode > 0) { for (var ex2 = 0; ex2 < enemies.length; ex2++) { if (ex2 !== ei && dist2(en.x, en.y, enemies[ex2].x, enemies[ex2].y) < bl.explode * bl.explode) { enemies[ex2].hp -= bl.dmg * 0.6; enemies[ex2].flash = 0.06; enemies[ex2].hitT = 0.08; enemies[ex2].hitMag = 1.5; } } burst(bl.x, bl.y, '#D98A3D', 10); AudioSys.sfx.explode(); }
               if (bl.chain > 0) { var chained = 0; for (var cx = 0; cx < enemies.length && chained < bl.chain; cx++) { if (cx !== ei && dist2(en.x, en.y, enemies[cx].x, enemies[cx].y) < 140 * 140) { enemies[cx].hp -= bl.dmg * 0.5; enemies[cx].flash = 0.05; enemies[cx].hitT = 0.08; enemies[cx].hitMag = 1.5; chained++; } } }
               if (bl.burn > 0) { en.burn = Math.max(en.burn || 0, bl.burn); en.burnT = 3; }
-              if (bl.lifesteal > 0) { var h1 = Math.round(bl.dmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + h1); floatText(player.x, player.y - 20, '+' + h1, '#3CFFA0', 'heal'); }
+              if (bl.lifesteal > 0) { var h1 = Math.round(bl.dmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + h1); floatText(player.x, player.y - 20, '+' + h1, '#8FD8C0', 'heal'); }
               if (bl.pierce > 0) { bl.pierce--; } else { bullets.splice(b, 1); consumed = true; }
               if (en.hp <= 0) { onEnemyDeath(en); }
               if (bl.pierce <= 0) break;
@@ -1074,8 +1132,8 @@
         if (dist2(bl.x, bl.y, player.x, player.y) < (13 + bl.r) * (13 + bl.r)) {
           bullets.splice(b, 1);
           if (player.iframe <= 0) {
-            if (player.dodgeChance > 0 && Math.random() < player.dodgeChance) { player.flash = 0.1; floatText(player.x, player.y - 20, '闪避', '#6BE6A0'); }
-            else if (player.reflect > 0 && Math.random() < player.reflect) { var rt = nearestEnemy(player.x, player.y); if (rt) fireBullet(player.x, player.y, Math.atan2(rt.y - player.y, rt.x - player.x), 'player', bl.dmg * 2, player.bulletSpeed, {}); floatText(player.x, player.y - 20, '反震', '#3aa0ff'); }
+            if (player.dodgeChance > 0 && Math.random() < player.dodgeChance) { player.flash = 0.1; floatText(player.x, player.y - 20, '闪避', '#5FBFA3'); }
+            else if (player.reflect > 0 && Math.random() < player.reflect) { var rt = nearestEnemy(player.x, player.y); if (rt) fireBullet(player.x, player.y, Math.atan2(rt.y - player.y, rt.x - player.x), 'player', bl.dmg * 2, player.bulletSpeed, {}); floatText(player.x, player.y - 20, '反震', '#4E8FC7'); }
             else damagePlayer(bl.dmg);
           }
         }
@@ -1137,6 +1195,7 @@
     if (c.key === 'secret' && !got.some(function (g) { return g === 'orange'; })) { run.loot.push({ rarity: 'orange', name: pickName('orange'), slot: pickSlot() }); run.picked++; got.push('orange'); }
     burst(nd.x, nd.y, c.color, c.key === 'wood' ? 10 : 18, { ring: c.key !== 'wood', ringR: 40 });
     AudioSys.sfx.chestOpen(c.floor);
+    if (meta.runs === 0 && run.picked === 1) showTip('开箱获得<b>战利品</b>！同色战利品按 <b>M</b> 可合成升级（2合1/3合1）', 4.5);
     for (var s = 0; s < (c.key === 'wood' ? 5 : 12); s++) { var sa = rand(0, 6.28), sp = rand(60, 210); spawnParticle({ x: nd.x, y: nd.y, vx: Math.cos(sa) * sp, vy: Math.sin(sa) * sp, life: rand(0.4, 0.9), color: c.color, r: rand(1.5, 3) }); }
     screenFlash = { color: c.flash, a: c.key === 'wood' ? 0.12 : (c.key === 'silver' ? 0.24 : 0.42) };
     addShake(c.key === 'wood' ? 1.8 : 3, 90, 40);
@@ -1159,7 +1218,7 @@
     if (exfil) dmg *= 0.9; // 撤离期间飞船掩护，小幅减伤
     if (player.shield > 0) { var ab = Math.min(player.shield, dmg); player.shield -= ab; dmg -= ab; }
     if (dmg > 0) player.hp -= dmg;
-    addShake(3.2, 150, 60); screenFlash = { color: '#FF3B5C', a: 0.22 };
+    addShake(3.2, 150, 60); screenFlash = { color: '#C94F4F', a: 0.22 };
     AudioSys.sfx.playerHit();
     if (player.hp <= 0) { player.hp = 0; burst(player.x, player.y, player.color, 16); addShake(6, 260, 120, true); AudioSys.sfx.playerDie(); finishRun('death'); }
   }
@@ -1174,7 +1233,7 @@
   function drawNodes() {
     for (var i = 0; i < nodes.length; i++) {
       var nd = nodes[i];
-      if (nd.collected) { ctx.strokeStyle = 'rgba(255,194,75,0.18)'; ctx.setLineDash([4, 4]); ctx.strokeRect(nd.x - 15, nd.y - 15, 30, 30); ctx.setLineDash([]); continue; }
+      if (nd.collected) { ctx.strokeStyle = 'rgba(201,162,39,0.18)'; ctx.setLineDash([4, 4]); ctx.strokeRect(nd.x - 15, nd.y - 15, 30, 30); ctx.setLineDash([]); continue; }
       var c = CHESTS[nd.chest]; if (!c) continue;
       var pulse = 1 + Math.sin(nd.pulse) * 0.08, bob = Math.sin(nd.pulse * 1.3) * 2;
       ctx.save(); ctx.translate(nd.x, nd.y + bob); ctx.scale(pulse, pulse);
@@ -1199,9 +1258,9 @@
     ctx.beginPath(); ctx.moveTo(0, -17); ctx.lineTo(11, 13); ctx.lineTo(0, 7); ctx.lineTo(-11, 13); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.restore(); ctx.shadowBlur = 0;
     if (glowOn && muzzle.life > 0) { ctx.save(); ctx.translate(muzzle.x, muzzle.y); ctx.rotate(muzzle.ang); ctx.globalAlpha = clamp(muzzle.life / 0.05, 0, 1); ctx.drawImage(getGlow('#cffcff'), -14, -14, 28, 28); ctx.globalAlpha = 1; ctx.restore(); }
-    if (player.flash > 0) { ctx.fillStyle = 'rgba(255,59,92,0.3)'; ctx.beginPath(); ctx.arc(player.x, player.y, 20, 0, 7); ctx.fill(); }
+    if (player.flash > 0) { ctx.fillStyle = 'rgba(201,79,79,0.3)'; ctx.beginPath(); ctx.arc(player.x, player.y, 20, 0, 7); ctx.fill(); }
     // 自动炮台
-    for (var di = 0; di < player.droneList.length; di++) { var dr = player.droneList[di]; ctx.fillStyle = '#9fefff'; ctx.shadowColor = '#9fefff'; ctx.shadowBlur = 6; ctx.beginPath(); ctx.arc(dr.x, dr.y, 5, 0, 7); ctx.fill(); ctx.shadowBlur = 0; }
+    for (var di = 0; di < player.droneList.length; di++) { var dr = player.droneList[di]; ctx.fillStyle = '#A8E8D5'; ctx.shadowColor = '#A8E8D5'; ctx.shadowBlur = 6; ctx.beginPath(); ctx.arc(dr.x, dr.y, 5, 0, 7); ctx.fill(); ctx.shadowBlur = 0; }
   }
   function drawEnemies() {
     for (var i = 0; i < enemies.length; i++) {
@@ -1271,7 +1330,7 @@
       var qang = Math.atan2(player.y - b.y, player.x - b.x);
       ctx.rotate(qang);
       ctx.beginPath(); ctx.moveTo(b.r, 0); ctx.lineTo(-b.r * 0.7, -b.r * 0.85); ctx.lineTo(-b.r * 0.3, 0); ctx.lineTo(-b.r * 0.7, b.r * 0.85); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = '#b06bff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(b.r, 0); ctx.lineTo(-b.r * 0.3, 0); ctx.stroke();
+      ctx.strokeStyle = '#8A6FB8'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(b.r, 0); ctx.lineTo(-b.r * 0.3, 0); ctx.stroke();
     } else {
       // 梼杌：旋转八尖 + 封印冠 + 弱点核心
       var n = 8; ctx.beginPath(); for (var k = 0; k < n; k++) { var a = (k / n) * 6.28 + gameTime * 0.3; var rr = b.r * (k % 2 ? 0.7 : 1.1); var px = Math.cos(a) * rr, py = Math.sin(a) * rr; if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -1285,7 +1344,7 @@
     // 突进预警红线（与 Boss 弹幕预警同源信号）
     if (b.dashWarn > 0) {
       var dang = Math.atan2(player.y - b.y, player.x - b.x);
-      ctx.strokeStyle = 'rgba(255,59,92,' + (0.4 + 0.5 * Math.abs(Math.sin(gameTime * 30))) + ')';
+      ctx.strokeStyle = 'rgba(201,79,79,' + (0.4 + 0.5 * Math.abs(Math.sin(gameTime * 30))) + ')';
       ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
       ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + Math.cos(dang) * 1000, b.y + Math.sin(dang) * 1000); ctx.stroke();
       ctx.setLineDash([]);
@@ -1301,7 +1360,7 @@
       else if (b.kind === 'enemy') { col = COL.bulletE; tcol = col; }
       else if (b.kind === 'pierce') { col = '#bff7ff'; tcol = col; }
       else if (b.kind === 'homing') { col = '#ff9bd0'; tcol = col; }
-      else if (b.kind === 'explode') { col = '#ff9d2e'; tcol = col; }
+      else if (b.kind === 'explode') { col = '#D98A3D'; tcol = col; }
       else { col = player.color || COL.bulletP; tcol = col; }
       // 霓虹拖尾（世界坐标，旋转前画）
       if (glowOn) {
@@ -1368,7 +1427,7 @@
       var z = extractPoints[pi], cx = z.x + z.w / 2, cy = z.y + z.h / 2;
       var col = z.mode === 'risky' ? COL.gold : COL.extract;
       // 进度填充（站住读条越高越亮）
-      ctx.fillStyle = 'rgba(60,255,160,' + (0.16 + 0.44 * z.prog) + ')';
+      ctx.fillStyle = 'rgba(143,216,192,' + (0.16 + 0.44 * z.prog) + ')';
       ctx.fillRect(z.x, z.y, z.w, z.h);
       // 边框 + 呼吸脉冲提示
       var period = 1.1, tt = (gameTime % period) / period;
@@ -1410,11 +1469,16 @@
   }
   function drawMinimap() {
     var mw = 140, mh = Math.round(mw * H / W), mx = 14, my = H - mh - 14;
-    ctx.fillStyle = 'rgba(8,14,28,0.7)'; ctx.fillRect(mx, my, mw, mh); ctx.strokeStyle = 'rgba(43,212,196,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
+    ctx.fillStyle = 'rgba(8,14,28,0.7)'; ctx.fillRect(mx, my, mw, mh); ctx.strokeStyle = 'rgba(95,191,163,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
     var sx = mw / W, sy = mh / H;
     for (var i = 0; i < nodes.length; i++) { var nd = nodes[i]; if (nd.collected) continue; ctx.fillStyle = CHESTS[nd.chest].color; ctx.fillRect(mx + nd.x * sx - 2, my + nd.y * sy - 2, 4, 4); }
-    if (extractPoints) for (var mpi = 0; mpi < extractPoints.length; mpi++) { var mz = extractPoints[mpi]; ctx.fillStyle = mz.mode === 'risky' ? COL.gold : COL.extract; ctx.fillRect(mx + mz.x * sx, my + mz.y * sy, mz.w * sx, mz.h * sy); }
-    if (boss) { ctx.fillStyle = '#ff5cf0'; ctx.beginPath(); ctx.arc(mx + boss.x * sx, my + boss.y * sy, 4, 0, 7); ctx.fill(); }
+    if (extractPoints) for (var mpi = 0; mpi < extractPoints.length; mpi++) {
+      var mz = extractPoints[mpi];
+      var pulse = 1.4 + Math.sin(gameTime * 5) * 0.9; // 呼吸脉冲，撤离点更醒目
+      ctx.fillStyle = mz.mode === 'risky' ? COL.gold : COL.extract;
+      ctx.fillRect(mx + mz.x * sx - pulse * 0.5, my + mz.y * sy - pulse * 0.5, mz.w * sx + pulse, mz.h * sy + pulse);
+    }
+    if (boss) { ctx.fillStyle = '#B37FD0'; ctx.beginPath(); ctx.arc(mx + boss.x * sx, my + boss.y * sy, 4, 0, 7); ctx.fill(); }
     ctx.fillStyle = COL.enemy; for (var e = 0; e < enemies.length; e++) ctx.fillRect(mx + enemies[e].x * sx - 1, my + enemies[e].y * sy - 1, 2, 2);
     ctx.fillStyle = COL.player; ctx.beginPath(); ctx.arc(mx + player.x * sx, my + player.y * sy, 3, 0, 7); ctx.fill();
   }
@@ -1424,34 +1488,93 @@
     for (var i = 0; i < n; i++) {
       var x = bx + i * (size + gap);
       ctx.fillStyle = 'rgba(8,14,28,0.7)'; ctx.fillRect(x, by, size, size);
-      ctx.strokeStyle = 'rgba(255,194,75,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, by, size, size);
+      ctx.strokeStyle = 'rgba(201,162,39,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, by, size, size);
       var key = player.consumables[i];
-      if (key) { var c = CONSUMABLES[key]; ctx.fillStyle = '#ffd24b'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.glyph, x + size / 2, by + size / 2 - 4); ctx.fillStyle = '#cfe9e6'; ctx.font = '10px sans-serif'; ctx.fillText(c.name, x + size / 2, by + size - 7); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left'; }
+      if (key) { var c = CONSUMABLES[key]; ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(c.glyph, x + size / 2, by + size / 2 - 4); ctx.fillStyle = '#D8E4DC'; ctx.font = '10px sans-serif'; ctx.fillText(c.name, x + size / 2, by + size - 7); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left'; }
     }
-    ctx.fillStyle = '#8fa6b3'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Q 键使用丹药', bx + totalW / 2, by - 4); ctx.textAlign = 'left';
+    ctx.fillStyle = '#8B95A0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Q 键使用丹药', bx + totalW / 2, by - 4); ctx.textAlign = 'left';
   }
   function drawHUD() {
+    function hp(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke(); }
     var lootVal = run.loot.reduce(function (s, it) { return s + RARVAL[RAR.indexOf(it.rarity)]; }, 0);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(12, 12, 230, 58);
-    ctx.fillStyle = '#444'; ctx.fillRect(22, 22, 210, 12); ctx.fillStyle = COL.enemy; ctx.fillRect(22, 22, 210 * (player.hp / player.maxhp), 12);
-    ctx.fillStyle = '#3aa0ff'; ctx.fillRect(22, 40, 210 * (player.shield / player.maxshield), 8);
-    ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.fillText('HP ' + Math.ceil(player.hp) + '/' + player.maxhp + '  护盾 ' + Math.ceil(player.shield) + '  第' + run.tier + '层', 22, 66);
-    ctx.textAlign = 'right'; ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif';
-    ctx.fillText('击杀 ' + run.kills + '  战利品 ' + run.loot.length + '/' + lootCap, W - 16, 28);
-    ctx.fillStyle = COL.gold; ctx.fillText('战利品价值 ' + lootVal, W - 16, 48);
-    ctx.fillStyle = '#cfe9e6'; ctx.font = '12px sans-serif'; ctx.fillText('符文: ' + (player.runes.length ? player.runes.slice(-3).join('·') : '无'), W - 16, 66);
+    // 左上：状态面板（玻璃圆角 + 霓虹描边）
+    ctx.fillStyle = 'rgba(6,12,24,0.74)'; ctx.strokeStyle = 'rgba(95,191,163,0.4)'; ctx.lineWidth = 1;
+    hp(10, 10, 236, 66, 10);
+    // HP 条（红渐变 + 圆角）
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; hp(20, 20, 216, 14, 7);
+    var hpw = 216 * Math.max(0, Math.min(1, player.hp / player.maxhp));
+    var hpg = ctx.createLinearGradient(20, 0, 236, 0); hpg.addColorStop(0, '#D96A7E'); hpg.addColorStop(1, '#C81E3E');
+    ctx.fillStyle = hpg; ctx.strokeStyle = 'rgba(255,255,255,0.2)'; hp(20, 20, Math.max(4, hpw), 14, 7);
+    // 护盾条
+    ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.strokeStyle = 'transparent'; hp(20, 39, 216, 9, 4.5);
+    var shw = 216 * Math.max(0, Math.min(1, player.shield / player.maxshield));
+    ctx.fillStyle = '#4E8FC7'; hp(20, 39, Math.max(3, shw), 9, 4.5);
+    ctx.fillStyle = '#E8E4D8'; ctx.font = 'bold 12px sans-serif'; ctx.strokeStyle = 'transparent';
+    ctx.fillText('HP ' + Math.ceil(player.hp) + '/' + player.maxhp, 22, 59);
+    ctx.fillStyle = '#A8D8C8'; ctx.fillText('第' + run.tier + '层 · 击杀 ' + run.kills, 130, 59);
+    // 右上：状态面板
+    ctx.fillStyle = 'rgba(6,12,24,0.74)'; ctx.strokeStyle = 'rgba(95,191,163,0.4)';
+    hp(W - 268, 10, 258, 104, 10);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#D8E4DC'; ctx.font = '13px sans-serif'; ctx.strokeStyle = 'transparent';
+    ctx.fillText('战利品 ' + run.loot.length + '/' + lootCap, W - 22, 30);
+    ctx.fillStyle = COL.gold; ctx.font = 'bold 14px sans-serif'; ctx.fillText('价值 ' + lootVal, W - 22, 50);
     var res = elemResonance();
     var runeLine, runeCol;
-    if (runeCount >= RUNE_CAP) { runeLine = '符文已封顶 ' + RUNE_CAP + '/' + RUNE_CAP; runeCol = '#7a8a88'; }
-    else if (buffPending) { runeLine = '符文已就绪·安全时弹出'; runeCol = '#9ffcff'; }
-    else if (res > 1) { runeLine = '系共鸣 +10% 伤害'; runeCol = '#ffd24b'; }
-    else { runeLine = '再击杀 ' + (killForBuff - buffTimer) + ' → 符文 (' + runeCount + '/' + RUNE_CAP + ')'; runeCol = '#cfe9e6'; }
-    ctx.fillStyle = runeCol; ctx.fillText(runeLine, W - 16, 84); ctx.textAlign = 'left';
-    if (hintTimer > 0) { ctx.globalAlpha = clamp(hintTimer / 2, 0, 1); ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('撞向宝箱开箱 → 搜够 ' + (3 + run.tier) + ' 个触发 BOSS → 飞入绿框启动撤离(稳路/险路，越久越险)', W / 2, H - 60); ctx.textAlign = 'left'; ctx.globalAlpha = 1; }
-    if (banner) { ctx.globalAlpha = clamp(banner.life, 0, 1); ctx.fillStyle = COL.gold; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(banner.text, W / 2, 120); ctx.textAlign = 'left'; ctx.globalAlpha = 1; }
-    if (boss) { var bw = 320, bx = (W - bw) / 2, by = 14; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(bx, by, bw, 14); ctx.fillStyle = boss.phase >= 3 ? COL.enemy : (boss.phase === 2 ? '#ff5c7a' : '#b06bff'); ctx.fillRect(bx, by, bw * (boss.hp / boss.maxhp), 14); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.strokeRect(bx, by, bw, 14); ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText((boss.kind === 'qiongqi' ? '穷奇·掠食' : '梼杌·封印体') + ' · 阶段' + boss.phase, W / 2, by + 11); ctx.textAlign = 'left'; }
+    if (runeCount >= RUNE_CAP) { runeLine = '符文已封顶 ' + RUNE_CAP + '/' + RUNE_CAP; runeCol = '#6B7A72'; }
+    else if (buffPending) { runeLine = '符文已就绪 · 安全时弹出'; runeCol = '#9AD6C4'; }
+    else if (res > 1) { runeLine = '系共鸣 +10% 伤害'; runeCol = '#D9B64A'; }
+    else { runeLine = '再击杀 ' + (killForBuff - buffTimer) + ' → 符文 (' + runeCount + '/' + RUNE_CAP + ')'; runeCol = '#D8E4DC'; }
+    ctx.fillStyle = runeCol; ctx.font = '12px sans-serif'; ctx.fillText(runeLine, W - 22, 70);
+    ctx.fillStyle = '#8B95A0'; ctx.font = '11px sans-serif'; ctx.fillText(player.runes.length ? ('符文: ' + player.runes.slice(-4).join('·')) : '符文: 无', W - 22, 89);
+    // 搜刮进度（触发 BOSS 还需要几个点）
+    var need = 3 + run.tier;
+    ctx.fillStyle = '#8B95A0'; ctx.font = '11px sans-serif';
+    ctx.fillText('搜刮 ' + Math.min(run.nodes, need) + '/' + need + ' → BOSS', W - 22, 104);
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.strokeStyle = 'transparent'; hp(W - 168, 108, 146, 6, 3);
+    ctx.fillStyle = '#8FD8C0'; hp(W - 168, 108, 146 * Math.min(1, run.nodes / need), 6, 3);
+    ctx.textAlign = 'left';
+    // 底部提示行（胶囊底）
+    if (hintTimer > 0) {
+      ctx.globalAlpha = clamp(hintTimer / 2, 0, 1);
+      var ht = '撞向宝箱开箱 → 搜够 ' + (3 + run.tier) + ' 个触发 BOSS → 飞入绿框启动撤离';
+      ctx.font = '14px sans-serif'; var tw = ctx.measureText(ht).width;
+      ctx.fillStyle = 'rgba(6,12,24,0.66)'; ctx.strokeStyle = 'rgba(95,191,163,0.35)';
+      hp(W / 2 - tw / 2 - 16, H - 72, tw + 32, 28, 14);
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(ht, W / 2, H - 52); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+    // banner（金色胶囊背景条）
+    if (banner) {
+      ctx.globalAlpha = clamp(banner.life, 0, 1);
+      ctx.font = 'bold 21px sans-serif'; var bw2 = ctx.measureText(banner.text).width;
+      ctx.fillStyle = 'rgba(6,12,24,0.7)'; ctx.strokeStyle = 'rgba(201,162,39,0.45)';
+      hp(W / 2 - bw2 / 2 - 20, 98, bw2 + 40, 38, 19);
+      ctx.fillStyle = COL.gold; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(banner.text, W / 2, 123); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+    // Boss 血条（面板 + 渐变条 + 名字）
+    if (boss) {
+      var bw3 = 340, bx = (W - bw3) / 2, by = 14;
+      ctx.fillStyle = 'rgba(6,12,24,0.74)'; ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+      hp(bx - 6, by - 4, bw3 + 12, 30, 8);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.strokeStyle = 'transparent'; hp(bx, by + 14, bw3, 10, 5);
+      var bcol = boss.phase >= 3 ? '#C94F4F' : (boss.phase === 2 ? '#D96A7E' : '#8A6FB8');
+      ctx.fillStyle = bcol; hp(bx, by + 14, Math.max(3, bw3 * (boss.hp / boss.maxhp)), 10, 5);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent';
+      ctx.fillText((boss.kind === 'qiongqi' ? '穷奇·掠食' : '梼杌·封印体') + ' · 阶段' + boss.phase, W / 2, by + 12);
+      ctx.textAlign = 'left';
+    }
     drawMinimap();
     drawConsumables();
+    // UX：新手期操作提示（前 3 局常驻）
+    if (meta.runs < 3 && run.time > 1.5) {
+      ctx.fillStyle = 'rgba(143,166,179,0.9)'; ctx.font = '11px sans-serif';
+      ctx.fillText('Q 丹药 · M 合成 · Shift 冲刺 · P 暂停', 14, 92);
+    }
+    // UX：有可合成组合时提示
+    if (hasMergeable()) {
+      ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('💡 按 M 可合成', W - 22, 112); ctx.textAlign = 'left';
+    }
   }
   function render() {
     if (scene !== 'mission') { drawGrid(); return; }
@@ -1506,6 +1629,20 @@
     else if (name === 'result') { document.getElementById('result').style.display = 'flex'; }
   }
   var selectedAircraft = 'a', selectedTier = 1;
+  // 出击配置战力预览（机体+永久强化+已装法器）
+  function calcLoadout() {
+    var a = AIRCRAFT[selectedAircraft];
+    var hp = a.hp + meta.up.hp * 22, dmg = a.dmg + meta.up.dmg * 3, spd = a.speed + meta.up.speed * 14, sh = 40 + meta.up.shield * 14;
+    var fr = a.fireRate, pl = a.pellets, cc = 0.04, pierce = 0;
+    SLOTS.forEach(function (slot) {
+      var art = getArt(meta.equipped[slot]); if (!art) return;
+      var m = art.mods;
+      if (m.dmg) dmg += m.dmg; if (m.maxhp) hp += m.maxhp; if (m.maxshield) sh += m.maxshield;
+      if (m.fireRate) fr += m.fireRate; if (m.critChance) cc += m.critChance;
+      if (m.speed) spd += m.speed; if (m.pierce) pierce += m.pierce; if (m.pellets) pl = Math.min(9, pl + m.pellets);
+    });
+    return { hp: Math.round(hp), dmg: dmg, spd: Math.round(spd), sh: Math.round(sh), fr: fr, pl: pl, cc: cc, pierce: pierce };
+  }
   function renderBase() {
     if (selectedTier > meta.maxTier) selectedTier = meta.maxTier;
     var tr = document.getElementById('tierRow'); tr.innerHTML = '';
@@ -1534,7 +1671,9 @@
     UPGRADES.forEach(function (u) {
       var lv = meta.up[u.key]; var maxed = lv >= u.max; var cost = u.cost(lv); var afford = meta.currency >= cost;
       var el = document.createElement('div'); el.className = 'shop' + (maxed ? ' maxed' : (afford ? ' canbuy' : ' cant'));
-      el.innerHTML = '<div class="sname">' + u.name + '</div><div class="muted">' + u.desc + '</div><div class="slevel">Lv ' + lv + '/' + u.max + ' · ' + (maxed ? '已满级' : ('需 ' + cost + ' 灵玉')) + '</div>';
+      el.innerHTML = '<div class="sname">' + u.name + '</div><div class="muted">' + u.desc + '</div>' +
+        '<div class="lvlbar"><div class="lvlfill" style="width:' + (lv / u.max * 100) + '%"></div></div>' +
+        '<div class="slevel">Lv ' + lv + '/' + u.max + ' · ' + (maxed ? '已满级' : ('需 ' + cost + ' 灵玉')) + '</div>';
       if (!maxed && afford) el.onclick = function () { meta.currency -= cost; meta.up[u.key]++; saveMeta(); renderBase(); };
       shop.appendChild(el);
     });
@@ -1542,6 +1681,10 @@
     document.getElementById('resArsenal').textContent = meta.arsenal.length;
     document.getElementById('resProgress').textContent = meta.maxTier + '/3';
     document.getElementById('metaInfo').innerHTML = '出击 ' + meta.runs + ' 次 · 最佳击杀 ' + meta.bestKills + (meta.maxTier >= 3 && meta.bossCleared ? ' · <span class="ok">✓ 已通关深渊层</span>' : ' · 目标：逐层通关至第 3 层');
+    // 战力预览
+    var lv = calcLoadout();
+    var lpEl = document.getElementById('loadoutPreview');
+    if (lpEl) lpEl.innerHTML = '本局战力：<b>HP ' + lv.hp + '</b> · 伤害 <b>' + lv.dmg.toFixed(1) + '</b> · 射速 <b>' + lv.fr.toFixed(1) + '</b> · 移速 <b>' + lv.spd + '</b> · 护盾 <b>' + lv.sh + '</b> · 弹片 <b>' + lv.pl + '</b> · 暴击 ' + Math.round(lv.cc * 100) + '%' + (lv.pierce ? ' · 穿透 ' + lv.pierce : '');
     renderArsenal(); renderForge(); renderResearch(); renderCodex();
   }
   // ---------- 军械库 / 熔炼台 / 研究院 / 图鉴（ABC）----------
@@ -1557,6 +1700,15 @@
   }
   function getArt(id) { if (!id) return null; for (var i = 0; i < meta.arsenal.length; i++) if (meta.arsenal[i].id === id) return meta.arsenal[i]; return null; }
   function removeArt(id) { for (var i = 0; i < meta.arsenal.length; i++) if (meta.arsenal[i].id === id) { meta.arsenal.splice(i, 1); return; } }
+  // 法器评分（用于排序）：稀有度阶梯权重 + 词条数值和
+  function artifactScore(a) {
+    var m = a.mods || {}, s = RAR.indexOf(a.rarity) * 100;
+    s += (m.dmg || 0) * 1 + (m.maxhp || 0) * 0.5 + (m.maxshield || 0) * 0.5 + (m.regen || 0) * 2 +
+      (m.fireRate || 0) * 3 + (m.critChance || 0) * 100 + (m.bulletSpeed || 0) * 1 + (m.speed || 0) * 1 +
+      (m.dodgeChance || 0) * 80 + (m.pierce || 0) * 8 + (m.pellets || 0) * 10;
+    if (m.burn) s += 12; if (m.explode) s += 14;
+    return s;
+  }
   function equipArtifact(slot, id) {
     meta.equipped[slot] = (meta.equipped[slot] === id) ? null : id; // 点已装备则卸下
     saveMeta(); renderBase();
@@ -1582,39 +1734,98 @@
     } else { forgeSel = [id]; }
     renderForge();
   }
+  var arsenalTab = 'weapon';
+  var arsenalFilter = 'all'; // 'all' | white | green | blue | purple | orange
+  var arsenalSort = 'power'; // 'power' | 'rarity' | 'name'
   function renderArsenal() {
     var box = document.getElementById('arsenalList'); box.innerHTML = '';
-    var panel = document.createElement('div'); panel.className = 'slotpanel';
+    if (SLOTS.indexOf(arsenalTab) < 0) arsenalTab = SLOTS[0];
+    // 顶部 4 槽 = 选项卡：点击切换队列；已装备的可点「卸下」
+    var strip = document.createElement('div'); strip.className = 'eq-strip';
     SLOTS.forEach(function (slot) {
-      var card = document.createElement('div'); card.className = 'slotcard';
-      card.innerHTML = '<div class="slot-head"><div class="slot-ico" style="background:' + SLOTCOL[slot] + '22;border:1px solid ' + SLOTCOL[slot] + '66">' + (SLOT_SVG[slot] || '') + '</div><div class="slot-name" style="color:' + SLOTCOL[slot] + '">' + SLOTNAME[slot] + '</div></div>';
-      // 已装备区
       var eq = getArt(meta.equipped[slot]);
-      var eb = document.createElement('div'); eb.className = 'equipbox' + (eq ? ' has' : '');
-      if (eq) {
-        var eqInner = document.createElement('div'); eqInner.style.cssText = 'flex:1';
-        eqInner.innerHTML = '<b style="color:' + RARCOL[eq.rarity] + '">' + eq.name + '</b> <span class="mini">' + RARNAME[eq.rarity] + '</span><div class="mini">' + modsText(eq.mods) + '</div>';
-        eb.appendChild(eqInner);
-        var un = document.createElement('span'); un.textContent = '卸下'; un.style.cssText = 'color:#FF6B8A;cursor:pointer;font-size:12px;';
-        un.onclick = function (ev) { ev.stopPropagation(); equipArtifact(slot, meta.equipped[slot]); };
-        eb.appendChild(un);
-      } else {
-        eb.innerHTML = '<span class="mini">未装备 · 点下方法器装载</span>';
+      var cnt = meta.arsenal.filter(function (a) { return a.slot === slot; }).length;
+      var active = slot === arsenalTab;
+      var el = document.createElement('div'); el.className = 'eq-slot' + (active ? ' on' : '');
+      if (active) {
+        el.style.borderColor = SLOTCOL[slot];
+        el.style.boxShadow = '0 0 14px ' + SLOTCOL[slot] + '44';
+        el.style.background = 'linear-gradient(180deg,' + SLOTCOL[slot] + '1F, rgba(8,16,32,0.95))';
       }
-      card.appendChild(eb);
-      // 库存
-      var inv = meta.arsenal.filter(function (a) { return a.slot === slot; });
-      if (inv.length === 0) { var empt = document.createElement('div'); empt.className = 'mini'; empt.textContent = '暂无该槽位法器'; card.appendChild(empt); }
-      inv.forEach(function (a) {
-        var on = a.id === meta.equipped[slot];
-        var el = document.createElement('div'); el.className = 'art' + (on ? ' on' : '');
-        el.innerHTML = '<div class="artline"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mini">' + modsText(a.mods) + '</div>';
-        el.onclick = (function (id) { return function () { equipArtifact(slot, id); }; })(a.id);
-        card.appendChild(el);
-      });
-      panel.appendChild(card);
+      var html = '<div class="eq-title" style="color:' + SLOTCOL[slot] + '">' + (SLOT_SVG[slot] || '') +
+        '<span>' + SLOTNAME[slot] + '</span><span class="eq-count">' + cnt + '</span></div>';
+      if (eq) {
+        html += '<div class="eq-item"><b style="color:' + RARCOL[eq.rarity] + '">' + eq.name + '</b>' +
+          '<span class="mini">' + RARNAME[eq.rarity] + '</span><span class="eq-off">卸下</span></div>';
+      } else {
+        html += '<div class="eq-empty">未装备</div>';
+      }
+      el.innerHTML = html;
+      el.onclick = (function (s) { return function () { arsenalTab = s; renderArsenal(); }; })(slot);
+      var off = el.querySelector('.eq-off');
+      if (off) off.onclick = (function (s) { return function (ev) { ev.stopPropagation(); equipArtifact(s, meta.equipped[s]); }; })(slot);
+      strip.appendChild(el);
     });
-    box.appendChild(panel);
+    box.appendChild(strip);
+    // 只渲染当前选中槽位的队列
+    var slot = arsenalTab;
+    var inv = meta.arsenal.filter(function (a) { return a.slot === slot; });
+    var q = document.createElement('div'); q.className = 'slot-queue';
+    var head = document.createElement('div'); head.className = 'slot-qhead';
+    head.innerHTML = '<span class="qico" style="color:' + SLOTCOL[slot] + '">' + (SLOT_SVG[slot] || '') + '</span>' +
+      '<span class="qname" style="color:' + SLOTCOL[slot] + '">' + SLOTNAME[slot] + '队列</span>' +
+      '<span class="qcount">' + inv.length + ' 件</span>';
+    q.appendChild(head);
+    // 筛选条：稀有度过滤 + 排序切换
+    var fbar = document.createElement('div'); fbar.className = 'arsenal-filter';
+    ['all'].concat(RAR).forEach(function (r) {
+      var c = document.createElement('span'); c.className = 'fchip' + (arsenalFilter === r ? ' on' : '');
+      c.textContent = r === 'all' ? '全部' : RARNAME[r];
+      if (r !== 'all') c.style.color = RARCOL[r];
+      c.onclick = (function (rr) { return function () { arsenalFilter = rr; renderArsenal(); }; })(r);
+      fbar.appendChild(c);
+    });
+    var sortWrap = document.createElement('div'); sortWrap.className = 'sort-toggle';
+    [['power', '战力'], ['rarity', '稀有度'], ['name', '名称']].forEach(function (o) {
+      var s = document.createElement('span'); s.className = 'stoggle' + (arsenalSort === o[0] ? ' on' : '');
+      s.textContent = o[1];
+      s.onclick = (function (k) { return function () { arsenalSort = k; renderArsenal(); }; })(o[0]);
+      sortWrap.appendChild(s);
+    });
+    fbar.appendChild(sortWrap);
+    q.appendChild(fbar);
+    // 应用筛选 + 排序（已装备始终置顶）
+    var shown = inv.filter(function (a) { return arsenalFilter === 'all' || a.rarity === arsenalFilter; });
+    shown.sort(function (x, y) {
+      if (arsenalSort === 'rarity') return RAR.indexOf(y.rarity) - RAR.indexOf(x.rarity) || artifactScore(y) - artifactScore(x);
+      if (arsenalSort === 'name') return x.name < y.name ? -1 : (x.name > y.name ? 1 : 0);
+      return artifactScore(y) - artifactScore(x);
+    });
+    var eqOn = meta.equipped[slot];
+    shown = shown.filter(function (a) { return a.id !== eqOn; });
+    if (eqOn) { var eo = getArt(eqOn); if (eo) shown.unshift(eo); }
+    var list = document.createElement('div'); list.className = 'inv-list';
+    if (shown.length === 0) {
+      var empt = document.createElement('div'); empt.className = 'q-empty';
+      empt.textContent = inv.length === 0
+        ? (meta.arsenal.length === 0 ? '军械库空空如也，先去搜刮带回法器。' : ('暂无' + SLOTNAME[slot] + '类法器 · 点上方其他槽位查看'))
+        : ('当前筛选下没有匹配的' + SLOTNAME[slot] + '法器');
+      list.appendChild(empt);
+    } else {
+      shown.forEach(function (a) {
+        var on = a.id === meta.equipped[slot];
+        var row = document.createElement('div'); row.className = 'inv-row' + (on ? ' on' : '');
+        var left = document.createElement('div'); left.style.cssText = 'flex:1;min-width:0;';
+        left.innerHTML = '<div class="artline"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
+        var rec = document.createElement('span'); rec.className = 'rec'; rec.textContent = '回收';
+        rec.onclick = function (ev) { ev.stopPropagation(); recycleArtifact(a.id); };
+        row.appendChild(left); row.appendChild(rec);
+        row.onclick = function () { equipArtifact(a.slot, a.id); };
+        list.appendChild(row);
+      });
+    }
+    q.appendChild(list);
+    box.appendChild(q);
   }
   function renderForge() {
     var box = document.getElementById('forgeList'); box.innerHTML = '';
@@ -1626,7 +1837,7 @@
       var main = document.createElement('div');
       main.innerHTML = '<div class="artline"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + SLOTNAME[a.slot] + '·' + RARNAME[a.rarity] + '</span></div><div class="mini">' + modsText(a.mods) + '</div>';
       main.style.cursor = 'pointer'; main.onclick = function () { onForgeClick(a.id); };
-      var rec = document.createElement('span'); rec.textContent = ' 回收'; rec.style.color = '#FFC24B'; rec.style.cursor = 'pointer';
+      var rec = document.createElement('span'); rec.textContent = ' 回收'; rec.style.color = '#C9A227'; rec.style.cursor = 'pointer';
       rec.onclick = function (ev) { ev.stopPropagation(); recycleArtifact(a.id); };
       main.querySelector('.mini').appendChild(rec);
       el.appendChild(main); list.appendChild(el);
@@ -1649,11 +1860,11 @@
     ['white', 'green', 'blue', 'purple', 'orange'].forEach(function (r) {
       var n = meta.codex.loot[r] || 0; if (n > 0) parts.push('<span style="color:' + RARCOL[r] + '">' + RARNAME[r] + '×' + n + '</span>');
     });
-    var html = '<b style="color:#2BD4C4">法器收集</b>：' + (parts.length ? parts.join(' · ') : '暂未收集') + '<br>';
-    var enN = { ram: '冲撞怪', shoot: '游猎怪', gunship: '炮艇', healer: '游医', split: '分裂体', elite: '精英', looter: '劫掠者', boss: 'BOSS' };
+    var enN = { ram: '冲撞怪', shoot: '游猎怪', gunship: '炮艇', heal: '游医', split: '分裂体', elite: '精英', looter: '劫掠者', boss: 'BOSS' };
     var ep = [];
     for (var k in meta.codex.enemies) if (meta.codex.enemies[k] > 0) ep.push((enN[k] || k) + '×' + meta.codex.enemies[k]);
-    html += '<b style="color:#FFC24B">敌怪图鉴</b>：' + (ep.length ? ep.join(' · ') : '尚未击杀任何敌人');
+    var html = '<div class="codex-sec"><div class="codex-title" style="color:#5FBFA3">法器收集</div><div class="codex-body">' + (parts.length ? parts.join(' · ') : '暂未收集') + '</div></div>';
+    html += '<div class="codex-sec"><div class="codex-title" style="color:#C9A227">敌怪图鉴</div><div class="codex-body">' + (ep.length ? ep.join(' · ') : '尚未击杀任何敌人') + '</div></div>';
     box.innerHTML = html;
   }
   // ---------- 基地 Tab 切换 ----------
@@ -1673,16 +1884,24 @@
     document.getElementById('resultTitle').textContent = outcome === 'success' ? '撤离成功！' : (outcome === 'abandon' ? '已弃局撤离' : '机体被击毁…');
     document.getElementById('resultTitle').style.color = outcome === 'success' ? COL.extract : (outcome === 'abandon' ? COL.gold : COL.enemy);
     var html = '';
-    html += '<div class="row">结局：<b>' + label + '</b>（第 ' + run.tier + ' 层）</div>';
-    if (outcome === 'success') html += '<div class="row ok">战利品全部入库：<b>+' + kept + '</b> 件法器带回基地</div>';
-    else if (outcome === 'abandon') html += '<div class="row bad">弃局带回 30%：<b>+' + kept + '</b> 件（损失 ' + lostLoot + ' 件）</div>';
-    else html += '<div class="row bad">阵亡带回 15%：<b>+' + kept + '</b> 件（损失 ' + lostLoot + ' 件）</div>';
-    html += '<div class="row">击杀灵玉：+<b>' + killReward + '</b>（用于回收/研究院/永久强化）</div>';
-    if (run.killedBoss) html += '<div class="row ok">★ 本局击破 BOSS！</div>';
-    if (unlockedNew) html += '<div class="row ok">🔓 解锁第 ' + meta.maxTier + ' 层「' + TIERNAME[meta.maxTier - 1] + '」！</div>';
-    if (run.tier === 3 && outcome === 'success' && run.killedBoss) html += '<div class="row ok">🏆 全层通关！你已征服深渊。</div>';
-    html += '<div class="row">库存法器：<b>' + meta.arsenal.length + '</b> 件 · 灵玉：<b>' + meta.currency + '</b></div>';
-    html += '<div class="muted" style="margin-top:10px">回基地「军械库」装载法器实改数值、「熔炼台」合成升稀、「研究院」解锁永久被动。本局拾取符文 ' + player.runes.length + ' 枚。</div>';
+    html += '<div class="stat-card big"><span>结局</span><b>' + label + '（第 ' + run.tier + ' 层）</b></div>';
+    if (outcome === 'success') html += '<div class="stat-card ok"><span>战利品</span><b>全部入库：+' + kept + ' 件法器</b></div>';
+    else if (outcome === 'abandon') html += '<div class="stat-card bad"><span>弃局带回 30%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
+    else html += '<div class="stat-card bad"><span>阵亡带回 15%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
+    html += '<div class="stat-card"><span>击杀灵玉</span><b>+' + killReward + '</b></div>';
+    if (run.killedBoss) html += '<div class="stat-card ok"><span>本局击破 BOSS</span><b>奖励丰厚</b></div>';
+    if (unlockedNew) html += '<div class="stat-card ok"><span>新层解锁</span><b>第 ' + meta.maxTier + ' 层「' + TIERNAME[meta.maxTier - 1] + '」</b></div>';
+    if (run.tier === 3 && outcome === 'success' && run.killedBoss) html += '<div class="stat-card ok"><span>全层通关</span><b>你已征服深渊</b></div>';
+    // 本局战利品清单（成就感）
+    var dist = { white: 0, green: 0, blue: 0, purple: 0, orange: 0 }, nm = [];
+    run.loot.forEach(function (it) { dist[it.rarity]++; if (nm.length < 5) nm.push(it.name); });
+    var badges = [];
+    ['orange', 'purple', 'blue', 'green', 'white'].forEach(function (r) { if (dist[r] > 0) badges.push('<span style="color:' + RARCOL[r] + '">' + RARNAME[r] + '×' + dist[r] + '</span>'); });
+    html += '<div class="stat-card"><span>本局战利品</span><b>' + run.loot.length + ' 件</b></div>';
+    html += '<div class="mini" style="text-align:right">' + badges.join(' · ') + '</div>';
+    if (nm.length) html += '<div class="mini" style="text-align:right">' + nm.join('、') + '…</div>';
+    html += '<div class="stat-card"><span>库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉</b></div>';
+    html += '<div class="muted" style="margin-top:12px">回基地「军械库」装载法器、「熔炼台」合成升稀、「研究院」解锁永久被动。本局拾取符文 ' + player.runes.length + ' 枚。</div>';
     document.getElementById('resultBody').innerHTML = html;
   }
 
