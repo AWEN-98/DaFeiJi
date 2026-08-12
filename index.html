@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>空域撤离 · MVP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1020; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #eaf6f5; }
+  #game { display: block; position: absolute; inset: 0; }
+  .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(8,14,28,0.86); backdrop-filter: blur(3px); z-index: 10; padding: 20px; overflow:auto; }
+  .panel { background: rgba(18,28,48,0.96); border: 1px solid rgba(43,212,196,0.4); border-radius: 16px;
+    padding: 26px 30px; max-width: 820px; width: 100%; box-shadow: 0 0 40px rgba(43,212,196,0.15); }
+  h1 { font-size: 34px; color: #2BD4C4; letter-spacing: 3px; margin-bottom: 4px; text-shadow: 0 0 18px rgba(43,212,196,0.5); }
+  h2 { font-size: 20px; color: #FFC24B; margin: 14px 0 10px; }
+  .muted { color: #8fa6b3; font-size: 13px; line-height: 1.6; }
+  .row { margin: 6px 0; font-size: 15px; } .ok { color: #3CFFA0; } .bad { color: #FF3B5C; }
+  .btn { display: inline-block; margin: 8px 8px 0 0; padding: 12px 22px; border-radius: 10px; border: none; cursor: pointer;
+    background: linear-gradient(135deg,#2BD4C4,#1b8e84); color: #06231f; font-size: 16px; font-weight: 700; }
+  .btn:hover { filter: brightness(1.1); } .btn.ghost { background: transparent; border: 1px solid rgba(43,212,196,0.5); color: #9fe9e2; }
+  #metaInfo { margin: 10px 0; font-size: 14px; color: #cfe9e6; }
+  #aircraftList, #buffList { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+  #shopList { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+  .card { background: rgba(10,20,38,0.9); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 16px; min-width: 150px; cursor: pointer; transition: .15s; }
+  .card:hover { border-color: rgba(43,212,196,0.6); transform: translateY(-2px); }
+  .card.picked { border-color: #2BD4C4; box-shadow: 0 0 16px rgba(43,212,196,0.4); }
+  .card.locked { opacity: 0.5; cursor: not-allowed; }
+  .card .big { font-size: 22px; color: #FFC24B; font-weight: 800; }
+  .bname { font-size: 16px; font-weight: 700; margin-top: 4px; }
+  .atitle { font-size: 18px; font-weight: 700; } .stat { font-size: 12px; color: #a9c2cf; margin-top: 3px; } .lock { font-size: 12px; color: #FFC24B; margin-top: 6px; }
+  .shop { background: rgba(10,20,38,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 12px; min-width: 150px; }
+  .shop.canbuy { cursor: pointer; border-color: rgba(60,255,160,0.5); } .shop.canbuy:hover { transform: translateY(-2px); background: rgba(20,40,30,0.9); }
+  .shop.maxed { opacity: 0.6; } .shop.cant { opacity: 0.55; }
+  .sname { font-size: 15px; font-weight: 700; color: #FFC24B; } .slevel { font-size: 12px; color: #a9c2cf; margin-top: 4px; }
+  #tierRow { display: flex; gap: 10px; margin-top: 8px; }
+  .tcard { background: rgba(10,20,38,0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 14px; cursor: pointer; min-width: 90px; text-align: center; }
+  .tcard:hover { border-color: rgba(43,212,196,0.5); } .tcard.picked { border-color: #FFC24B; box-shadow: 0 0 12px rgba(255,194,75,0.35); } .tcard.locked { opacity: 0.45; cursor: not-allowed; }
+  .ttitle { font-size: 15px; font-weight: 700; color: #FFC24B; }
+  #mergeGrid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  .chip { width: 38px; height: 38px; border-radius: 8px; border: 2px solid #000; cursor: pointer; } .chip.sel { outline: 3px solid #fff; transform: scale(1.12); }
+  .r-white { background: #e8e8e8; } .r-green { background: #4caf50; } .r-blue { background: #3aa0ff; } .r-purple { background: #b06bff; } .r-orange { background: #ff9d2e; }
+  .tip { font-size: 13px; color: #8fa6b3; margin-top: 8px; }
+  .tut-step { margin: 8px 0; padding-left: 28px; position: relative; line-height: 1.7; }
+  .tut-step b { color: #2BD4C4; }
+  .tut-step .n { position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #2BD4C4; color: #06231f; font-size: 12px; font-weight: 700; text-align: center; line-height: 20px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<!-- 标题页 -->
+<div id="title" class="overlay">
+  <div class="panel" style="max-width:560px; text-align:center;">
+    <h1>空域撤离</h1>
+    <div class="muted">打飞机 × 搜打撤 × 合成 × 肉鸽 · 浏览器 MVP</div>
+    <div class="muted" style="margin-top:8px">霓虹山海风 · 单局 3–8 分钟</div>
+    <div style="margin-top:18px">
+      <button id="titleStart" class="btn">开始游戏 ▶</button>
+      <button id="titleHelp" class="btn ghost">怎么玩</button>
+    </div>
+    <div class="muted" style="margin-top:14px">目标：搜刮战利品 → 击败 BOSS → 安全撤离带回。攒灵玉永久强化，越打越强。</div>
+  </div>
+</div>
+
+<!-- 新手教学 -->
+<div id="tutorial" class="overlay">
+  <div class="panel" style="max-width:600px;">
+    <h2>新手教学</h2>
+    <div class="tut-step"><span class="n">1</span>移动：<b>WASD</b> 或方向键。瞄准：鼠标。开火：按住<b>左键</b>。冲刺无敌：<b>Shift</b>。</div>
+    <div class="tut-step"><span class="n">2</span>地图上有金色<b>「搜」点</b>，飞过去自动搜刮得战利品（会惊动远处守卫，有红圈预警）。</div>
+    <div class="tut-step"><span class="n">3</span>左下<b>小地图</b>：金点=搜刮点，绿块=撤离点，红点=敌人，紫点=BOSS。</div>
+    <div class="tut-step"><span class="n">4</span>每击杀 5 个，弹出<b>3 选 1 强化</b>（三连发/穿透/磁力…），右上角有倒计时。</div>
+    <div class="tut-step"><span class="n">5</span>按 <b>M</b> 开背包，点两个<b>同色</b>战利品合成更高稀有（白→绿→蓝→紫→橙）。</div>
+    <div class="tut-step"><span class="n">6</span>搜够 4 个点会触发 <b>BOSS</b>，击败掉大批高阶战利品。</div>
+    <div class="tut-step"><span class="n">7</span>飞进绿色<b>撤离点</b>停留约 2.5 秒即<b>成功带出 100%</b>；被打死损失 85%。按 <b>P/ESC</b> 可暂停并弃局(损失70%)。</div>
+    <div class="tut-step"><span class="n">8</span>回基地可用灵玉<b>永久强化</b>（生命/伤害/护盾…），下局更强。</div>
+    <div style="margin-top:14px; text-align:right;"><button id="tutorialClose" class="btn">明白了</button></div>
+  </div>
+</div>
+
+<!-- 基地 -->
+<div id="base" class="overlay">
+  <div class="panel">
+    <h1 style="font-size:24px;">基地</h1>
+    <div id="metaInfo"></div>
+    <h2>选择难度层级</h2>
+    <div id="tierRow"></div>
+    <h2>选择出击机体</h2>
+    <div id="aircraftList"></div>
+    <h2>永久强化商店（花灵玉）</h2>
+    <div id="shopList"></div>
+    <div style="margin-top:14px">
+      <button id="startBtn" class="btn">出击 ▶</button>
+      <button id="helpBtn" class="btn ghost">怎么玩</button>
+    </div>
+  </div>
+</div>
+
+<!-- 随机强化 -->
+<div id="buffOverlay" class="overlay">
+  <div class="panel" style="max-width:560px;">
+    <h2>获得随机强化（三选一）</h2>
+    <div class="muted">按 1 / 2 / 3 或点击卡片选择</div>
+    <div id="buffList"></div>
+  </div>
+</div>
+
+<!-- 合成 -->
+<div id="mergeOverlay" class="overlay">
+  <div class="panel" style="max-width:560px;">
+    <h2>战利品合成</h2>
+    <div class="muted">点两个<b>相同颜色</b>的战利品 → 合成更高一级稀有（橙色已满级）</div>
+    <div id="mergeGrid"></div>
+    <div id="mergeLegend" class="tip"></div>
+    <div style="margin-top:12px"><button id="mergeClose" class="btn ghost">关闭 (M)</button></div>
+  </div>
+</div>
+
+<!-- 暂停 -->
+<div id="pauseOverlay" class="overlay">
+  <div class="panel" style="max-width:440px; text-align:center;">
+    <h2>已暂停</h2>
+    <div class="muted" style="margin-bottom:14px">按 P 或 ESC 可继续</div>
+    <button id="pauseResume" class="btn">继续游戏</button>
+    <button id="pauseHelp" class="btn ghost">怎么玩</button>
+    <button id="pauseQuit" class="btn ghost">放弃本局(带回30%)</button>
+  </div>
+</div>
+
+<!-- 结算 -->
+<div id="result" class="overlay">
+  <div class="panel" style="max-width:520px;">
+    <h2 id="resultTitle"></h2>
+    <div id="resultBody"></div>
+    <div style="margin-top:14px"><button id="backBtn" class="btn">返回基地</button></div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
