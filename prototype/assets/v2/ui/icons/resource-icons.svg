@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="128" viewBox="0 0 512 128">
+  <defs><style>.x{stroke:#0E1424;stroke-width:5;stroke-linejoin:round}</style></defs>
+  <g transform="translate(16 16)"><path class="x" fill="#3CFFA0" d="m48 4 35 31-14 47-21 12-21-12-14-47Z"/><path fill="none" stroke="#F4EFE6" stroke-width="5" d="m48 20 17 24-17 32-17-32Z"/></g>
+  <g transform="translate(144 16)"><path class="x" fill="#FFC24B" d="M48 7 83 27v42L48 89 13 69V27Z"/><path fill="none" stroke="#F4EFE6" stroke-width="5" d="M25 38h46M25 53h46M36 25v56M60 25v56"/></g>
+  <g transform="translate(272 16)"><path class="x" fill="#7A8794" d="m48 5 35 22-7 51-28 15-28-15-7-51Z"/><path fill="#0E1424" d="m48 25 18 13-7 26-11 7-11-7-7-26Z"/></g>
+  <g transform="translate(400 16)"><path class="x" fill="#B06BFF" d="m48 4 32 18 9 35-25 33H32L7 57l9-35Z"/><path fill="#F4EFE6" d="m48 24 8 16 18 3-13 13 3 18-16-8-16 8 3-18-13-13 18-3Z"/></g>
+</svg>

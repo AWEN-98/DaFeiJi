@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "style": "neon-shanhai-cel-shaded",
+  "camera": "top-down",
+  "assets": {
+    "players": {
+      "a": { "name": "青隼", "path": "sprites/player/ply_cruiser_a.png", "display": [48, 48] },
+      "b": { "name": "玄龟", "path": "sprites/player/ply_guardian_b.png", "display": [54, 54] },
+      "c": { "name": "赤鸾", "path": "sprites/player/ply_dancer_c.png", "display": [48, 48] }
+    },
+    "enemies": {
+      "ram": "sprites/enemy/enm_ram.png",
+      "shoot": "sprites/enemy/enm_shooter.png",
+      "turret": "sprites/enemy/enm_turret.png",
+      "heal": "sprites/enemy/enm_healer.png",
+      "gunship": "sprites/enemy/enm_gunship.png",
+      "split": "sprites/enemy/enm_splitter.png",
+      "looter": "sprites/enemy/enm_looter.png",
+      "elite": "sprites/enemy/enm_elite.png",
+      "taowu": "sprites/enemy/boss_taowu.png",
+      "qiongqi": "sprites/enemy/boss_qiongqi.png"
+    },
+    "environment": {
+      "cover": "sprites/environment/env_cover_block.png",
+      "partition": "sprites/environment/env_partition.png",
+      "ruin": "sprites/environment/env_ruin_barrier.png",
+      "vaultDoor": "sprites/environment/env_vault_door.png",
+      "terminalIdle": "sprites/environment/obj_terminal_idle.png",
+      "terminalActive": "sprites/environment/obj_terminal_active.png",
+      "chest": "sprites/environment/loot_common_chest.png",
+      "vaultChest": "sprites/environment/loot_vault_chest.png"
+    },
+    "effects": {
+      "playerBullet": "sprites/effects/prj_player.png",
+      "enemyBullet": "sprites/effects/prj_enemy.png",
+      "bossBullet": "sprites/effects/prj_boss.png",
+      "buffBullet": "sprites/effects/prj_buff.png",
+      "commonLoot": "sprites/effects/loot_common_pickup.png",
+      "rareLoot": "sprites/effects/loot_rare_pickup.png",
+      "normalExtract": "sprites/effects/obj_extract_normal.png",
+      "hiddenExtract": "sprites/effects/obj_extract_hidden.png"
+    }
+  }
+}

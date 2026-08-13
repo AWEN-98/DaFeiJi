@@ -1,0 +1,33 @@
+:root {
+  --ui-ink: #0e1424;
+  --ui-night: #1b2a4a;
+  --ui-cyan: #2bd4c4;
+  --ui-gold: #ffc24b;
+  --ui-danger: #ff3b5c;
+  --ui-boss: #b06bff;
+  --ui-safe: #3cffa0;
+  --ui-paper: #f4efe6;
+  --ui-muted: #8b95a0;
+  --ui-radius-s: 8px;
+  --ui-radius-m: 12px;
+  --ui-radius-l: 20px;
+  --ui-focus: 0 0 0 2px var(--ui-ink), 0 0 0 4px var(--ui-cyan);
+  --ui-glow-cyan: 0 0 22px rgba(43, 212, 196, .28);
+  --ui-glow-gold: 0 0 22px rgba(255, 194, 75, .3);
+  --ui-fast: 120ms;
+  --ui-normal: 220ms;
+  --ui-slow: 420ms;
+}
+
+.ux-action { transition: transform var(--ui-fast) ease, border-color var(--ui-fast) ease, filter var(--ui-fast) ease; }
+.ux-action:hover { transform: translateY(-2px); filter: brightness(1.08); }
+.ux-action:active { transform: translateY(1px) scale(.98); }
+.ux-action:focus-visible { outline: none; box-shadow: var(--ui-focus); }
+.ux-selected { border-color: var(--ui-cyan); box-shadow: var(--ui-glow-cyan); }
+.ux-locked { opacity: .46; filter: saturate(.45); cursor: not-allowed; }
+.ux-warning { border-color: var(--ui-danger); color: var(--ui-paper); }
+.ux-success { border-color: var(--ui-safe); color: var(--ui-paper); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

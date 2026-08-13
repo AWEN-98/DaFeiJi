@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="128" viewBox="0 0 640 128">
+  <defs><style>.s{fill:#0E1424;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}</style></defs>
+  <g transform="translate(16 16)" stroke="#3CFFA0"><path class="s" d="M48 5 83 18v27c0 24-14 40-35 48-21-8-35-24-35-48V18Z"/><path fill="none" stroke-width="7" d="m28 50 13 13 28-30"/></g>
+  <g transform="translate(144 16)" stroke="#FF3B5C"><path class="s" d="M48 5 91 86H5Z"/><path fill="none" stroke-width="7" d="M48 32v28M48 74v2"/></g>
+  <g transform="translate(272 16)" stroke="#FFC24B"><circle class="s" cx="48" cy="48" r="39"/><path fill="none" stroke-width="7" d="M48 24v26l17 10"/></g>
+  <g transform="translate(400 16)" stroke="#2BD4C4"><path class="s" d="M12 33 48 7l36 26v48H12Z"/><path fill="none" stroke-width="7" d="M48 76V27M29 48h38"/></g>
+  <g transform="translate(528 16)" stroke="#B06BFF"><path class="s" d="M48 4 84 24v48L48 92 12 72V24Z"/><path fill="none" stroke-width="6" d="m31 38 17 10 17-10M48 48v25"/></g>
+</svg>

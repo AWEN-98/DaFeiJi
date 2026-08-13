@@ -1,0 +1,112 @@
+{
+  "package": "sky-extraction-demo-assets-v2",
+  "status": "demo-complete",
+  "created": "2026-08-13",
+  "artDirection": "Chinese urban fantasy aircraft bureau, cel shaded, ink outline, cyan and gold safe UI, red and purple danger UI",
+  "counts": {
+    "v1GameplaySprites": 32,
+    "v2BaseBackgrounds": 4,
+    "v2VfxSprites": 24,
+    "v2UiFrames": 22,
+    "v2IconSheets": 5,
+    "v2ItemIcons": 24,
+    "v2ItemSourceSheets": 3,
+    "v2UiKits": 1,
+    "totalRuntimeAndSourceAssets": 120
+  },
+  "base": [
+    { "id": "base_hub_source", "path": "base/base_hub_hangar.png", "use": "source artwork" },
+    { "id": "base_hub_runtime", "path": "base/base_hub_hangar_1920x1080.webp", "use": "runtime base background" },
+    { "id": "mission_relic_bay_source", "path": "base/mission_relic_bay.png", "use": "source mission intelligence artwork" },
+    { "id": "mission_relic_bay_runtime", "path": "base/mission_relic_bay_1920x1080.webp", "use": "runtime mission map background" }
+  ],
+  "vfx": [
+    { "id": "vfx_muzzle_player", "path": "vfx/sprites/vfx_muzzle_player.png", "event": "player fire" },
+    { "id": "vfx_hit_player", "path": "vfx/sprites/vfx_hit_player.png", "event": "standard hit" },
+    { "id": "vfx_crit", "path": "vfx/sprites/vfx_crit.png", "event": "critical hit" },
+    { "id": "vfx_player_hurt", "path": "vfx/sprites/vfx_player_hurt.png", "event": "player damage" },
+    { "id": "vfx_enemy_death", "path": "vfx/sprites/vfx_enemy_death.png", "event": "enemy death" },
+    { "id": "vfx_elite_death", "path": "vfx/sprites/vfx_elite_death.png", "event": "elite death" },
+    { "id": "vfx_boss_death", "path": "vfx/sprites/vfx_boss_death.png", "event": "boss death" },
+    { "id": "vfx_summon", "path": "vfx/sprites/vfx_summon.png", "event": "boss and guard summon" },
+    { "id": "vfx_lifesteal", "path": "vfx/sprites/vfx_lifesteal.png", "event": "lifesteal link" },
+    { "id": "vfx_loot_burst", "path": "vfx/sprites/vfx_loot_burst.png", "event": "valuable chest and target unlock" },
+    { "id": "vfx_extract_complete", "path": "vfx/sprites/vfx_extract_complete.png", "event": "extraction complete" },
+    { "id": "vfx_boss_phase", "path": "vfx/sprites/vfx_boss_phase.png", "event": "boss phase switch" }
+  ],
+  "uiFrames": [
+    "ui/frames/ui_base_hangar.svg",
+    "ui/frames/ui_base_loadout.svg",
+    "ui/frames/ui_base_meta.svg",
+    "ui/frames/ui_base_map.svg",
+    "ui/frames/ui_hud_hp.svg",
+    "ui/frames/ui_hud_loot.svg",
+    "ui/frames/ui_hud_upgrade.svg",
+    "ui/frames/ui_hud_merge.svg",
+    "ui/frames/ui_hud_extract.svg",
+    "ui/frames/ui_hud_warn.svg",
+    "ui/frames/ui_extract_gate.svg",
+    "ui/frames/ui_result_win.svg",
+    "ui/frames/ui_result_lose.svg",
+    "ui/frames/ui_result_meta.svg",
+    "ui/frames/ui_objective_locked.svg",
+    "ui/frames/ui_objective_active.svg",
+    "ui/frames/ui_tutorial_callout.svg",
+    "ui/frames/ui_settings_accessibility.svg",
+    "ui/frames/ui_item_card.svg",
+    "ui/frames/ui_loadout_slot.svg",
+    "ui/frames/ui_rune_card.svg",
+    "ui/frames/ui_deploy_loading.svg"
+  ],
+  "itemAssets": {
+    "sourceSheets": [
+      "items/sources/items_consumables_sheet.png",
+      "items/sources/runes_sheet_green.png",
+      "items/sources/runes_sheet.png"
+    ],
+    "equipment": [
+      "items/icons/itm_weapon_blade.png",
+      "items/icons/itm_weapon_cannon.png",
+      "items/icons/itm_armor_jade.png",
+      "items/icons/itm_armor_iron.png",
+      "items/icons/itm_core_thunder.png",
+      "items/icons/itm_core_void.png",
+      "items/icons/itm_ammo_talisman.png",
+      "items/icons/itm_ammo_crystal.png"
+    ],
+    "consumables": [
+      "items/icons/con_bomb.png",
+      "items/icons/con_shield.png",
+      "items/icons/con_heal.png",
+      "items/icons/con_slow.png"
+    ],
+    "runes": [
+      "items/icons/rune_fire_attack.png",
+      "items/icons/rune_fire_burst.png",
+      "items/icons/rune_water_shield.png",
+      "items/icons/rune_water_heal.png",
+      "items/icons/rune_thunder_rate.png",
+      "items/icons/rune_thunder_chain.png",
+      "items/icons/rune_wind_speed.png",
+      "items/icons/rune_wind_homing.png",
+      "items/icons/rune_earth_vitality.png",
+      "items/icons/rune_earth_pierce.png",
+      "items/icons/rune_crit_precision.png",
+      "items/icons/rune_summon_void.png"
+    ]
+  },
+  "iconSheets": [
+    { "path": "ui/icons/base-icons.svg", "cells": ["hangar", "armory", "forge", "lab", "codex"] },
+    { "path": "ui/icons/equipment-icons.svg", "cells": ["weapon", "armor", "core", "ammo"] },
+    { "path": "ui/icons/rune-icons.svg", "cells": ["wind", "thunder", "water", "fire", "earth"] },
+    { "path": "ui/icons/resource-icons.svg", "cells": ["jade", "artifact", "iron", "material"] },
+    { "path": "ui/icons/status-icons.svg", "cells": ["success", "warning", "timer", "extract", "loot"] }
+  ],
+  "runtimeIntegration": {
+    "base": "prototype/index.html",
+    "hudAndVfx": "prototype/game.js",
+    "showcase": "assets/v2/showcase.html",
+    "motionAndAccessibility": "ui/ux-tokens.css",
+    "equipmentRunesAndDeployment": "prototype/index.html and prototype/game.js"
+  }
+}

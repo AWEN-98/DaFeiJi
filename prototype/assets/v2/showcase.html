@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>空域撤离 Demo 资产 v2</title>
+<style>
+  :root { color-scheme: dark; --ink:#0e1424; --night:#1b2a4a; --cyan:#2bd4c4; --gold:#ffc24b; --paper:#f4efe6; --muted:#8b95a0; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Inter,"Noto Sans SC","Microsoft YaHei",sans-serif; background:#050914; color:var(--paper); }
+  header { min-height:72vh; display:flex; align-items:flex-end; padding:64px 7vw; position:relative; background:linear-gradient(90deg,rgba(5,9,20,.94),rgba(5,9,20,.2) 60%,rgba(5,9,20,.78)),linear-gradient(0deg,#050914,transparent 50%),url("base/base_hub_hangar_1920x1080.webp") center/cover; }
+  header::after { content:""; position:absolute; inset:0; box-shadow:inset 0 0 120px #050914; pointer-events:none; }
+  .hero { position:relative; z-index:1; max-width:760px; }
+  .eyebrow { color:var(--cyan); letter-spacing:.35em; font-size:12px; }
+  h1 { font-size:clamp(42px,7vw,86px); line-height:.94; margin:14px 0 18px; letter-spacing:.05em; }
+  .lead { color:#cbd9d7; max-width:620px; line-height:1.8; font-size:16px; }
+  .count { display:flex; gap:10px; flex-wrap:wrap; margin-top:24px; }
+  .pill { padding:9px 14px; border:1px solid #2bd4c455; background:#07101fbb; border-radius:99px; color:#cfe9e5; font-size:12px; }
+  main { width:min(1320px,92vw); margin:0 auto; padding:80px 0 120px; }
+  section { margin-bottom:88px; }
+  .section-head { display:flex; align-items:end; justify-content:space-between; gap:30px; border-bottom:1px solid #2bd4c433; padding-bottom:16px; margin-bottom:24px; }
+  h2 { font-size:28px; margin:0; }
+  .section-head p { color:var(--muted); margin:0; font-size:13px; }
+  .vfx { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:14px; }
+  .fx, .frame, .icons { background:linear-gradient(180deg,#12223bbb,#07101fe8); border:1px solid #ffffff18; border-radius:16px; overflow:hidden; }
+  .fx { padding:14px; text-align:center; }
+  .checker { background-color:#10192a; background-image:linear-gradient(45deg,#18243a 25%,transparent 25%),linear-gradient(-45deg,#18243a 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#18243a 75%),linear-gradient(-45deg,transparent 75%,#18243a 75%); background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; border-radius:12px; aspect-ratio:1; display:grid; place-items:center; }
+  .fx img { width:100%; height:100%; object-fit:contain; }
+  .name { font-size:12px; color:#c8d6d4; margin-top:10px; }
+  .frames { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+  .frame { padding:16px; }
+  .frame img { width:100%; height:250px; object-fit:contain; display:block; background:radial-gradient(circle,#162641,#080e1b); border-radius:10px; }
+  .icon-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+  .icons { padding:18px; }
+  .icons img { width:100%; height:108px; object-fit:contain; }
+  .item-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:14px; }
+  .item { min-height:176px; padding:12px; text-align:center; background:linear-gradient(180deg,#12223bbb,#07101fe8); border:1px solid #ffffff18; border-radius:16px; }
+  .item img { width:126px; height:126px; object-fit:contain; filter:drop-shadow(0 0 12px #2bd4c433); }
+  .palette { display:grid; grid-template-columns:repeat(7,1fr); border-radius:16px; overflow:hidden; border:1px solid #ffffff18; }
+  .mission-art { position:relative; border:1px solid #2bd4c455; border-radius:18px; overflow:hidden; background:#081222; }
+  .mission-art img { display:block; width:100%; max-height:690px; object-fit:cover; }
+  .mission-caption { position:absolute; left:20px; right:20px; bottom:18px; padding:14px 16px; border:1px solid #2bd4c444; border-radius:12px; background:#06101ddd; color:#c8d9d6; font-size:13px; }
+  .swatch { min-height:126px; padding:14px; display:flex; align-items:flex-end; font-size:11px; font-weight:800; color:#fff; text-shadow:0 1px 3px #000; }
+  footer { color:#738482; text-align:center; padding:40px; border-top:1px solid #ffffff10; font-size:12px; }
+  @media(max-width:900px){ .vfx,.item-grid{grid-template-columns:repeat(3,1fr)} .frames,.icon-grid{grid-template-columns:1fr} .palette{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+<header>
+  <div class="hero"><div class="eyebrow">SKY EXTRACTION ASSET SYSTEM</div><h1>空域撤离<br>Demo 资产 v2</h1><div class="lead">为固定手工战场、特殊宝箱、高价值目标、双撤离和基地成长打造的可运行资产包。位图承载氛围与战斗爆发，SVG 负责清晰、可缩放的界面结构。</div><div class="count"><span class="pill">24 核心与战术特效</span><span class="pill">22 UI 框架</span><span class="pill">47 图标</span><span class="pill">2 套场景</span><span class="pill">120 总资产</span></div></div>
+</header>
+<main>
+  <section><div class="section-head"><h2>遗迹湾任务情报</h2><p>固定手工战场，基地任务地图已接入</p></div><div class="mission-art"><img src="base/mission_relic_bay_1920x1080.webp" alt="遗迹湾任务地图"><div class="mission-caption">中央首领竞技场形成强风险核心，两个高价值目标分布在对角区域，西南稳定撤离与东北高速撤离提供清楚的收益决策。</div></div></section>
+  <section><div class="section-head"><h2>法器、符文与消耗品</h2><p>透明 PNG，256 × 256，已接入军械库、熔炼、三选一和战斗 HUD</p></div><div class="item-grid">
+    <div class="item"><img src="items/icons/itm_weapon_blade.png" alt=""><div class="name">近战法器</div></div><div class="item"><img src="items/icons/itm_weapon_cannon.png" alt=""><div class="name">重型武器</div></div><div class="item"><img src="items/icons/itm_armor_jade.png" alt=""><div class="name">玉质护甲</div></div><div class="item"><img src="items/icons/itm_core_thunder.png" alt=""><div class="name">雷能核心</div></div><div class="item"><img src="items/icons/itm_ammo_talisman.png" alt=""><div class="name">符文弹药</div></div><div class="item"><img src="items/icons/con_heal.png" alt=""><div class="name">回元丹</div></div>
+    <div class="item"><img src="items/icons/rune_fire_attack.png" alt=""><div class="name">火系进攻</div></div><div class="item"><img src="items/icons/rune_water_shield.png" alt=""><div class="name">水系防御</div></div><div class="item"><img src="items/icons/rune_thunder_chain.png" alt=""><div class="name">雷系连锁</div></div><div class="item"><img src="items/icons/rune_wind_speed.png" alt=""><div class="name">风系机动</div></div><div class="item"><img src="items/icons/rune_earth_vitality.png" alt=""><div class="name">土系生存</div></div><div class="item"><img src="items/icons/rune_summon_void.png" alt=""><div class="name">召唤符文</div></div>
+  </div></section>
+  <section><div class="section-head"><h2>核心战斗特效</h2><p>透明 PNG，256 × 256，已绑定游戏事件</p></div><div class="vfx">
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_muzzle_player.png" alt=""></div><div class="name">枪口闪光</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_hit_player.png" alt=""></div><div class="name">普通命中</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_crit.png" alt=""></div><div class="name">暴击</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_player_hurt.png" alt=""></div><div class="name">玩家受伤</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_enemy_death.png" alt=""></div><div class="name">敌人死亡</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_elite_death.png" alt=""></div><div class="name">精英死亡</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_boss_death.png" alt=""></div><div class="name">首领死亡</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_summon.png" alt=""></div><div class="name">召唤法阵</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_lifesteal.png" alt=""></div><div class="name">吸血连接</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_loot_burst.png" alt=""></div><div class="name">珍贵战利品</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_extract_complete.png" alt=""></div><div class="name">撤离完成</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_boss_phase.png" alt=""></div><div class="name">首领阶段</div></div>
+  </div></section>
+  <section><div class="section-head"><h2>战术与交互特效</h2><p>透明 PNG，覆盖预警、解锁、路线和可访问性反馈</p></div><div class="vfx">
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_boss_dash_warn.png" alt=""></div><div class="name">首领突进预警</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_danger_grid.png" alt=""></div><div class="name">危险地面</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_extract_interrupt.png" alt=""></div><div class="name">撤离中断</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_objective_activate.png" alt=""></div><div class="name">目标激活</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_terminal_hack.png" alt=""></div><div class="name">终端破解</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_shield_break.png" alt=""></div><div class="name">护盾节点破坏</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_vault_locked.png" alt=""></div><div class="name">宝库锁定</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_vault_unlocked.png" alt=""></div><div class="name">宝库解锁</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_player_dash.png" alt=""></div><div class="name">飞机冲刺</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_low_health.png" alt=""></div><div class="name">低生命警告</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_route_arrow.png" alt=""></div><div class="name">路线箭头</div></div>
+    <div class="fx"><div class="checker"><img src="vfx/sprites/vfx_discovery_scan.png" alt=""></div><div class="name">发现扫描</div></div>
+  </div></section>
+  <section><div class="section-head"><h2>基地与 HUD 框架</h2><p>独立 SVG，支持任意缩放与动态文字</p></div><div class="frames">
+    <div class="frame"><img src="ui/frames/ui_base_hangar.svg" alt=""><div class="name">基地机库主框架</div></div>
+    <div class="frame"><img src="ui/frames/ui_base_map.svg" alt=""><div class="name">任务地图与风险路线</div></div>
+    <div class="frame"><img src="ui/frames/ui_hud_upgrade.svg" alt=""><div class="name">三选一升级框架</div></div>
+    <div class="frame"><img src="ui/frames/ui_hud_merge.svg" alt=""><div class="name">战利品合成框架</div></div>
+    <div class="frame"><img src="ui/frames/ui_result_win.svg" alt=""><div class="name">成功结算</div></div>
+    <div class="frame"><img src="ui/frames/ui_result_lose.svg" alt=""><div class="name">阵亡结算</div></div>
+    <div class="frame"><img src="ui/frames/ui_item_card.svg" alt=""><div class="name">法器卡片</div></div>
+    <div class="frame"><img src="ui/frames/ui_rune_card.svg" alt=""><div class="name">符文选择卡</div></div>
+    <div class="frame"><img src="ui/frames/ui_deploy_loading.svg" alt=""><div class="name">出击加载框架</div></div>
+    <div class="frame"><img src="ui/frames/ui_loadout_slot.svg" alt=""><div class="name">装配槽位</div></div>
+  </div></section>
+  <section><div class="section-head"><h2>功能图标系统</h2><p>基地、装备、符文、资源与状态</p></div><div class="icon-grid">
+    <div class="icons"><img src="ui/icons/base-icons.svg" alt=""><div class="name">基地功能</div></div>
+    <div class="icons"><img src="ui/icons/equipment-icons.svg" alt=""><div class="name">装备槽位</div></div>
+    <div class="icons"><img src="ui/icons/rune-icons.svg" alt=""><div class="name">五系符文</div></div>
+    <div class="icons"><img src="ui/icons/status-icons.svg" alt=""><div class="name">任务状态</div></div>
+  </div></section>
+  <section><div class="section-head"><h2>语义色板</h2><p>颜色、形状与文字共同传达状态</p></div><div class="palette"><div class="swatch" style="background:#0e1424">INK<br>#0E1424</div><div class="swatch" style="background:#1b2a4a">NIGHT<br>#1B2A4A</div><div class="swatch" style="background:#2bd4c4;color:#07101f">ACTION<br>#2BD4C4</div><div class="swatch" style="background:#ffc24b;color:#231a05">VALUE<br>#FFC24B</div><div class="swatch" style="background:#ff3b5c">DANGER<br>#FF3B5C</div><div class="swatch" style="background:#b06bff">BOSS<br>#B06BFF</div><div class="swatch" style="background:#3cffa0;color:#07101f">SAFE<br>#3CFFA0</div></div></section>
+</main>
+<footer>Sky Extraction Demo Asset Package v2 · 2026.08.13 · 120 runtime and source assets</footer>
+</body>
+</html>

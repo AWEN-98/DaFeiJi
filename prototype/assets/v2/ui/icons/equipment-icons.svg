@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="128" viewBox="0 0 512 128">
+  <defs><style>.i{fill:#10233c;stroke:#F4EFE6;stroke-width:5;stroke-linecap:round;stroke-linejoin:round}.j{fill:#2BD4C4;stroke:#0E1424;stroke-width:4}.g{fill:#FFC24B;stroke:#0E1424;stroke-width:4}</style></defs>
+  <g transform="translate(16 16)"><path class="i" d="M12 52 48 12l36 40-22-7v39H34V45Z"/><path class="j" d="M40 54h16v34H40Z"/></g>
+  <g transform="translate(144 16)"><path class="i" d="M48 7 83 20v28c0 22-15 37-35 44C28 85 13 70 13 48V20Z"/><path class="g" d="M48 23v52M28 42h40"/></g>
+  <g transform="translate(272 16)"><circle class="i" cx="48" cy="48" r="40"/><circle class="j" cx="48" cy="48" r="18"/><path class="g" d="M48 8v15M48 73v15M8 48h15M73 48h15"/></g>
+  <g transform="translate(400 16)"><path class="i" d="M18 19h60v58H18Z"/><path class="g" d="M28 28h12v40H28ZM48 28h20v18H48ZM48 54h20v14H48Z"/></g>
+</svg>

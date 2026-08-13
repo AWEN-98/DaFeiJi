@@ -2,12 +2,17 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="空域撤离" />
+<meta name="theme-color" content="#0D0F12" />
 <title>空域撤离 · MVP</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0D0F12; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #E8E4D8; }
-  #game { display: block; position: absolute; inset: 0; }
+  #game { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
   .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: flex-start; flex-direction: column;
     background: rgba(8,14,28,0.86); backdrop-filter: blur(3px); z-index: 10; padding: 24px 20px; overflow-y: auto; }
   .overlay > .panel { margin: auto; }
@@ -72,14 +77,6 @@
   .go-btn { flex: 1; text-align: center; font-size: 18px; padding: 14px; background: linear-gradient(135deg,#C9A227,#A37F1D); color: #231a05; box-shadow: 0 0 20px rgba(201,162,39,0.3); }
   .go-btn:hover { filter: brightness(1.08); }
   #metaInfo { margin: 4px 0 0; font-size: 12px; color: #8B95A0; }
-  /* ---- 基地 v3：氛围与视觉重做 ---- */
-  #base { background:
-    repeating-linear-gradient(0deg, rgba(95,191,163,0.045) 0 1px, transparent 1px 46px),
-    repeating-linear-gradient(90deg, rgba(95,191,163,0.045) 0 1px, transparent 1px 46px),
-    radial-gradient(ellipse at 50% -15%, rgba(95,191,163,0.16), transparent 62%),
-    radial-gradient(ellipse at 50% 115%, rgba(201,162,39,0.10), transparent 55%),
-    rgba(6,10,22,0.93); }
-  .base-panel { background: rgba(13,22,40,0.92); border-color: rgba(95,191,163,0.5); box-shadow: 0 0 60px rgba(95,191,163,0.22), inset 0 0 40px rgba(95,191,163,0.05); }
   .tab-pane.on { animation: fadeIn .22s ease; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   /* 机体大图卡 */
@@ -151,12 +148,6 @@
     radial-gradient(ellipse at 50% -15%, rgba(95,191,163,0.13), transparent 62%),
     radial-gradient(ellipse at 50% 115%, rgba(201,162,39,0.08), transparent 55%),
     rgba(6,10,22,0.93); }
-  #base { background:
-    repeating-linear-gradient(0deg, rgba(95,191,163,0.05) 0 1px, transparent 1px 46px),
-    repeating-linear-gradient(90deg, rgba(95,191,163,0.05) 0 1px, transparent 1px 46px),
-    radial-gradient(ellipse at 50% -15%, rgba(95,191,163,0.18), transparent 62%),
-    radial-gradient(ellipse at 50% 115%, rgba(201,162,39,0.12), transparent 55%),
-    rgba(6,10,22,0.94); }
   .panel { position: relative; background: linear-gradient(180deg, rgba(16,28,50,0.96), rgba(10,18,36,0.96)); border: 1px solid rgba(95,191,163,0.45); border-radius: 18px; box-shadow: 0 0 50px rgba(95,191,163,0.18), inset 0 1px 0 rgba(255,255,255,0.06); }
   .panel::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 1px; background: linear-gradient(90deg, transparent, rgba(95,191,163,0.7), transparent); }
   h1 { font-size: 36px; background: linear-gradient(180deg, #7ff5ea, #5FBFA3 55%, #14968c); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; letter-spacing: 4px; }
@@ -282,11 +273,247 @@
   .have-line { margin: 8px 0; color: var(--c-gold); font-size: var(--fs-xs); }
   .buff-meta { margin-top: 8px; font-size: var(--fs-xs); color: var(--c-muted); }
   .buff-have { margin-top: 8px; font-size: var(--fs-xs); color: var(--c-gold); }
+
+  /* ========== 基地 UI 升级：背景大图 + 品牌头 + 图标 Tab + 情报卡 ========== */
+  #base {
+    background:
+      repeating-linear-gradient(0deg, rgba(95,191,163,0.035) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(95,191,163,0.035) 0 1px, transparent 1px 46px),
+      linear-gradient(180deg, rgba(6,10,22,0.84) 0%, rgba(6,10,22,0.92) 100%),
+      url('assets/v2/base/base_hub_hangar_1920x1080.webp') center top / cover no-repeat;
+  }
+  .base-panel { position: relative; background: linear-gradient(180deg, rgba(12,20,38,0.72), rgba(8,14,28,0.82)) !important; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .base-panel::after {
+    content: ''; position: absolute; bottom: -1px; right: -1px; width: 52px; height: 52px;
+    pointer-events: none; border-right: 2px solid rgba(95,191,163,0.35); border-bottom: 2px solid rgba(95,191,163,0.35);
+    border-radius: 0 0 18px 0;
+  }
+  .base-brand { display: flex; flex-direction: column; gap: 1px; }
+  .base-brand h1 { font-size: 22px; letter-spacing: 3px; margin: 0; }
+  .base-sub { font-size: 10px; letter-spacing: 5px; color: var(--c-gold); opacity: 0.6; text-transform: uppercase; }
+  .tab { display: inline-flex; align-items: center; gap: 6px; }
+  .tab-ico { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.6; transition: opacity .15s; }
+  .tab.on .tab-ico { opacity: 1; }
+  .tab:hover .tab-ico { opacity: 0.85; }
+  #metaInfo {
+    background: rgba(8,16,32,0.5);
+    border: 1px solid rgba(95,191,163,0.15);
+    border-left: 3px solid rgba(95,191,163,0.45);
+    border-radius: 8px;
+    padding: 7px 14px;
+    margin: 6px 0 2px;
+    font-size: 12px;
+    color: var(--c-muted);
+    line-height: 1.6;
+  }
+  #metaInfo::before { content: '◈  '; color: var(--c-jade); }
+  #metaInfo b { color: var(--c-paper); }
+  #metaInfo .ok { color: var(--c-jade-light); }
+
+  /* ========== 移动端启动遮罩：点击进入全屏横屏 ========== */
+  #enterOverlay {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background:
+      repeating-linear-gradient(0deg, rgba(95,191,163,0.04) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(95,191,163,0.04) 0 1px, transparent 1px 46px),
+      radial-gradient(ellipse at 50% 40%, rgba(95,191,163,0.12), transparent 60%),
+      #08070a;
+    text-align: center; padding: 30px;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  #enterOverlay .enter-logo {
+    font-size: 42px; font-weight: 900; letter-spacing: 8px;
+    background: linear-gradient(180deg, #8ff8ee, #5FBFA3 60%, #0f8f85);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    text-shadow: 0 0 40px rgba(95,191,163,0.4); line-height: 1.2;
+  }
+  #enterOverlay .enter-sub {
+    font-size: 12px; letter-spacing: 5px; color: #C9A227; margin: 4px 0 24px;
+    text-shadow: 0 0 12px rgba(201,162,39,0.4);
+  }
+  #enterOverlay .enter-tap {
+    font-size: 18px; color: #5FBFA3; padding: 16px 48px;
+    border: 2px solid rgba(95,191,163,0.5); border-radius: 14px;
+    background: rgba(95,191,163,0.08); animation: enterPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes enterPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(95,191,163,0.2); }
+    50% { transform: scale(1.05); box-shadow: 0 0 36px rgba(95,191,163,0.5); }
+  }
+  #enterOverlay .enter-hint {
+    font-size: 13px; color: #8B95A0; margin-top: 20px; line-height: 1.6;
+  }
+
+  /* ========== 移动端虚拟操控 ========== */
+  #mobileControls { position: absolute; inset: 0; z-index: 5; pointer-events: none; display: none; }
+  #mobileControls.on { display: block; }
+  .joy-base {
+    position: absolute; width: 130px; height: 130px; border-radius: 50%;
+    border: 2px solid rgba(95,191,163,0.35);
+    background: radial-gradient(circle, rgba(8,14,28,0.35), rgba(8,14,28,0.08));
+    display: none; pointer-events: none;
+    transition: opacity .15s;
+  }
+  .joy-base.on { display: block; }
+  .joy-knob {
+    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px;
+    border-radius: 50%; background: rgba(95,191,163,0.4);
+    border: 2px solid rgba(95,191,163,0.65);
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 16px rgba(95,191,163,0.25);
+  }
+  .mbtn {
+    position: absolute; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center;
+    pointer-events: auto; border: 2px solid;
+    user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none; transition: transform .08s, background .08s;
+    font-weight: 800; color: #E8E4D8;
+  }
+  .fire-btn {
+    width: 84px; height: 84px; right: 24px; bottom: 34px;
+    border-color: rgba(201,79,79,0.55); background: rgba(201,79,79,0.18);
+    font-size: 32px;
+  }
+  .fire-btn.on { background: rgba(201,79,79,0.5); transform: scale(0.9); box-shadow: 0 0 20px rgba(201,79,79,0.4); }
+  .dash-btn {
+    width: 58px; height: 58px; right: 128px; bottom: 64px;
+    border-color: rgba(95,191,163,0.55); background: rgba(95,191,163,0.18);
+    font-size: 24px;
+  }
+  .dash-btn.on { background: rgba(95,191,163,0.5); transform: scale(0.9); }
+  .dash-btn.cd { opacity: 0.3; }
+  .cons-btn {
+    width: 58px; height: 58px; right: 34px; bottom: 138px;
+    border-color: rgba(201,162,39,0.55); background: rgba(201,162,39,0.18);
+    font-size: 22px; flex-direction: column;
+  }
+  .cons-btn.on { background: rgba(201,162,39,0.5); transform: scale(0.9); }
+  .cons-btn.empty { opacity: 0.25; }
+  .cons-btn .cons-label { font-size: 8px; margin-top: 1px; opacity: 0.7; }
+  .pause-btn {
+    width: 44px; height: 44px; left: 16px; top: 12px;
+    border-color: rgba(255,255,255,0.3); background: rgba(8,14,28,0.4);
+    font-size: 18px;
+  }
+  /* 横屏提示 */
+  #rotatePrompt {
+    position: absolute; inset: 0; z-index: 50; display: none;
+    align-items: center; justify-content: center; flex-direction: column;
+    background: rgba(6,10,22,0.95); text-align: center; padding: 30px;
+  }
+  #rotatePrompt .rotate-icon {
+    font-size: 56px; margin-bottom: 16px; animation: rotateHint 2s ease-in-out infinite;
+  }
+  @keyframes rotateHint { 0%,100% { transform: rotate(0); } 50% { transform: rotate(90deg); } }
+  #rotatePrompt h2 { color: var(--c-jade); font-size: 22px; margin-bottom: 8px; }
+  #rotatePrompt .muted { font-size: 14px; }
+
+  /* ========== 移动端响应式：基地 & HUD 精简 ========== */
+  @media (max-width: 768px) {
+    .overlay { padding: 8px 6px; }
+    .panel { padding: 14px 14px; border-radius: 14px; }
+    .title-panel { padding: 24px 20px; max-width: 94vw; }
+    .logo { font-size: 36px; letter-spacing: 6px; }
+    .logo-sub { font-size: 10px; letter-spacing: 4px; }
+    .title-foot { font-size: 11px; }
+    /* 基地 */
+    .base-panel { max-width: 100%; padding: 12px 12px; max-height: 100vh; border-radius: 12px; }
+    .base-head { gap: 6px; }
+    .base-head h1 { font-size: 18px; letter-spacing: 1px; }
+    .base-sub { font-size: 8px; letter-spacing: 3px; }
+    .res-bar { gap: 5px; }
+    .res-item { padding: 4px 8px; }
+    .res-item b { font-size: 15px; }
+    .res-item .res-lab { font-size: 9px; }
+    #metaInfo { font-size: 10px; padding: 5px 8px; margin: 4px 0; line-height: 1.4; }
+    .tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; margin: 8px 0 2px; }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { font-size: 12px; padding: 7px 10px; white-space: nowrap; flex-shrink: 0; }
+    .tab-ico { width: 13px; height: 13px; }
+    .tab-pane { margin-top: 6px; }
+    .base-scroll { max-height: calc(100vh - 200px); padding-right: 4px; }
+    h2 { font-size: 15px; margin: 10px 0 6px; }
+    .muted, .tip { font-size: 11px; line-height: 1.5; }
+    /* 网格 → 单列 */
+    #tierRow { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tcard { min-width: 0; padding: 6px 4px; }
+    .tcard .ttitle { font-size: 13px; }
+    .acft-grid { grid-template-columns: 1fr; gap: 8px; }
+    .acft-card { padding: 10px; display: flex; align-items: center; gap: 12px; text-align: left; }
+    .acft-ship { height: 48px; margin-bottom: 0; flex-shrink: 0; }
+    .acft-ship svg { width: 72px; height: 38px; }
+    .acft-name { font-size: 15px; }
+    .acft-desc { font-size: 10px; }
+    .acft-stats { font-size: 10px; line-height: 1.5; }
+    #shopList { grid-template-columns: 1fr; gap: 8px; }
+    .shop { padding: 8px 10px; }
+    .shop .sname { font-size: 14px; }
+    .shop .slevel { font-size: 10px; }
+    .lvlbar { height: 4px; margin-top: 5px; }
+    #buffList { grid-template-columns: 1fr; }
+    #buffList .card { padding: 10px; }
+    #buffList .card .big { font-size: 22px; }
+    #buffList .card .bname { font-size: 14px; }
+    #mergeGrid { grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+    .chip { width: 34px; height: 34px; }
+    .slotpanel { grid-template-columns: 1fr; }
+    .eq-strip { gap: 6px; }
+    .eq-slot { min-width: 0; padding: 8px; }
+    .inv-row { padding: 8px; }
+    .arsenal-filter { gap: 4px; padding: 6px; }
+    .fchip { font-size: 11px; padding: 2px 8px; }
+    .loadout-preview { font-size: 11px; padding: 8px; line-height: 1.5; margin-top: 8px; }
+    .base-foot { margin-top: 8px; padding-top: 8px; gap: 6px; }
+    .go-btn { font-size: 15px; padding: 11px; }
+    .btn.ghost { font-size: 13px; padding: 9px 14px; }
+    .btn.big { font-size: 16px; padding: 12px 28px; }
+    .result-panel { max-width: 94vw; }
+    .stat-card { font-size: 13px; padding: 7px 10px; }
+    .stat-card.big { font-size: 14px; }
+    /* 教学 */
+    .tut-step { font-size: 12px; line-height: 1.6; padding: 7px 10px 7px 32px; }
+    .tut-step .n { width: 18px; height: 18px; font-size: 11px; line-height: 18px; }
+  }
+  /* 横屏手机：高度受限，进一步压缩 */
+  @media (max-width: 920px) and (orientation: landscape) and (max-height: 500px) {
+    .base-panel { max-height: 100vh; }
+    .base-scroll { max-height: calc(100vh - 160px); }
+    .title-panel { padding: 16px 20px; }
+    .logo { font-size: 28px; }
+  }
 </style>
 </head>
 <body>
+<!-- 移动端启动遮罩：点击进入全屏横屏 -->
+<div id="enterOverlay">
+  <div class="enter-logo">空域撤离</div>
+  <div class="enter-sub">NEON SHANHAI · SKY EXTRACTION</div>
+  <div class="enter-tap">点击进入</div>
+  <div class="enter-hint">将切换至横屏全屏模式<br>建议横屏握持手机</div>
+</div>
 <canvas id="game"></canvas>
 <div id="tipCard" class="tip-card" style="display:none"></div>
+
+<!-- 移动端虚拟操控 -->
+<div id="mobileControls">
+  <div id="joyBase" class="joy-base"><div id="joyKnob" class="joy-knob"></div></div>
+  <div id="fireBtn" class="mbtn fire-btn">🔥</div>
+  <div id="dashBtn" class="mbtn dash-btn">⚡</div>
+  <div id="consBtn" class="mbtn cons-btn empty">💊<span class="cons-label">Q</span></div>
+  <div id="pauseBtnMobile" class="mbtn pause-btn">⏸</div>
+</div>
+
+<!-- 横屏提示（竖屏时显示） -->
+<div id="rotatePrompt">
+  <div class="rotate-icon">📱</div>
+  <h2>请旋转至横屏</h2>
+  <div class="muted">横屏体验更佳 · 点击下方按钮可尝试自动旋转</div>
+  <button id="tryLandscape" class="btn" style="margin-top:14px;">进入横屏</button>
+</div>
 
 <!-- 标题页 -->
 <div id="title" class="overlay">
@@ -299,6 +526,7 @@
     <div class="title-btns">
       <button id="titleStart" class="btn big">开始游戏</button>
       <button id="titleHelp" class="btn ghost">怎么玩</button>
+      <button id="titleLandscape" class="btn ghost" style="display:none;">📱 横屏模式</button>
     </div>
     <div class="muted title-foot">目标：搜刮战利品 → 击败 BOSS → 安全撤离带回<b>法器</b>。基地装载法器、熔炼升稀、研究院解锁，越打越强。</div>
   </div>
@@ -308,7 +536,7 @@
 <div id="tutorial" class="overlay">
   <div class="panel" style="max-width:600px;">
     <h2>新手教学</h2>
-    <div class="tut-step"><span class="n">1</span>移动：<b>WASD</b> 或方向键。瞄准：鼠标。开火：按住<b>左键</b>。冲刺无敌：<b>Shift</b>。按 <b>N</b> 静音/开声。</div>
+    <div class="tut-step"><span class="n">1</span><b>电脑：</b>WASD 移动，鼠标瞄准，左键开火，Shift 冲刺，N 静音。<b>手机：</b>左屏摇杆移动，右下🔥开火（自动瞄准），⚡冲刺，💊丹药。</div>
     <div class="tut-step"><span class="n">2</span>地图上有<b>宝箱</b>（木/银/金/紫秘宝 4 种），<b>撞上去即开箱</b>爆出多件<b>命名战利品</b>（灵玉砂/玄铁/梼杌鳞…按稀有度命名，金/紫宝箱必出稀有！会惊动远处守卫）。</div>
     <div class="tut-step"><span class="n">3</span>左下<b>小地图</b>：灰点=木箱，浅蓝=银箱，金点=金箱，紫点=秘宝；<b>绿块=撤离点</b>，红点=敌人，紫点圆=BOSS。底部 3 格=<b>丹药</b>。</div>
     <div class="tut-step"><span class="n">4</span>每击杀若干敌人，弹出<b>3 选 1 符文</b>（火/水/雷/风/煞 5 系共 28 枚）。<b>集齐同系符文解锁羁绊</b>：每系 2/3/4 阶阶梯质变（如火系：灼烧→烈焰增伤→焚尽爆炸），屏幕底部左侧<b>羁绊条</b>实时显示各系进度与最高阶。凑齐交叉系（如火3+雷3=过载）触发更强组合。</div>
@@ -324,7 +552,10 @@
 <div id="base" class="overlay">
   <div class="panel base-panel">
     <div class="base-head">
-      <h1>空域基地</h1>
+      <div class="base-brand">
+        <h1>空域基地</h1>
+        <span class="base-sub">SKY BUREAU 07</span>
+      </div>
       <div class="res-bar">
         <div class="res-item"><b id="resJade">0</b><span class="res-lab">灵玉</span></div>
         <div class="res-item"><b id="resArsenal">0</b><span class="res-lab">法器</span></div>
@@ -333,11 +564,11 @@
     </div>
     <div id="metaInfo"></div>
     <div class="tabs">
-      <button class="tab on" data-tab="hangar">机库</button>
-      <button class="tab" data-tab="arsenal">军械库</button>
-      <button class="tab" data-tab="forge">熔炼台</button>
-      <button class="tab" data-tab="lab">研究院</button>
-      <button class="tab" data-tab="codex">图鉴</button>
+      <button class="tab on" data-tab="hangar"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8L8 3L14 8V13H2V8Z"/><path d="M6 13V10H10V13"/></svg>机库</button>
+      <button class="tab" data-tab="arsenal"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2V11"/><path d="M5 8H11"/><path d="M8 11V14"/></svg>军械库</button>
+      <button class="tab" data-tab="forge"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3C9.5 5 11 6.5 11 9C11 11 9.5 12.5 8 12.5C6.5 12.5 5 11 5 9C5 6.5 6.5 5 8 3Z"/><path d="M5.5 12.5H10.5V14H5.5Z"/></svg>熔炼台</button>
+      <button class="tab" data-tab="lab"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3V6L3.5 12C3 13 4 14 5 14H11C12 14 13 13 12.5 12L10 6V3"/><path d="M5 3H11"/></svg>研究院</button>
+      <button class="tab" data-tab="codex"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5 5H11M5 8H11M5 11H8"/></svg>图鉴</button>
     </div>
     <div class="tab-pane on" id="tab-hangar">
       <div class="base-scroll">
