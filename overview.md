@@ -1,70 +1,39 @@
-# 移动端适配完成
+# 基地UI精灵表接入完成
 
-## 后续调整
+## 本次完成
 
-### 1. 接入用户 ChatGPT 生成的爆炸特效精灵表
-- 来源：用户用 ChatGPT 生成的 1 张绿屏 4×2 爆炸特效序列图。
-- 处理：`scripts/process_vfx_explosion.py` 绿幕抠除 + 绿色溢出抑制 + 4×2 切帧 + 每帧居中缩放 → 输出 1024×512 透明 PNG。
-- `game.js` VFX 系统扩展：支持逐帧精灵表动画（`spawnVfx` 新增 `{cols, rows, fps}` 参数）。
-- 替换 `vfx_explosion_smoke` 单图为 `vfx_explosion_sheet` 动画：玩家炸弹、通用爆炸、精英怪死亡、分裂怪死亡。
-- 文件：`prototype/assets/v3/vfx/vfx_explosion_sheet.png`
+### 1. 通用功能图标精灵表
+- 来源：用户提供的 4×4 功能图标精灵表（灵玉/仓库/进度/锁定/装载/卸下/熔解/2合1/3合1/信息/攻击/机动/防御/射速/帮助/目标）。
+- 处理：JPG 带浅灰棋盘底 → Pillow 亮度+饱和度阈值去底 → 透明 PNG。
+- 文件：`prototype/assets/v4/ui/icons/base_icons_sheet.png`
+- 接入：新增 `.icon-sprite` CSS 类 + 16 个定位类；资源条、帮助按钮、装备槽标题等使用对应图标。
 
-### 2. 接入用户 ChatGPT 生成的新战机加速动画精灵表
-- 来源：用户用 ChatGPT 生成的 3 张绿屏 4×2 加速动画图。
-- 处理：`scripts/process_boost_v2.py` 绿幕抠除 → 边缘去绿溢出 → 统一缩放居中 → 输出 1024×512 透明 PNG。
-- `game.js` 恢复 boost 状态切换：冲刺/高速时播放 boost sheet（14fps），普通移动播放 idle sheet（10fps）。
-- 文件：
-  - `prototype/assets/v3/player/qingfalcon_boost_sheet.png`
-  - `prototype/assets/v3/player/xuanwu_boost_sheet.png`
-  - `prototype/assets/v3/player/fan_dancer_boost_sheet.png`
+### 2. 装备槽精灵表
+- 来源：用户提供的 4×3 装备槽精灵表（武器/护甲/核心/弹药 × 常态/悬停/已装备）。
+- 处理：同上，去底转透明 PNG。
+- 文件：`prototype/assets/v4/ui/slots/equip_slots_sheet.png`
+- 接入：`.eq-slot` 使用 sprite 背景；按 `data-slot` 属性定位列；`.on` 对应第三行高亮；移动端压缩到 84px 高。
 
-### 2. 移除未扣干净的 AI 加速动画精灵表
-- 删除 `prototype/assets/v3/player/qingfalcon_boost_sheet.png`
-- 删除 `prototype/assets/v3/player/xuanwu_boost_sheet.png`
-- 删除 `prototype/assets/v3/player/fan_dancer_boost_sheet.png`
-- 删除 `game.js` 中对应的 `loadImg` 与 `drawPlayer` boost 切换逻辑，恢复为仅播放 idle sheet。
-- 向用户提供 ChatGPT 生图提示词，转由用户在 ChatGPT 中生成透明背景、4×2 网格的干净加速动画资产。
+### 3. 稀有度装饰精灵表
+- 来源：用户提供的 5×3 稀有度装饰精灵表（白/绿/蓝/紫/橙 × 图标外圈/卡片右上角/名称徽章）。
+- 处理：同上，去底转透明 PNG。
+- 文件：`prototype/assets/v4/ui/rarity/rarity_trim_sheet.png`
+- 接入：`.rarity-sprite` + `.rarity-{white|green|blue|purple|orange}` + `.rarity-{ring|corner|badge}`；装备列表行左侧显示稀有度徽章。
 
-## 改动总结
+### 4. 代码改动
+- `index.html`：新增约 70 行 sprite CSS；资源条加图标；帮助按钮加图标；移动端适配。
+- `game.js`：`renderArsenal()` 中装备槽加 `data-slot`、标题用精灵图标、列表行加稀有度徽章、队列头部加图标。
+- 缓存版本：`v=1014b → v=1014c`。
 
-### 1. 虚拟摇杆（左半屏动态出现）
-- 触摸左半屏任意位置 → 摇杆基座(130px)出现 → 拖拽旋钮(56px)控制方向和速度
-- 多触摸独立追踪，可与右侧按钮同时操作
+## 验证
+- `node --check game.js` 通过。
+- 本地服务器 `localhost:8134` 运行，三张精灵表 HTTP 200。
+- 浏览器预览已打开（基地界面可验证）。
 
-### 2. 右侧操控按钮
-- 🔥 **开火按钮**（84px）：按住持续开火，自动瞄准520px内最近敌人
-- ⚡ **冲刺按钮**（58px）：点击触发冲刺，冷却中灰显
-- 💊 **丹药按钮**（58px）：点击使用丹药，空槽淡显
-- ⏸ **暂停按钮**（44px，左上角）：替代ESC键
+## Git
+- 已提交：`3df289e` feat: 接入基地图标/装备槽/稀有度装饰精灵表（5 files changed, 72 insertions, 16 deletions）
+- Push 状态：失败，Git 凭证未缓存（HTTPS 需要重新认证），需用户手动执行 `git push origin main`。
 
-### 3. 横屏模式
-- 标题页"📱横屏模式"按钮 → 全屏 + 横屏锁定
-- 竖屏游戏中自动弹出旋转提示
-- iOS不支持自动锁定时提示手动旋转
-
-### 4. 基地UI精简（移动端）
-- Tab可横向滚动
-- 网格改单列布局
-- 机体卡改横排（图+文字并排）
-- 字号/padding全面缩小
-- 面板全宽适配
-
-### 5. HUD紧凑模式
-- 左上状态面板：236→180px
-- 右上状态面板：258→170px（移动端仅显示核心信息）
-- 小地图：150→92px
-- 羁绊条：70→50px
-- 隐藏键盘提示和冗余文字
-
-### 6. 封印宝箱适配
-- 移动端改为靠近即触发（无需按E）
-
-## 技术细节
-- 旧触摸系统（touchActive/touch/updateTouch）完全移除
-- 多触摸通过touchId独立追踪
-- 所有场景切换都同步控件显示/隐藏
-- `node --check` 通过
-
-## 部署
-- 分享链接：https://bf9fc0c1146547b6b3806068d36b2edb.sh4.agentos-app.net
-- 部署目录：prototype-deploy/（20MB）
+## 后续建议
+- 继续等待用户提供剩余基地 UI 背景/框架/按钮资产。
+- Push 后如需线上预览，可重新部署到 CloudStudio/EdgeOne Pages。

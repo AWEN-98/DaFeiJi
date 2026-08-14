@@ -323,6 +323,60 @@
   #metaInfo b { color: var(--c-paper); }
   #metaInfo .ok { color: var(--c-jade-light); }
 
+  /* ========== 基地图标/槽位/稀有度精灵表 ========== */
+  /* 通用功能图标 4x4 */
+  .icon-sprite { display: inline-block; background: url('assets/v4/ui/icons/base_icons_sheet.png') no-repeat; background-size: 400% 400%; width: 48px; height: 48px; flex-shrink: 0; }
+  .icon-sprite-sm { width: 28px; height: 28px; }
+  .icon-sprite-lg { width: 64px; height: 64px; }
+  .icon-jade  { background-position: 0% 0%; }
+  .icon-warehouse { background-position: 33.333% 0%; }
+  .icon-tier  { background-position: 66.667% 0%; }
+  .icon-lock  { background-position: 100% 0%; }
+  .icon-equip { background-position: 0% 33.333%; }
+  .icon-unequip { background-position: 33.333% 33.333%; }
+  .icon-melt  { background-position: 66.667% 33.333%; }
+  .icon-merge2 { background-position: 100% 33.333%; }
+  .icon-merge3 { background-position: 0% 66.667%; }
+  .icon-info  { background-position: 33.333% 66.667%; }
+  .icon-atk   { background-position: 66.667% 66.667%; }
+  .icon-mob   { background-position: 100% 66.667%; }
+  .icon-def   { background-position: 0% 100%; }
+  .icon-rof   { background-position: 33.333% 100%; }
+  .icon-help  { background-position: 66.667% 100%; }
+  .icon-target { background-position: 100% 100%; }
+
+  /* 装备槽 4x3：weapon/armor/core/ammo x normal/hover/equipped */
+  .eq-slot { position: relative; background: url('assets/v4/ui/slots/equip_slots_sheet.png') no-repeat; background-size: 400% 300%; border: none; border-radius: 14px; min-height: 110px; overflow: hidden; }
+  .eq-slot::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,26,46,0.55), rgba(8,16,32,0.75)); pointer-events: none; }
+  .eq-slot:hover { background-position-y: 50%; }
+  .eq-slot.on { background-position-y: 100%; }
+  .eq-slot[data-slot="weapon"] { background-position-x: 0%; }
+  .eq-slot[data-slot="armor"]  { background-position-x: 33.333%; }
+  .eq-slot[data-slot="core"]   { background-position-x: 66.667%; }
+  .eq-slot[data-slot="ammo"]   { background-position-x: 100%; }
+  .eq-slot .eq-title { position: relative; z-index: 1; }
+  .eq-slot .eq-item, .eq-slot .eq-empty { position: relative; z-index: 1; }
+
+  /* 稀有度装饰 5x3 */
+  .rarity-sprite { display: inline-block; background: url('assets/v4/ui/rarity/rarity_trim_sheet.png') no-repeat; background-size: 500% 300%; flex-shrink: 0; }
+  .rarity-ring   { width: 48px; height: 48px; background-position-y: 0%; }
+  .rarity-corner { width: 32px; height: 32px; background-position-y: 50%; }
+  .rarity-badge  { width: 22px; height: 22px; background-position-y: 100%; }
+  .rarity-white  { background-position-x: 0%; }
+  .rarity-green  { background-position-x: 25%; }
+  .rarity-blue   { background-position-x: 50%; }
+  .rarity-purple { background-position-x: 75%; }
+  .rarity-orange { background-position-x: 100%; }
+
+  /* 装备列表行加稀有度徽章 */
+  .inv-row { position: relative; }
+  .inv-row .rarity-badge { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); }
+  .inv-row .artline { padding-left: 28px; }
+
+  /* 资源条图标 */
+  .res-item { display: inline-flex; align-items: center; gap: 6px; }
+  .res-item .icon-sprite-sm { vertical-align: middle; }
+
   /* ========== 移动端启动遮罩：点击进入全屏横屏 ========== */
   #enterOverlay {
     position: fixed; inset: 0; z-index: 100; display: none;
@@ -478,8 +532,13 @@
     .slotpanel { grid-template-columns: 1fr; }
     .eq-strip { gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
     .eq-strip::-webkit-scrollbar { display: none; }
-    .eq-slot { min-width: 0; flex: 1 0 42%; padding: 8px; }
-    .inv-row { padding: 8px; }
+    .eq-slot { min-width: 0; flex: 1 0 42%; padding: 8px; min-height: 84px; }
+    .eq-slot .eq-title { font-size: 11px; }
+    .eq-slot .eq-item, .eq-slot .eq-empty { font-size: 10px; }
+    .inv-row { padding: 8px 8px 8px 34px; }
+    .res-item .icon-sprite-sm { width: 20px; height: 20px; }
+    .res-item b { font-size: 14px; }
+    .res-item .res-lab { font-size: 8px; }
     .arsenal-filter { gap: 4px; padding: 6px; }
     .fchip { font-size: 11px; padding: 2px 8px; }
     .loadout-preview { font-size: 11px; padding: 8px; line-height: 1.5; margin-top: 8px; }
@@ -592,9 +651,9 @@
         <span class="base-sub">SKY BUREAU 07</span>
       </div>
       <div class="res-bar">
-        <div class="res-item"><b id="resJade">0</b><span class="res-lab">灵玉</span></div>
-        <div class="res-item"><b id="resArsenal">0</b><span class="res-lab">法器</span></div>
-        <div class="res-item"><b id="resProgress">1/3</b><span class="res-lab">层</span></div>
+        <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-jade"></span><div><b id="resJade">0</b><span class="res-lab">灵玉</span></div></div>
+        <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-warehouse"></span><div><b id="resArsenal">0</b><span class="res-lab">法器</span></div></div>
+        <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-tier"></span><div><b id="resProgress">1/3</b><span class="res-lab">层</span></div></div>
       </div>
     </div>
     <div id="metaInfo"></div>
@@ -631,7 +690,7 @@
     </div>
     <div class="base-foot">
       <button id="startBtn" class="btn go-btn">出击 ▶</button>
-      <button id="helpBtn" class="btn ghost">怎么玩</button>
+      <button id="helpBtn" class="btn ghost"><span class="icon-sprite icon-sprite-sm icon-help" style="vertical-align:middle;margin-right:4px;"></span>怎么玩</button>
     </div>
   </div>
 </div>
@@ -698,6 +757,6 @@
 </div>
 
 <script src="audio-data.js?v=914a"></script>
-<script src="game.js?v=1014b"></script>
+<script src="game.js?v=1014c"></script>
 </body>
 </html>

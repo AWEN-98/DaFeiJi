@@ -4356,13 +4356,9 @@
       var eq = getArt(meta.equipped[slot]);
       var cnt = meta.arsenal.filter(function (a) { return a.slot === slot; }).length;
       var active = slot === arsenalTab;
-      var el = document.createElement('div'); el.className = 'eq-slot' + (active ? ' on' : '');
-      if (active) {
-        el.style.borderColor = SLOTCOL[slot];
-        el.style.boxShadow = '0 0 14px ' + SLOTCOL[slot] + '44';
-        el.style.background = 'linear-gradient(180deg,' + SLOTCOL[slot] + '1F, rgba(8,16,32,0.95))';
-      }
-      var html = '<div class="eq-title" style="color:' + SLOTCOL[slot] + '">' + (SLOT_SVG[slot] || '') +
+      var el = document.createElement('div'); el.className = 'eq-slot' + (active ? ' on' : ''); el.dataset.slot = slot;
+      var iconCls = { weapon: 'icon-atk', armor: 'icon-def', core: 'icon-mob', ammo: 'icon-rof' }[slot] || 'icon-info';
+      var html = '<div class="eq-title" style="color:' + SLOTCOL[slot] + '"><span class="icon-sprite icon-sprite-sm ' + iconCls + '"></span>' +
         '<span>' + SLOTNAME[slot] + '</span><span class="eq-count">' + cnt + '</span></div>';
       if (eq) {
         html += '<div class="eq-item"><b style="color:' + RARCOL[eq.rarity] + '">' + eq.name + '</b>' +
@@ -4382,7 +4378,8 @@
     var inv = meta.arsenal.filter(function (a) { return a.slot === slot; });
     var q = document.createElement('div'); q.className = 'slot-queue';
     var head = document.createElement('div'); head.className = 'slot-qhead';
-    head.innerHTML = '<span class="qico" style="color:' + SLOTCOL[slot] + '">' + (SLOT_SVG[slot] || '') + '</span>' +
+    var qicon = { weapon: 'icon-atk', armor: 'icon-def', core: 'icon-mob', ammo: 'icon-rof' }[slot] || 'icon-info';
+    head.innerHTML = '<span class="icon-sprite icon-sprite-sm ' + qicon + '" style="vertical-align:middle;"></span>' +
       '<span class="qname" style="color:' + SLOTCOL[slot] + '">' + SLOTNAME[slot] + '队列</span>' +
       '<span class="qcount">' + inv.length + ' 件</span>';
     q.appendChild(head);
@@ -4426,7 +4423,7 @@
         var on = a.id === meta.equipped[slot];
         var row = document.createElement('div'); row.className = 'inv-row' + (on ? ' on' : '');
         var left = document.createElement('div'); left.style.cssText = 'flex:1;min-width:0;';
-        left.innerHTML = '<div class="artline"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
+        left.innerHTML = '<span class="rarity-sprite rarity-badge rarity-' + a.rarity + '"></span><div class="artline"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
         var rec = document.createElement('span'); rec.className = 'rec'; rec.textContent = '回收';
         rec.onclick = function (ev) { ev.stopPropagation(); recycleArtifact(a.id); };
         row.appendChild(left); row.appendChild(rec);
