@@ -68,10 +68,22 @@
   .res-item { background: rgba(10,20,38,0.9); border: 1px solid rgba(95,191,163,0.25); border-radius: 10px; padding: 6px 14px; display: flex; align-items: baseline; gap: 7px; }
   .res-item b { font-size: 19px; color: #C9A227; text-shadow: 0 0 10px rgba(201,162,39,0.35); }
   .res-item .res-lab { color: #8B95A0; font-size: 11px; }
-  .tabs { display: flex; gap: 4px; margin: 14px 0 2px; border-bottom: 1px solid rgba(95,191,163,0.22); }
-  .tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: #8B95A0; font-size: 14px; font-weight: 700; padding: 9px 15px; cursor: pointer; transition: .15s; margin-bottom: -1px; }
-  .tab:hover { color: #D8E4DC; }
-  .tab.on { color: #5FBFA3; border-bottom-color: #5FBFA3; text-shadow: 0 0 10px rgba(95,191,163,0.45); }
+  .tabs { display: flex; gap: 6px; margin: 14px 0 6px; flex-wrap: wrap; justify-content: center; border-bottom: none; }
+  .tab { position: relative; width: 168px; height: 109px; border: none; background: transparent url('assets/v4/ui/tabs/base_tab_sheet.png') no-repeat; background-size: 500% 400%; padding: 0 14px 0 72px; color: #E8DCC4; font-size: 15px; font-weight: 700; letter-spacing: 1px; text-shadow: 0 1px 5px rgba(0,0,0,0.95), 0 0 10px rgba(0,0,0,0.7); cursor: pointer; display: inline-flex; align-items: center; transition: filter .15s, transform .12s; flex-shrink: 0; }
+  .tab:hover { filter: brightness(1.18) drop-shadow(0 0 6px rgba(201,162,39,0.35)); transform: translateY(-1px); }
+  .tab.on { filter: brightness(1.3) drop-shadow(0 0 10px rgba(201,162,39,0.5)); }
+  .tab:disabled, .tab.disabled { filter: grayscale(0.9) brightness(0.7); cursor: not-allowed; }
+  /* 列定位 (5列：机库/军械库/熔炼台/研究院/图鉴) */
+  .tab-hangar  { background-position-x: 0%; }
+  .tab-arsenal { background-position-x: 25%; }
+  .tab-forge   { background-position-x: 50%; }
+  .tab-lab     { background-position-x: 75%; }
+  .tab-codex   { background-position-x: 100%; }
+  /* 行定位 (4行：常态/悬停/选中/禁用) */
+  .tab-hangar, .tab-arsenal, .tab-forge, .tab-lab, .tab-codex { background-position-y: 0%; }
+  .tab-hangar:hover:not(.on), .tab-arsenal:hover:not(.on), .tab-forge:hover:not(.on), .tab-lab:hover:not(.on), .tab-codex:hover:not(.on) { background-position-y: 33.333%; }
+  .tab-hangar.on, .tab-arsenal.on, .tab-forge.on, .tab-lab.on, .tab-codex.on { background-position-y: 66.667%; }
+  .tab-hangar:disabled, .tab-arsenal:disabled, .tab-forge:disabled, .tab-lab:disabled, .tab-codex:disabled, .tab-hangar.disabled, .tab-arsenal.disabled, .tab-forge.disabled, .tab-lab.disabled, .tab-codex.disabled { background-position-y: 100%; }
   .tab-pane { display: none; margin-top: 10px; }
   .tab-pane.on { display: block; }
   .base-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(95,191,163,0.15); display: flex; gap: 10px; align-items: center; }
@@ -434,8 +446,7 @@
     #metaInfo { flex-shrink: 0; font-size: 10px; padding: 5px 8px; margin: 4px 0; line-height: 1.4; }
     .tabs { flex-shrink: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 2px; margin: 6px 0 2px; scrollbar-width: none; }
     .tabs::-webkit-scrollbar { display: none; }
-    .tab { font-size: 12px; padding: 7px 10px; white-space: nowrap; flex-shrink: 0; }
-    .tab-ico { width: 13px; height: 13px; }
+    .tab { width: 116px; height: 75px; padding: 0 8px 0 48px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
     .tab-pane { display: none; }
     .tab-pane.on { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 6px; }
     .base-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-right: 4px; }
@@ -588,11 +599,11 @@
     </div>
     <div id="metaInfo"></div>
     <div class="tabs">
-      <button class="tab on" data-tab="hangar"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8L8 3L14 8V13H2V8Z"/><path d="M6 13V10H10V13"/></svg>机库</button>
-      <button class="tab" data-tab="arsenal"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2V11"/><path d="M5 8H11"/><path d="M8 11V14"/></svg>军械库</button>
-      <button class="tab" data-tab="forge"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3C9.5 5 11 6.5 11 9C11 11 9.5 12.5 8 12.5C6.5 12.5 5 11 5 9C5 6.5 6.5 5 8 3Z"/><path d="M5.5 12.5H10.5V14H5.5Z"/></svg>熔炼台</button>
-      <button class="tab" data-tab="lab"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3V6L3.5 12C3 13 4 14 5 14H11C12 14 13 13 12.5 12L10 6V3"/><path d="M5 3H11"/></svg>研究院</button>
-      <button class="tab" data-tab="codex"><svg class="tab-ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5 5H11M5 8H11M5 11H8"/></svg>图鉴</button>
+      <button class="tab tab-hangar on" data-tab="hangar">机库</button>
+      <button class="tab tab-arsenal" data-tab="arsenal">军械库</button>
+      <button class="tab tab-forge" data-tab="forge">熔炼台</button>
+      <button class="tab tab-lab" data-tab="lab">研究院</button>
+      <button class="tab tab-codex" data-tab="codex">图鉴</button>
     </div>
     <div class="tab-pane on" id="tab-hangar">
       <div class="base-scroll">
@@ -687,6 +698,6 @@
 </div>
 
 <script src="audio-data.js?v=914a"></script>
-<script src="game.js?v=1014a"></script>
+<script src="game.js?v=1014b"></script>
 </body>
 </html>

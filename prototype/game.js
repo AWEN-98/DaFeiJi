@@ -4484,7 +4484,10 @@
   function switchBaseTab(name) {
     baseTab = name;
     var tabs = document.querySelectorAll('.tab');
-    for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab' + (tabs[i].getAttribute('data-tab') === name ? ' on' : '');
+    for (var i = 0; i < tabs.length; i++) {
+      if (tabs[i].getAttribute('data-tab') === name) tabs[i].classList.add('on');
+      else tabs[i].classList.remove('on');
+    }
     var panes = ['hangar', 'arsenal', 'forge', 'lab', 'codex'];
     for (var j = 0; j < panes.length; j++) {
       var el = document.getElementById('tab-' + panes[j]);
