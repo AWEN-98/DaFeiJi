@@ -37,3 +37,26 @@
 ## 后续建议
 - 继续等待用户提供剩余基地 UI 背景/框架/按钮资产。
 - Push 后如需线上预览，可重新部署到 CloudStudio/EdgeOne Pages。
+
+---
+
+# 基地特殊图用法修正
+
+## 问题
+Boss 反馈前一次接入的 3 张特殊图"没一个用对的"：
+- 基地主边框只套在研究院/图鉴上，其他 tab 没用。
+- 研究院卷轴被当成普通背景图，上面随便盖了一层浮层，6 个圆形槽位没派上用场。
+- 图鉴书页同样被浮层覆盖，分类和详情没有对齐书页上的框。
+
+## 本次修正
+- `prototype/index.html`：
+  - **基地主边框** `ui_base_frame.png` 移到 `.base-body` 背景，5 个基地 tab 共用外框。
+  - **研究院卷轴** `ui_lab_scroll.png` 作为 `#tab-lab` 的 `.lab-scene` 背景；`#researchList` 里的 6 个 `.shop` 用 `nth-child` 绝对定位，分别对齐卷轴的 6 个圆形槽+标签位置；隐藏旧的 `#shopList`。
+  - **图鉴书页** `ui_codex_book.png` 作为 `#tab-codex` 的 `.codex-scene` 背景；`#codexCats` 用 2×3 grid 对齐左页 6 格；`#codexBox` 对齐右页大详情框。
+  - 帮助/出击按钮移到场景容器外部右下角，避免遮挡主体。
+- 保留全部 JS 容器 id，`game.js` 无需改动。
+- 缓存戳：`?v=1019b`。
+
+## 验证
+- HTML 解析通过；本地服务器 8931 运行中，index.html 与三张特殊图均返回 200。
+- 刷新 `http://127.0.0.1:8931/index.html` 查看研究院/图鉴效果。

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>空域基地 · 资产布局编辑器</title>
+<style>
+  :root{
+    --bg:#0E0B08; --panel:#17120C; --panel2:#211910; --gold:#C9A24B; --paper:#E8DCC4;
+    --muted:#9C8E78; --line:rgba(201,162,39,0.22); --danger:#C94F4F; --sel:#4FA3E0;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--bg);color:var(--paper);font-size:13px;}
+  button{font-family:inherit;cursor:pointer;}
+  .topbar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);
+    border-bottom:1px solid var(--line);flex-wrap:wrap;}
+  .topbar h1{font-size:15px;margin:0;color:var(--gold);letter-spacing:1px;font-weight:800;}
+  .screen-tabs{display:flex;gap:6px;margin-left:10px;}
+  .screen-tab{padding:6px 14px;border:1px solid var(--line);background:transparent;color:var(--muted);
+    border-radius:7px;font-weight:700;}
+  .screen-tab.on{background:var(--gold);color:#1a130a;border-color:var(--gold);}
+  .spacer{flex:1;}
+  .toolbtn{padding:6px 12px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);
+    border-radius:7px;font-weight:600;}
+  .toolbtn:hover{border-color:var(--gold);}
+  .toolbtn.warn{color:var(--danger);border-color:rgba(201,79,79,0.4);}
+  .toolbtn.on{background:var(--sel);color:#0e0b08;border-color:var(--sel);}
+  .main{display:flex;height:calc(100% - 110px);}
+  .library{width:248px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;padding:8px;}
+  .lib-group{margin-bottom:8px;}
+  .lib-group h3{font-size:12px;color:var(--gold);margin:8px 4px 6px;cursor:pointer;user-select:none;
+    display:flex;justify-content:space-between;}
+  .lib-items{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;}
+  .lib-item{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px;
+    text-align:center;cursor:grab;}
+  .lib-item:hover{border-color:var(--gold);}
+  .lib-item img{width:100%;height:46px;object-fit:contain;display:block;pointer-events:none;}
+  .lib-item span{display:block;font-size:9px;color:var(--muted);margin-top:2px;line-height:1.1;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;}
+  .stage-wrap{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;
+    background:#0a0805;padding:20px;}
+  .screen{position:relative;width:1280px;height:760px;background:#0E0B08;
+    border:1px solid var(--line);box-shadow:0 0 40px rgba(0,0,0,0.6);display:none;flex:0 0 auto;}
+  .screen.on{display:block;}
+  /* 网格吸附显示 */
+  .screen.grid{
+    background-image:
+      linear-gradient(rgba(201,162,75,0.10) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(201,162,75,0.10) 1px,transparent 1px);
+    background-size:20px 20px;
+  }
+  .layer{position:absolute;background-repeat:no-repeat;background-size:100% 100%;cursor:move;
+    outline:1px dashed transparent;}
+  .layer.sel{outline:2px solid var(--sel);}
+  .layer .handle{position:absolute;width:14px;height:14px;background:var(--sel);border:1px solid #fff;
+    border-radius:2px;display:none;}
+  .layer.sel .handle{display:block;}
+  .h-nw{left:-7px;top:-7px;cursor:nwse-resize;}
+  .h-ne{right:-7px;top:-7px;cursor:nesw-resize;}
+  .h-sw{left:-7px;bottom:-7px;cursor:nesw-resize;}
+  .h-se{right:-7px;bottom:-7px;cursor:nwse-resize;}
+  .layer .sz{position:absolute;left:50%;top:-20px;transform:translateX(-50%);font-size:10px;color:var(--sel);
+    background:rgba(0,0,0,0.7);padding:1px 5px;border-radius:4px;display:none;white-space:nowrap;pointer-events:none;}
+  .layer.sel .sz{display:block;}
+  .reflayer{position:absolute;left:0;top:0;pointer-events:none;}
+  .side{width:250px;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:10px;}
+  .side h3{font-size:12px;color:var(--gold);margin:6px 0 8px;}
+  .prop-row{display:flex;align-items:center;gap:6px;margin-bottom:7px;}
+  .prop-row label{width:34px;color:var(--muted);font-size:11px;}
+  .prop-row input{flex:1;width:0;background:var(--panel2);border:1px solid var(--line);color:var(--paper);
+    border-radius:5px;padding:4px 6px;font-size:12px;}
+  .prop-row input[type=range]{padding:0;}
+  .btn-row{display:flex;gap:6px;margin:8px 0;flex-wrap:wrap;}
+  .btn-row button{flex:1;padding:6px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);
+    border-radius:6px;font-size:11px;font-weight:600;min-width:60px;}
+  .btn-row button:hover{border-color:var(--gold);}
+  .btn-row button.del{color:var(--danger);border-color:rgba(201,79,79,0.4);}
+  .layerlist{font-size:11px;}
+  .layerlist .li{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:5px;
+    border:1px solid transparent;cursor:pointer;margin-bottom:3px;}
+  .layerlist .li:hover{background:var(--panel2);}
+  .layerlist .li.sel{background:var(--panel2);border-color:var(--sel);}
+  .layerlist .li .nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .layerlist .li .ey{color:var(--muted);}
+  .hint{color:var(--muted);font-size:11px;line-height:1.6;padding:6px;border:1px dashed var(--line);
+    border-radius:6px;margin-top:8px;}
+  .kb{color:var(--muted);font-size:10px;line-height:1.6;margin-top:6px;}
+  .kb b{color:var(--gold);}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1a130a;
+    padding:8px 18px;border-radius:20px;font-weight:700;opacity:0;transition:opacity .3s;pointer-events:none;z-index:99;}
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <h1>空域基地 · 布局编辑器</h1>
+    <div class="screen-tabs" id="screenTabs"></div>
+    <div class="spacer"></div>
+    <button class="toolbtn on" id="btnSnap">网格吸附：开</button>
+    <button class="toolbtn" id="btnRef">放参考图</button>
+    <button class="toolbtn" id="btnClear">清空本页</button>
+    <button class="toolbtn" id="btnExport">导出布局</button>
+    <button class="toolbtn" id="btnLoad">载入布局</button>
+    <input type="file" id="fileRef" accept="image/*" style="display:none">
+    <input type="file" id="fileLoad" accept="application/json" style="display:none">
+  </div>
+
+  <div class="main">
+    <div class="library" id="library"></div>
+    <div class="stage-wrap">
+      <div class="screen on grid" data-screen="start" id="scr-start"></div>
+      <div class="screen grid" data-screen="base" id="scr-base"></div>
+      <div class="screen grid" data-screen="lab" id="scr-lab"></div>
+      <div class="screen grid" data-screen="codex" id="scr-codex"></div>
+    </div>
+    <div class="side">
+      <h3>选中图层属性</h3>
+      <div id="props">
+        <div class="prop-row"><label>名称</label><input id="pLabel" type="text"></div>
+        <div class="prop-row"><label>X</label><input id="pX" type="number"></div>
+        <div class="prop-row"><label>Y</label><input id="pY" type="number"></div>
+        <div class="prop-row"><label>宽</label><input id="pW" type="number"></div>
+        <div class="prop-row"><label>高</label><input id="pH" type="number"></div>
+        <div class="prop-row"><label>缩放</label><input id="pScale" type="range" min="10" max="400" step="1" value="100"></div>
+        <div class="prop-row"><label>透明</label><input id="pO" type="range" min="0" max="1" step="0.05" value="1"></div>
+        <div class="btn-row">
+          <button id="bCH">水平居中</button>
+          <button id="bCV">垂直居中</button>
+        </div>
+        <div class="btn-row">
+          <button id="bOrig">还原尺寸</button>
+          <button id="bFill">铺满宽</button>
+        </div>
+        <div class="btn-row">
+          <button id="bUp">上移一层</button>
+          <button id="bDown">下移一层</button>
+        </div>
+        <div class="btn-row">
+          <button id="bFront">置顶</button>
+          <button id="bBack">置底</button>
+          <button class="del" id="bDel">删除</button>
+        </div>
+        <div class="hint" id="hint">点左侧资产→自动放画布中央。选中后：拖移、拖四角缩放（自动锁比例不变形）、方向键微调。</div>
+        <div class="kb">
+          <b>快捷键</b>：←↑↓→ 移动1px（按住Shift=10px）· Delete 删除 · [ ] 调整层级
+        </div>
+      </div>
+      <h3>本页图层</h3>
+      <div class="layerlist" id="layerList"></div>
+    </div>
+  </div>
+
+<div class="toast" id="toast"></div>
+
+<script src="assets.js"></script>
+<script>
+const SCREENS = [
+  {key:"start", name:"开始界面"},
+  {key:"base",  name:"基地主页"},
+  {key:"lab",   name:"研究院"},
+  {key:"codex", name:"图鉴"},
+];
+const CW=1280, CH=760;   // 画布尺寸
+const GRID=10;           // 吸附步长
+let SNAP=true;           // 网格吸附开关
+let ASSETS = [];
+let layouts = { start:[], base:[], lab:[], codex:[] };
+let cur = "start";
+let selId = null;
+let uid = 1;
+
+const $ = s => document.querySelector(s);
+const scrEl = k => document.getElementById("scr-"+k);
+
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+function snap(v){ return SNAP ? Math.round(v/GRID)*GRID : Math.round(v); }
+
+// 顶栏界面切换
+const tabs = $("#screenTabs");
+SCREENS.forEach(s=>{
+  const b=document.createElement("button");
+  b.className="screen-tab"+(s.key===cur?" on":""); b.textContent=s.name; b.dataset.k=s.key;
+  b.onclick=()=>{ cur=s.key; document.querySelectorAll(".screen-tab").forEach(x=>x.classList.toggle("on",x.dataset.k===cur));
+    document.querySelectorAll(".screen").forEach(x=>x.classList.toggle("on",x.dataset.screen===cur));
+    selId=null; render(); };
+  tabs.appendChild(b);
+});
+
+// 资产清单（内嵌于 assets.js，双击 file:// 也能用）
+ASSETS = window.ASSETS_DATA || [];
+buildLibrary();
+
+function buildLibrary(){
+  const lib=$("#library"); lib.innerHTML="";
+  const cats=[...new Set(ASSETS.map(a=>a.cat))];
+  cats.forEach(cat=>{
+    const g=document.createElement("div"); g.className="lib-group";
+    const h=document.createElement("h3"); h.innerHTML=`<span>${cat}</span><span>▾</span>`;
+    const items=document.createElement("div"); items.className="lib-items";
+    h.onclick=()=>{ items.style.display = items.style.display==="none"?"grid":"none"; };
+    ASSETS.filter(a=>a.cat===cat).forEach(a=>{
+      const it=document.createElement("div"); it.className="lib-item"; it.draggable=true; it.title=a.label;
+      it.innerHTML=`<img src="${a.src}" alt=""><span>${a.label}</span>`;
+      it.onclick=()=>addLayer(a, CW/2, CH/2);   // 点一下→放画布中央
+      it.ondragstart=e=>{ e.dataTransfer.setData("text/plain", JSON.stringify(a)); };
+      items.appendChild(it);
+    });
+    g.appendChild(h); g.appendChild(items); lib.appendChild(g);
+  });
+}
+
+// 画布拖放
+document.querySelectorAll(".screen").forEach(sc=>{
+  sc.ondragover=e=>e.preventDefault();
+  sc.ondrop=e=>{
+    e.preventDefault();
+    const a=JSON.parse(e.dataTransfer.getData("text/plain"));
+    const r=sc.getBoundingClientRect();
+    addLayer(a, e.clientX-r.left, e.clientY-r.top);
+  };
+});
+
+function addLayer(a, cx, cy){
+  const baseH=150;
+  const ratio=(a.h&&a.w)?a.h/a.w:1;
+  const w=Math.round(baseH/ratio), h=baseH;
+  const layer={id:uid++, src:a.src, label:a.label, ow:a.w, oh:a.h,
+    x:snap(cx-w/2), y:snap(cy-h/2), w, h, z:layouts[cur].length+1, o:1, hidden:false};
+  layouts[cur].push(layer); selId=layer.id; render();
+}
+
+function render(){
+  const sc=scrEl(cur);
+  sc.classList.toggle("grid", SNAP);
+  [...sc.querySelectorAll(".layer")].forEach(n=>n.remove());
+  const ref=sc.querySelector(".reflayer");
+  const arr=[...layouts[cur]].sort((a,b)=>a.z-b.z);
+  arr.forEach(L=>{
+    if(L.hidden) return;
+    const d=document.createElement("div");
+    d.className="layer"+(L.id===selId?" sel":"");
+    d.dataset.id=L.id;
+    d.style.left=L.x+"px"; d.style.top=L.y+"px"; d.style.width=L.w+"px"; d.style.height=L.h+"px";
+    d.style.backgroundImage=`url("${L.src}")`; d.style.opacity=L.o;
+    const sz=document.createElement("div"); sz.className="sz"; sz.textContent=`${L.w}×${L.h}`;
+    d.appendChild(sz);
+    ["nw","ne","sw","se"].forEach(p=>{ const hd=document.createElement("div"); hd.className="handle h-"+p; d.appendChild(hd); });
+    d.onmousedown=ev=>startMove(ev,L,d);
+    sc.appendChild(d);
+  });
+  if(ref) sc.appendChild(ref);
+  renderList(); renderProps();
+}
+
+function renderList(){
+  const list=$("#layerList"); list.innerHTML="";
+  const arr=[...layouts[cur]].sort((a,b)=>b.z-a.z);
+  arr.forEach(L=>{
+    const li=document.createElement("div"); li.className="li"+(L.id===selId?" sel":"");
+    li.innerHTML=`<span class="ey">${L.hidden?"🚫":"👁"}</span><span class="nm">${L.label}</span>`;
+    li.onclick=()=>{ selId=L.id; render(); };
+    li.querySelector(".ey").onclick=e=>{ e.stopPropagation(); L.hidden=!L.hidden; render(); };
+    list.appendChild(li);
+  });
+}
+
+function renderProps(){
+  const L=layouts[cur].find(x=>x.id===selId);
+  if(!L){ $("#hint").style.display="block"; $("#pScale").disabled=true; return; }
+  $("#hint").style.display="none"; $("#pScale").disabled=false;
+  $("#pLabel").value=L.label; $("#pX").value=L.x; $("#pY").value=L.y; $("#pW").value=L.w; $("#pH").value=L.h; $("#pO").value=L.o;
+  const scale=Math.round(L.w/L.ow*100); $("#pScale").value=Math.min(400,Math.max(10,scale));
+}
+
+function curLayer(){ return layouts[cur].find(x=>x.id===selId); }
+
+// 属性编辑
+function bindProp(id,key){
+  $(id).oninput=e=>{ const L=curLayer(); if(!L)return;
+    let v=parseFloat(e.target.value); if(isNaN(v))return; L[key]=Math.round(v); render(); };
+}
+bindProp("#pX","x"); bindProp("#pY","y"); bindProp("#pW","w"); bindProp("#pH","h");
+$("#pO").oninput=e=>{ const L=curLayer(); if(!L)return; L.o=parseFloat(e.target.value); render(); };
+$("#pLabel").onchange=e=>{ const L=curLayer(); if(!L)return; L.label=e.target.value; renderList(); };
+// 缩放滑块：以图层中心为锚等比缩放
+$("#pScale").oninput=e=>{ const L=curLayer(); if(!L)return;
+  const s=parseFloat(e.target.value)/100; const cxp=L.x+L.w/2, cyp=L.y+L.h/2;
+  L.w=Math.round(L.ow*s); L.h=Math.round(L.oh*s);
+  L.x=snap(cxp-L.w/2); L.y=snap(cyp-L.h/2); render(); };
+
+// 拖动移动
+let drag=null;
+function startMove(ev,L,d){
+  if(ev.target.classList.contains("handle")){ startResize(ev,L,d); return; }
+  ev.preventDefault(); selId=L.id;
+  const r=d.getBoundingClientRect();
+  drag={dx:ev.clientX-r.left, dy:ev.clientY-r.top, L};
+  render();
+}
+document.addEventListener("mousemove",ev=>{
+  if(!drag)return;
+  const sc=scrEl(cur); const sr=sc.getBoundingClientRect();
+  let x=snap(ev.clientX-sr.left-drag.dx), y=snap(ev.clientY-sr.top-drag.dy);
+  drag.L.x=x; drag.L.y=y;
+  const d=sc.querySelector(`.layer[data-id="${drag.L.id}"]`);
+  if(d){ d.style.left=x+"px"; d.style.top=y+"px"; d.querySelector(".sz").textContent=`${drag.L.w}×${drag.L.h}`;
+    $("#pX").value=x; $("#pY").value=y; }
+});
+document.addEventListener("mouseup",()=>drag=null);
+
+// 缩放（锁比例 + 吸附）
+let rz=null;
+function startResize(ev,L,d){
+  ev.preventDefault(); ev.stopPropagation(); selId=L.id;
+  const p=ev.target.className.split(" ")[1];
+  const dr=d.getBoundingClientRect();
+  // 不动的那个角作为锚点（客户端坐标）
+  const ax = p.includes("w") ? dr.right : dr.left;
+  const ay = p.includes("n") ? dr.bottom : dr.top;
+  rz={L, p, ax, ay, ar:L.w/L.h};
+  render();
+}
+document.addEventListener("mousemove",ev=>{
+  if(!rz)return;
+  const ar=rz.ar;
+  let w=Math.max(16, Math.abs(ev.clientX-rz.ax));
+  let h=w/ar;
+  // 以锚点为基准定位
+  let x = rz.p.includes("w") ? rz.ax-w : rz.ax;
+  let y = rz.p.includes("n") ? rz.ay-h : rz.ay;
+  w=snap(w); h=snap(h); x=snap(x); y=snap(y);
+  rz.L.w=w; rz.L.h=h; rz.L.x=x; rz.L.y=y;
+  const d=scrEl(cur).querySelector(`.layer[data-id="${rz.L.id}"]`);
+  if(d){ d.style.width=w+"px"; d.style.height=h+"px"; d.style.left=x+"px"; d.style.top=y+"px";
+    d.querySelector(".sz").textContent=`${w}×${h}`;
+    $("#pW").value=w; $("#pH").value=h; $("#pX").value=x; $("#pY").value=y;
+    const sc=Math.round(w/rz.L.ow*100); $("#pScale").value=Math.min(400,Math.max(10,sc)); }
+});
+document.addEventListener("mouseup",()=>rz=null);
+
+// 层级/删除
+function zop(fn){ const L=curLayer(); if(!L)return; fn(L); render(); }
+$("#bUp").onclick=()=>zop(L=>{ L.z++; });
+$("#bDown").onclick=()=>zop(L=>{ L.z=Math.max(1,L.z-1); });
+$("#bFront").onclick=()=>zop(L=>{ L.z=layouts[cur].length+1; });
+$("#bBack").onclick=()=>zop(L=>{ L.z=0; });
+$("#bDel").onclick=()=>{ if(selId==null)return; layouts[cur]=layouts[cur].filter(x=>x.id!==selId); selId=null; render(); };
+// 居中/还原/铺满
+$("#bCH").onclick=()=>zop(L=>{ L.x=snap((CW-L.w)/2); });
+$("#bCV").onclick=()=>zop(L=>{ L.y=snap((CH-L.h)/2); });
+$("#bOrig").onclick=()=>zop(L=>{ const cxp=L.x+L.w/2,cyp=L.y+L.h/2; L.w=L.ow; L.h=L.oh; L.x=snap(cxp-L.w/2); L.y=snap(cyp-L.h/2); });
+$("#bFill").onclick=()=>zop(L=>{ const cxp=L.x+L.w/2,cyp=L.y+L.h/2; L.w=CW; L.h=Math.round(CW/L.ow*L.oh); L.x=0; L.y=snap(cyp-L.h/2); });
+
+// 键盘
+document.addEventListener("keydown",e=>{
+  const L=curLayer(); if(!L)return;
+  if(e.target.tagName==="INPUT")return;
+  const step=e.shiftKey?10:1;
+  if(e.key==="ArrowLeft"){ L.x=snap(L.x-step); render(); e.preventDefault(); }
+  else if(e.key==="ArrowRight"){ L.x=snap(L.x+step); render(); e.preventDefault(); }
+  else if(e.key==="ArrowUp"){ L.y=snap(L.y-step); render(); e.preventDefault(); }
+  else if(e.key==="ArrowDown"){ L.y=snap(L.y+step); render(); e.preventDefault(); }
+  else if(e.key==="Delete"||e.key==="Backspace"){ $("#bDel").onclick(); e.preventDefault(); }
+  else if(e.key==="]"){ L.z++; render(); e.preventDefault(); }
+  else if(e.key==="["){ L.z=Math.max(1,L.z-1); render(); e.preventDefault(); }
+});
+// 点空白处取消选中
+document.querySelectorAll(".screen").forEach(sc=>{
+  sc.addEventListener("mousedown",e=>{ if(e.target===sc){ selId=null; render(); } });
+});
+
+// 网格吸附开关
+$("#btnSnap").onclick=()=>{ SNAP=!SNAP; $("#btnSnap").textContent="网格吸附："+(SNAP?"开":"关");
+  $("#btnSnap").classList.toggle("on",SNAP); render(); };
+
+// 参考图
+$("#btnRef").onclick=()=>$("#fileRef").click();
+$("#fileRef").onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    const sc=scrEl(cur);
+    let ref=sc.querySelector(".reflayer");
+    if(!ref){ ref=document.createElement("img"); ref.className="reflayer"; sc.appendChild(ref); }
+    ref.src=ev.target.result; ref.style.width=CW+"px"; ref.style.height=CH+"px"; ref.style.opacity=0.35;
+    toast("参考图已放好（半透明）。摆完在图层列表点🚫隐藏它");
+  };
+  rd.readAsDataURL(f);
+};
+
+// 清空
+$("#btnClear").onclick=()=>{ if(confirm("清空【"+SCREENS.find(s=>s.key===cur).name+"】所有图层？")){ layouts[cur]=[]; selId=null; render(); } };
+
+// 导出
+$("#btnExport").onclick=()=>{
+  const data=JSON.stringify(layouts,null,1);
+  localStorage.setItem("layout_v1",data);
+  const blob=new Blob([data],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="layout.json"; a.click();
+  toast("已导出 layout.json（也存了本地）");
+};
+
+// 载入
+$("#btnLoad").onclick=()=>$("#fileLoad").click();
+$("#fileLoad").onchange=e=>{
+  const f=e.target.files[0]; if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{ try{ layouts=JSON.parse(ev.target.result);
+    uid=Math.max(0,...Object.values(layouts).flat().map(x=>x.id))+1; selId=null; render(); toast("已载入布局"); }
+    catch(_){ toast("文件格式不对"); } };
+  rd.readAsText(f);
+};
+
+// 初始：尝试从本地恢复
+const saved=localStorage.getItem("layout_v1");
+if(saved){ try{ layouts=JSON.parse(saved); uid=Math.max(0,...Object.values(layouts).flat().map(x=>x.id))+1; }catch(_){} }
+render();
+</script>
+</body>
+</html>

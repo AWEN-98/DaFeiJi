@@ -33,3 +33,16 @@ dist/
 out/
 build/
 *.log
+
+# ===== 临时验证 / 调试 / 备份产物（勿提交） =====
+prototype/_*.html
+prototype/_*.png
+prototype/_*.js
+prototype/assets/**/*_debug*
+scripts/debug_*.png
+*.bak
+*_backup_*.html
+dump_hangar.html
+prototype/mockup_terminal*.html
+nul
+

@@ -1,0 +1,639 @@
+[
+ {
+  "cat": "基地框架/背景",
+  "label": "ui_base_frame",
+  "src": "../assets/v3/ui/special/ui_base_frame.png",
+  "w": 1672,
+  "h": 941
+ },
+ {
+  "cat": "基地框架/背景",
+  "label": "ui_lab_scroll",
+  "src": "../assets/v3/ui/special/ui_lab_scroll.png",
+  "w": 1123,
+  "h": 1401
+ },
+ {
+  "cat": "基地框架/背景",
+  "label": "ui_codex_book",
+  "src": "../assets/v3/ui/special/ui_codex_book.png",
+  "w": 1536,
+  "h": 1024
+ },
+ {
+  "cat": "基地框架/背景",
+  "label": "ui_forge_table",
+  "src": "../assets/v3/ui/special/ui_forge_table.png",
+  "w": 800,
+  "h": 520
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-军械库·禁用",
+  "src": "../assets/v3/ui/sliced/tab_arsenal_disabled.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-军械库·悬停",
+  "src": "../assets/v3/ui/sliced/tab_arsenal_hover.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-军械库·正常",
+  "src": "../assets/v3/ui/sliced/tab_arsenal_normal.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-军械库·选中",
+  "src": "../assets/v3/ui/sliced/tab_arsenal_selected.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-图鉴·禁用",
+  "src": "../assets/v3/ui/sliced/tab_codex_disabled.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-图鉴·悬停",
+  "src": "../assets/v3/ui/sliced/tab_codex_hover.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-图鉴·正常",
+  "src": "../assets/v3/ui/sliced/tab_codex_normal.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-图鉴·选中",
+  "src": "../assets/v3/ui/sliced/tab_codex_selected.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-熔炼台·禁用",
+  "src": "../assets/v3/ui/sliced/tab_forge_disabled.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-熔炼台·悬停",
+  "src": "../assets/v3/ui/sliced/tab_forge_hover.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-熔炼台·正常",
+  "src": "../assets/v3/ui/sliced/tab_forge_normal.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-熔炼台·选中",
+  "src": "../assets/v3/ui/sliced/tab_forge_selected.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-机库·禁用",
+  "src": "../assets/v3/ui/sliced/tab_hangar_disabled.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-机库·悬停",
+  "src": "../assets/v3/ui/sliced/tab_hangar_hover.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-机库·正常",
+  "src": "../assets/v3/ui/sliced/tab_hangar_normal.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-机库·选中",
+  "src": "../assets/v3/ui/sliced/tab_hangar_selected.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-研究院·禁用",
+  "src": "../assets/v3/ui/sliced/tab_lab_disabled.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-研究院·悬停",
+  "src": "../assets/v3/ui/sliced/tab_lab_hover.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-研究院·正常",
+  "src": "../assets/v3/ui/sliced/tab_lab_normal.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "顶部切换(tab)",
+  "label": "顶部-研究院·选中",
+  "src": "../assets/v3/ui/sliced/tab_lab_selected.png",
+  "w": 338,
+  "h": 233
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-弹药·悬停",
+  "src": "../assets/v3/ui/sliced/slot_ammo_hover.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-弹药·正常",
+  "src": "../assets/v3/ui/sliced/slot_ammo_normal.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-弹药·选中",
+  "src": "../assets/v3/ui/sliced/slot_ammo_selected.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-护甲·悬停",
+  "src": "../assets/v3/ui/sliced/slot_armor_hover.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-护甲·正常",
+  "src": "../assets/v3/ui/sliced/slot_armor_normal.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-护甲·选中",
+  "src": "../assets/v3/ui/sliced/slot_armor_selected.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-核心·悬停",
+  "src": "../assets/v3/ui/sliced/slot_core_hover.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-核心·正常",
+  "src": "../assets/v3/ui/sliced/slot_core_normal.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-核心·选中",
+  "src": "../assets/v3/ui/sliced/slot_core_selected.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-武器·悬停",
+  "src": "../assets/v3/ui/sliced/slot_weapon_hover.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-武器·正常",
+  "src": "../assets/v3/ui/sliced/slot_weapon_normal.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "装备槽(slot)",
+  "label": "装备槽-武器·选中",
+  "src": "../assets/v3/ui/sliced/slot_weapon_selected.png",
+  "w": 314,
+  "h": 418
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-主按钮·禁用",
+  "src": "../assets/v3/ui/sliced/btn_primary_disabled.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-主按钮·悬停",
+  "src": "../assets/v3/ui/sliced/btn_primary_hover.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-主按钮·正常",
+  "src": "../assets/v3/ui/sliced/btn_primary_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-主按钮·按下",
+  "src": "../assets/v3/ui/sliced/btn_primary_pressed.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-次按钮·禁用",
+  "src": "../assets/v3/ui/sliced/btn_secondary_disabled.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-次按钮·悬停",
+  "src": "../assets/v3/ui/sliced/btn_secondary_hover.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-次按钮·正常",
+  "src": "../assets/v3/ui/sliced/btn_secondary_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-次按钮·按下",
+  "src": "../assets/v3/ui/sliced/btn_secondary_pressed.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-工具按钮·禁用",
+  "src": "../assets/v3/ui/sliced/btn_utility_disabled.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-工具按钮·悬停",
+  "src": "../assets/v3/ui/sliced/btn_utility_hover.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-工具按钮·正常",
+  "src": "../assets/v3/ui/sliced/btn_utility_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "功能按钮(btn)",
+  "label": "按钮-工具按钮·按下",
+  "src": "../assets/v3/ui/sliced/btn_utility_pressed.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-飞机卡·locked",
+  "src": "../assets/v3/ui/sliced/card_aircraft_locked.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-飞机卡·正常",
+  "src": "../assets/v3/ui/sliced/card_aircraft_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-飞机卡·选中",
+  "src": "../assets/v3/ui/sliced/card_aircraft_selected.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-道具卡·locked",
+  "src": "../assets/v3/ui/sliced/card_item_locked.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-道具卡·正常",
+  "src": "../assets/v3/ui/sliced/card_item_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-道具卡·选中",
+  "src": "../assets/v3/ui/sliced/card_item_selected.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-商店卡·locked",
+  "src": "../assets/v3/ui/sliced/card_shop_locked.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-商店卡·正常",
+  "src": "../assets/v3/ui/sliced/card_shop_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-商店卡·选中",
+  "src": "../assets/v3/ui/sliced/card_shop_selected.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-层级卡·locked",
+  "src": "../assets/v3/ui/sliced/card_tier_locked.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-层级卡·正常",
+  "src": "../assets/v3/ui/sliced/card_tier_normal.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "卡片(card)",
+  "label": "卡片-层级卡·选中",
+  "src": "../assets/v3/ui/sliced/card_tier_selected.png",
+  "w": 384,
+  "h": 342
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-0行0列",
+  "src": "../assets/v3/ui/sliced/icon_00.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-0行1列",
+  "src": "../assets/v3/ui/sliced/icon_01.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-0行2列",
+  "src": "../assets/v3/ui/sliced/icon_02.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-0行3列",
+  "src": "../assets/v3/ui/sliced/icon_03.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-1行0列",
+  "src": "../assets/v3/ui/sliced/icon_10.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-1行1列",
+  "src": "../assets/v3/ui/sliced/icon_11.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-1行2列",
+  "src": "../assets/v3/ui/sliced/icon_12.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-1行3列",
+  "src": "../assets/v3/ui/sliced/icon_13.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-2行0列",
+  "src": "../assets/v3/ui/sliced/icon_20.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-2行1列",
+  "src": "../assets/v3/ui/sliced/icon_21.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-2行2列",
+  "src": "../assets/v3/ui/sliced/icon_22.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-2行3列",
+  "src": "../assets/v3/ui/sliced/icon_23.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-3行0列",
+  "src": "../assets/v3/ui/sliced/icon_30.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-3行1列",
+  "src": "../assets/v3/ui/sliced/icon_31.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-3行2列",
+  "src": "../assets/v3/ui/sliced/icon_32.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "图标(icon)",
+  "label": "图标-3行3列",
+  "src": "../assets/v3/ui/sliced/icon_33.png",
+  "w": 314,
+  "h": 314
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-普通·角标",
+  "src": "../assets/v3/ui/sliced/rarity_common_corner.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-普通·徽记",
+  "src": "../assets/v3/ui/sliced/rarity_common_emblem.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-普通·环",
+  "src": "../assets/v3/ui/sliced/rarity_common_ring.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-史诗·角标",
+  "src": "../assets/v3/ui/sliced/rarity_epic_corner.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-史诗·徽记",
+  "src": "../assets/v3/ui/sliced/rarity_epic_emblem.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-史诗·环",
+  "src": "../assets/v3/ui/sliced/rarity_epic_ring.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-传说·角标",
+  "src": "../assets/v3/ui/sliced/rarity_legendary_corner.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-传说·徽记",
+  "src": "../assets/v3/ui/sliced/rarity_legendary_emblem.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-传说·环",
+  "src": "../assets/v3/ui/sliced/rarity_legendary_ring.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-稀有·角标",
+  "src": "../assets/v3/ui/sliced/rarity_rare_corner.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-稀有·徽记",
+  "src": "../assets/v3/ui/sliced/rarity_rare_emblem.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-稀有·环",
+  "src": "../assets/v3/ui/sliced/rarity_rare_ring.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-优秀·角标",
+  "src": "../assets/v3/ui/sliced/rarity_uncommon_corner.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-优秀·徽记",
+  "src": "../assets/v3/ui/sliced/rarity_uncommon_emblem.png",
+  "w": 251,
+  "h": 418
+ },
+ {
+  "cat": "稀有度(rarity)",
+  "label": "稀有度-优秀·环",
+  "src": "../assets/v3/ui/sliced/rarity_uncommon_ring.png",
+  "w": 251,
+  "h": 418
+ }
+]

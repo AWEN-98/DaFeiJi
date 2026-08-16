@@ -1,0 +1,313 @@
+[
+ {
+  "name": "chain_lightning",
+  "frames": [
+   {
+    "file": "chain_lightning/chain_lightning_00.png",
+    "sheet_x": 0,
+    "sheet_y": 0,
+    "width": 34,
+    "height": 36,
+    "center_offset_x": 63,
+    "center_offset_y": 66
+   },
+   {
+    "file": "chain_lightning/chain_lightning_01.png",
+    "sheet_x": 160,
+    "sheet_y": 0,
+    "width": 72,
+    "height": 89,
+    "center_offset_x": 44,
+    "center_offset_y": 39
+   },
+   {
+    "file": "chain_lightning/chain_lightning_02.png",
+    "sheet_x": 320,
+    "sheet_y": 0,
+    "width": 100,
+    "height": 143,
+    "center_offset_x": 30,
+    "center_offset_y": 12
+   },
+   {
+    "file": "chain_lightning/chain_lightning_03.png",
+    "sheet_x": 480,
+    "sheet_y": 0,
+    "width": 151,
+    "height": 145,
+    "center_offset_x": 4,
+    "center_offset_y": 11
+   },
+   {
+    "file": "chain_lightning/chain_lightning_04.png",
+    "sheet_x": 640,
+    "sheet_y": 0,
+    "width": 157,
+    "height": 166,
+    "center_offset_x": 1,
+    "center_offset_y": 1
+   },
+   {
+    "file": "chain_lightning/chain_lightning_05.png",
+    "sheet_x": 800,
+    "sheet_y": 0,
+    "width": 155,
+    "height": 159,
+    "center_offset_x": 2,
+    "center_offset_y": 4
+   },
+   {
+    "file": "chain_lightning/chain_lightning_06.png",
+    "sheet_x": 960,
+    "sheet_y": 0,
+    "width": 94,
+    "height": 147,
+    "center_offset_x": 33,
+    "center_offset_y": 10
+   }
+  ],
+  "cell_width": 160,
+  "cell_height": 168,
+  "frame_count": 7
+ },
+ {
+  "name": "homing_trail",
+  "frames": [
+   {
+    "file": "homing_trail/homing_trail_00.png",
+    "sheet_x": 0,
+    "sheet_y": 0,
+    "width": 108,
+    "height": 104,
+    "center_offset_x": 34,
+    "center_offset_y": 48
+   },
+   {
+    "file": "homing_trail/homing_trail_01.png",
+    "sheet_x": 176,
+    "sheet_y": 0,
+    "width": 122,
+    "height": 117,
+    "center_offset_x": 27,
+    "center_offset_y": 41
+   },
+   {
+    "file": "homing_trail/homing_trail_02.png",
+    "sheet_x": 352,
+    "sheet_y": 0,
+    "width": 147,
+    "height": 179,
+    "center_offset_x": 14,
+    "center_offset_y": 10
+   },
+   {
+    "file": "homing_trail/homing_trail_03.png",
+    "sheet_x": 528,
+    "sheet_y": 0,
+    "width": 159,
+    "height": 191,
+    "center_offset_x": 8,
+    "center_offset_y": 4
+   },
+   {
+    "file": "homing_trail/homing_trail_04.png",
+    "sheet_x": 704,
+    "sheet_y": 0,
+    "width": 169,
+    "height": 185,
+    "center_offset_x": 3,
+    "center_offset_y": 7
+   },
+   {
+    "file": "homing_trail/homing_trail_05.png",
+    "sheet_x": 880,
+    "sheet_y": 0,
+    "width": 176,
+    "height": 194,
+    "center_offset_x": 0,
+    "center_offset_y": 3
+   },
+   {
+    "file": "homing_trail/homing_trail_06.png",
+    "sheet_x": 1056,
+    "sheet_y": 0,
+    "width": 146,
+    "height": 171,
+    "center_offset_x": 15,
+    "center_offset_y": 14
+   },
+   {
+    "file": "homing_trail/homing_trail_07.png",
+    "sheet_x": 1232,
+    "sheet_y": 0,
+    "width": 126,
+    "height": 98,
+    "center_offset_x": 25,
+    "center_offset_y": 51
+   }
+  ],
+  "cell_width": 176,
+  "cell_height": 200,
+  "frame_count": 8
+ },
+ {
+  "name": "pierce_afterimage",
+  "frames": [
+   {
+    "file": "pierce_afterimage/pierce_afterimage_00.png",
+    "sheet_x": 0,
+    "sheet_y": 0,
+    "width": 112,
+    "height": 29,
+    "center_offset_x": 32,
+    "center_offset_y": 9
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_01.png",
+    "sheet_x": 176,
+    "sheet_y": 0,
+    "width": 134,
+    "height": 29,
+    "center_offset_x": 21,
+    "center_offset_y": 9
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_02.png",
+    "sheet_x": 352,
+    "sheet_y": 0,
+    "width": 145,
+    "height": 41,
+    "center_offset_x": 15,
+    "center_offset_y": 3
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_03.png",
+    "sheet_x": 528,
+    "sheet_y": 0,
+    "width": 169,
+    "height": 35,
+    "center_offset_x": 3,
+    "center_offset_y": 6
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_04.png",
+    "sheet_x": 704,
+    "sheet_y": 0,
+    "width": 176,
+    "height": 26,
+    "center_offset_x": 0,
+    "center_offset_y": 11
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_05.png",
+    "sheet_x": 880,
+    "sheet_y": 0,
+    "width": 169,
+    "height": 29,
+    "center_offset_x": 3,
+    "center_offset_y": 9
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_06.png",
+    "sheet_x": 1056,
+    "sheet_y": 0,
+    "width": 68,
+    "height": 8,
+    "center_offset_x": 54,
+    "center_offset_y": 20
+   },
+   {
+    "file": "pierce_afterimage/pierce_afterimage_07.png",
+    "sheet_x": 1232,
+    "sheet_y": 0,
+    "width": 25,
+    "height": 6,
+    "center_offset_x": 75,
+    "center_offset_y": 21
+   }
+  ],
+  "cell_width": 176,
+  "cell_height": 48,
+  "frame_count": 8
+ },
+ {
+  "name": "burn_dot",
+  "frames": [
+   {
+    "file": "burn_dot/burn_dot_00.png",
+    "sheet_x": 0,
+    "sheet_y": 0,
+    "width": 47,
+    "height": 64,
+    "center_offset_x": 44,
+    "center_offset_y": 48
+   },
+   {
+    "file": "burn_dot/burn_dot_01.png",
+    "sheet_x": 136,
+    "sheet_y": 0,
+    "width": 72,
+    "height": 108,
+    "center_offset_x": 32,
+    "center_offset_y": 26
+   },
+   {
+    "file": "burn_dot/burn_dot_02.png",
+    "sheet_x": 272,
+    "sheet_y": 0,
+    "width": 107,
+    "height": 142,
+    "center_offset_x": 14,
+    "center_offset_y": 9
+   },
+   {
+    "file": "burn_dot/burn_dot_03.png",
+    "sheet_x": 408,
+    "sheet_y": 0,
+    "width": 122,
+    "height": 140,
+    "center_offset_x": 7,
+    "center_offset_y": 10
+   },
+   {
+    "file": "burn_dot/burn_dot_04.png",
+    "sheet_x": 544,
+    "sheet_y": 0,
+    "width": 134,
+    "height": 154,
+    "center_offset_x": 1,
+    "center_offset_y": 3
+   },
+   {
+    "file": "burn_dot/burn_dot_05.png",
+    "sheet_x": 680,
+    "sheet_y": 0,
+    "width": 113,
+    "height": 119,
+    "center_offset_x": 11,
+    "center_offset_y": 20
+   },
+   {
+    "file": "burn_dot/burn_dot_06.png",
+    "sheet_x": 816,
+    "sheet_y": 0,
+    "width": 92,
+    "height": 92,
+    "center_offset_x": 22,
+    "center_offset_y": 34
+   },
+   {
+    "file": "burn_dot/burn_dot_07.png",
+    "sheet_x": 952,
+    "sheet_y": 0,
+    "width": 58,
+    "height": 68,
+    "center_offset_x": 39,
+    "center_offset_y": 46
+   }
+  ],
+  "cell_width": 136,
+  "cell_height": 160,
+  "frame_count": 8
+ }
+]
