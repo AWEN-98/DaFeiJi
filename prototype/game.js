@@ -1331,6 +1331,72 @@
   var enemiesSlowT = 0, enemiesSlowFactor = 1;
   var lootCap = 22;
 
+  // ===== 相位潮汐 Phase Tide（悬圃·蚀空区块 关卡机制，见 design/level-design-xuantu-raid.md）=====
+  var PHASE = { GOLD: 'gold', EMBER: 'ember' };
+  var PHASE_GOLD_DUR = 22, PHASE_EMBER_DUR = 18, PHASE_TRANS = 1.5, EMBER_OPEN_WIN = 8, PILLAR_CD = 60, SAFETY_TIME = 720;
+  var phase = PHASE.GOLD, phaseTimer = PHASE_GOLD_DUR, phaseTransT = 0, emberOpenWindow = 0;
+  var phasePillars = [], gravityRifts = [], secretVault = null;
+  var devourBorrowUsed = false;
+  function enterPhase(p) {
+    phase = p; phaseTransT = PHASE_TRANS;
+    screenFlash = { color: p === PHASE.EMBER ? '#C8642A' : '#C9A24B', a: 0.18 };
+    if (p === PHASE.EMBER) {
+      phaseTimer = PHASE_EMBER_DUR; emberOpenWindow = EMBER_OPEN_WIN;
+      banner = { text: '相位翻转 · 余烬相（撤离窗口开启 · 掉率 ×2）', life: 1.6 };
+      // 进入余烬相：强制撤离点开窗（设计：撤离点仅在余烬相开放窗口前 8s 可发起读条）
+      if (extractPoints) for (var ei = 0; ei < extractPoints.length; ei++) { var ez = extractPoints[ei]; if (ez.state !== 'open') { ez.state = 'open'; ez.timer = EMBER_OPEN_WIN; ez.prog = 0; } }
+    } else {
+      phaseTimer = PHASE_GOLD_DUR; emberOpenWindow = 0;
+      banner = { text: '相位翻转 · 鎏金相（安全 · 蓄能）', life: 1.6 };
+    }
+  }
+  // 相位柱 / 引力裂隙 / 磁锁秘库 布点（随 tier 微调位置密度）
+  function spawnPhaseObjects() {
+    phasePillars = []; gravityRifts = []; secretVault = null;
+    var pAnchors = [
+      { x: WORLD_W * 0.30, y: WORLD_H * 0.36 },
+      { x: WORLD_W * 0.70, y: WORLD_H * 0.30 },
+      { x: WORLD_W * 0.50, y: WORLD_H * 0.62 }
+    ];
+    for (var i = 0; i < pAnchors.length; i++) phasePillars.push({ x: pAnchors[i].x, y: pAnchors[i].y, r: 26, cd: 0 });
+    var gAnchors = [
+      { x: WORLD_W * 0.46, y: WORLD_H * 0.20 },
+      { x: WORLD_W * 0.22, y: WORLD_H * 0.60 },
+      { x: WORLD_W * 0.78, y: WORLD_H * 0.56 }
+    ];
+    for (var j = 0; j < gAnchors.length; j++) gravityRifts.push({ x: gAnchors[j].x, y: gAnchors[j].y, r: 70 });
+    // 磁锁秘库：置于某引力裂隙旁（吞噬借力开门入口）
+    secretVault = { x: gAnchors[0].x + 60, y: gAnchors[0].y + 60, r: 34, opened: false };
+  }
+  // 吞噬借力：把全厅松散战利品吸向玩家 + 触发成就 + 开磁锁秘库
+  function triggerDevourBorrow(b) {
+    for (var i = 0; i < loot.length; i++) {
+      var L = loot[i];
+      var dx = player.x - L.x, dy = player.y - L.y, d = Math.hypot(dx, dy) || 1;
+      var pull = clamp(480 / d, 80, 700);
+      L.vx += (dx / d) * pull; L.vy += (dy / d) * pull;
+    }
+    if (!devourBorrowUsed) {
+      devourBorrowUsed = true;
+      if (!meta.devourBorrow) { meta.devourBorrow = true; saveMeta(); }
+      banner = { text: '以彼之道 · 吞噬借力！', life: 2.4 };
+      floatText(player.x, player.y - 46, '成就解锁：以彼之道', '#C9A24B', 'crit');
+      addTint('#C9A24B', 0.25);
+    }
+    openSecretVault();
+  }
+  function openSecretVault() {
+    if (!secretVault || secretVault.opened) return;
+    secretVault.opened = true;
+    // 代价（设计 §3.1 / §6 决策③：玩家二选一；原型默认 chip 伤，弃装为后续可选）
+    player.hp = Math.max(1, player.hp - player.maxhp * 0.25);
+    player.iframe = Math.max(player.iframe, 0.6);
+    dropLoot(secretVault.x, secretVault.y, 'orange', 'artifact');
+    dropLoot(secretVault.x, secretVault.y, 'orange', 'artifact');
+    banner = { text: '磁锁秘库开启 · 传说保底！(承受吞噬 chip 伤)', life: 2.6 };
+    burst(secretVault.x, secretVault.y, '#E0B84A', 30, { ring: true, ringR: 90, r0: 10 });
+  }
+
   function tierMul() { return 1 + (run.tier - 1) * 0.5; }
   function tierDmgMul() { return 1 + (run.tier - 1) * 0.35; }
 
@@ -1572,6 +1638,13 @@
       var d = Math.hypot(player.x - v.x, player.y - v.y), inRange = d < v.r + 42;
       if (v.type === 'seal') {
         var sealActive = isMobile ? inRange : (inRange && keys['e']);
+        var emberSeal = (phase === PHASE.EMBER);
+        if (!emberSeal) {
+          // 鎏金相：封印锁死，进度清零
+          if (v.state === 'opening') { v.state = 'locked'; v.prog = 0; }
+          if (inRange && sealActive) banner = { text: '封印碑 · 余烬相方可破封', life: 1.0 };
+          continue;
+        }
         if (v.state === 'locked') {
           if (sealActive) { v.state = 'opening'; v.prog = 0; banner = { text: '封印解封中…顶住围堵！', life: 1.4 }; for (var ei = 0; ei < enemies.length; ei++) { if (enemies[ei].vaultGuard === v.idx) { enemies[ei].wake = 0.4; enemies[ei].fireCd = rand(1.6, 2.8); } } }
         } else if (v.state === 'opening') {
@@ -1618,6 +1691,8 @@
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null;
     run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0 };
+    // 相位潮汐初始化（悬圃·蚀空区块）
+    phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
     spawnTimer = 2.5; buffTimer = 0; buffPending = false; buffHold = 0; buffSafe = 0; gameTime = 0; hintTimer = 6; banner = null; runeCount = 0; killForBuff = runeNextReq(0); screenFlash = { color: '#fff', a: 0 };
     enemiesSlowT = 0;
     genMapLayout(); // 空域：清空障碍并设出生点
@@ -1625,6 +1700,7 @@
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
     placeNodes(6 + tier);
     applyEquipped(); // 把已装备法器 + 研究院被动实打实叠到这局属性上
+    spawnPhaseObjects(); // 相位柱 / 引力裂隙 / 磁锁秘库布点
     if (meta.runs === 0) showTip('<b>目标：</b>搜刮战利品 → 撤离带回法器。天空有<b>礁石掩体/隔断墙</b>可当掩护；<b>封印宝箱</b>按住[E]解封（会刷敌）、<b>符文宝箱</b>击破环绕符文柱解锁，都在特殊位置、保底高品质。撤离点<b>限时开放</b>（光柱亮起才能走）', 5);
     vfxLines.length = 0;
     recalcBonds();
@@ -1848,6 +1924,12 @@
     }
     else { var pool = LOOT_NAMES[rarity] || LOOT_NAMES.white; el.name = pool[randi(0, pool.length - 1)]; }
     loot.push(el);
+    // 余烬相掉率 ×2（仅普通战利品，不影响 Boss 遗物/传说）
+    if (phase === PHASE.EMBER && type !== 'bossrelic' && type !== 'legendary_weapon' && type !== 'legendary') {
+      var el2 = {}; for (var _k in el) el2[_k] = el[_k];
+      el2.vx = rand(-18, 18); el2.vy = rand(-18, 18); el2.x = x + rand(-10, 10); el2.y = y + rand(-10, 10); el2.age = 0;
+      loot.push(el2);
+    }
   }
   function burst(x, y, color, n, opt) {
     opt = opt || {};
@@ -2206,7 +2288,7 @@
       taotie: '⚠ 饕餮·吞噬熔炉 来袭！（扇形火柱+吸引）',
       hundun: '⚠ 混沌·终焉虚空 来袭！（螺旋弹幕+旋转甲胄）'
     };
-    boss = { kind: kind, x: WORLD_W / 2, y: -60, hp: hp, maxhp: hp, r: radius[kind], phase: 1, atkCd: 2.6, burstCd: 4.0, flash: 0, wake: 1.2, ang: 0,
+    boss = { kind: kind, x: WORLD_W / 2, y: -60, hp: hp, maxhp: hp, r: radius[kind], phase: 1, atkCd: 2.6, burstCd: 4.0, devourCd: 5, flash: 0, wake: 1.2, ang: 0,
       summonCd: 6, dashCd: 4, dashing: 0, dashWarn: 0, summonWarn: 0, invuln: 0, hitT: 0, hitMag: 0 };
     banner = { text: tips[kind], life: 2.4 };
     // 出场反馈：暗角收拢 + 煞红闪 + 重抖
@@ -2297,6 +2379,17 @@
       for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', 8 * tierDmgMul(), spd, { boss: true }); }
       b.burstCd = b.phase === 3 ? 2.6 : (b.phase === 2 ? 3.4 : 4.4);
     }
+    // 吞噬借力（设计 §1.2）：周期性吞噬——常规为威胁拉拽；玩家处于引力裂隙内则反转成工具（吸宝+开秘库）
+    b.devourCd -= dt;
+    if (b.devourCd <= 0) {
+      b.devourCd = 6;
+      var pull = clamp(1 - d / 520, 0, 1) * 120;
+      player.vx -= (dx / d) * pull * dt * 6; player.vy -= (dy / d) * pull * dt * 6;
+      for (var gri = 0; gri < gravityRifts.length; gri++) {
+        var gr = gravityRifts[gri];
+        if (Math.hypot(player.x - gr.x, player.y - gr.y) < gr.r) { triggerDevourBorrow(b); break; }
+      }
+    }
   }
   function updateHundun(b, dt, dx, dy, d) {
     // 混沌：终局弹幕型，虚空眼为核心，旋转甲胄 + 螺旋/环形弹幕
@@ -2312,9 +2405,18 @@
     }
     b.burstCd -= dt;
     if (b.burstCd <= 0) {
-      var n = b.phase === 3 ? 36 : (b.phase === 2 ? 28 : 20), spd = 130; b.ang += 0.42;
-      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', 7 * tierDmgMul(), spd + i * 2, { boss: true }); }
-      b.burstCd = b.phase === 3 ? 2.0 : (b.phase === 2 ? 2.6 : 3.4);
+      var n = b.phase === 3 ? 36 : (b.phase === 2 ? 28 : 20), spd = 130;
+      if (phase === PHASE.EMBER) {
+        // 余烬相：螺旋弹幕（难、但掉率 ×2）
+        b.ang += 0.42;
+        for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', 7 * tierDmgMul(), spd + i * 2, { boss: true }); }
+        b.burstCd = b.phase === 3 ? 2.0 : (b.phase === 2 ? 2.6 : 3.4);
+      } else {
+        // 鎏金相：环形弹幕（易读、可走位，鼓励用相位柱切回鎏金创造读弹窗口）
+        b.ang += 0.12;
+        for (var i2 = 0; i2 < n; i2++) { var a2 = b.ang + (i2 / n) * 6.28; fireBullet(b.x, b.y, a2, 'enemy', 7 * tierDmgMul(), spd, { boss: true }); }
+        b.burstCd = b.phase === 3 ? 2.4 : (b.phase === 2 ? 3.0 : 3.8);
+      }
     }
   }
   function killBoss() {
@@ -2359,15 +2461,11 @@
     spawnRing(boss.x, boss.y, '#E0B84A', 80);
     floatText(boss.x, boss.y - 50, '★ ' + relic.name, '#FFE9A8', 'crit');
     banner = { text: '★ BOSS 击破！获得遗物「' + relic.name + '」 · 搜刮战利品并撤离带出', life: 3.2 };
-    // 保底：击破后强制开放至少一个撤离点，避免打完无路可撤
-    var anyOpen = extractPoints.some(function (p) { return p.state === 'open'; });
-    if (!anyOpen && extractPoints.length) {
-      var zb = extractPoints[0];
-      zb.state = 'open'; zb.timer = EXTRACT.openDur; zb.prog = 0;
-      banner = { text: '★ BOSS 击破！撤离点 ' + zb.label + ' 已开启，立即撤离带出战利品', life: 3.6 };
-      var zbIdx = extractPoints.indexOf(zb);
-      for (var bei = 0; bei < enemies.length; bei++) { if (enemies[bei].extractGuard === zbIdx) { enemies[bei].wake = 0; enemies[bei].alert = 1; } }
-    }
+    // 设计（§2 合）：破阶段后强制进入余烬开窗，呼应全关主题；并延长窗口给足撤离时间
+    if (phase !== PHASE.EMBER) enterPhase(PHASE.EMBER);
+    emberOpenWindow = Math.max(emberOpenWindow, 30);
+    banner = { text: '★ BOSS 击破！余烬相撤离窗口开启，立即撤离带出战利品', life: 3.6 };
+    for (var bei = 0; bei < enemies.length; bei++) { if (enemies[bei].extractGuard !== undefined) { enemies[bei].wake = 0; enemies[bei].alert = 1; } }
     boss = null;
   }
 
@@ -2467,6 +2565,38 @@
     if (enemiesSlowT > 0) enemiesSlowT -= dt;
     if (hintTimer > 0) hintTimer -= dt;
     if (banner) { banner.life -= dt; if (banner.life <= 0) banner = null; }
+    // ===== 相位潮汐 Phase Tide 状态机 =====
+    if (phaseTransT > 0) {
+      phaseTransT -= dt;
+    } else {
+      phaseTimer -= dt;
+      if (phase === PHASE.GOLD) {
+        if (phaseTimer <= 0) enterPhase(PHASE.EMBER);
+      } else {
+        if (emberOpenWindow > 0) {
+          emberOpenWindow -= dt;
+          if (emberOpenWindow <= 0) { // 余烬开放窗口结束 → 撤离点关闭
+            for (var ezi = 0; ezi < extractPoints.length; ezi++) { var eze = extractPoints[ezi]; if (eze.state === 'open') { eze.state = 'closed'; eze.prog = 0; eze.timer = rand(EXTRACT.gapMin, EXTRACT.gapMax); } }
+          }
+        }
+        if (phaseTimer <= 0) enterPhase(PHASE.GOLD);
+      }
+    }
+    // 相位柱：CD 递减 + 触碰强制翻转
+    for (var ppi = 0; ppi < phasePillars.length; ppi++) {
+      var pp = phasePillars[ppi];
+      if (pp.cd > 0) pp.cd -= dt;
+      if (pp.cd <= 0 && Math.hypot(player.x - pp.x, player.y - pp.y) < pp.r + 34) {
+        pp.cd = PILLAR_CD; enterPhase(phase === PHASE.GOLD ? PHASE.EMBER : PHASE.GOLD);
+        banner = { text: '相位柱触发 · 强制翻转！', life: 1.4 };
+      }
+    }
+    // 保底撤离：超时强制开窗（core-loop §3.3）
+    if (gameTime > SAFETY_TIME) {
+      if (phase !== PHASE.EMBER) enterPhase(PHASE.EMBER);
+      emberOpenWindow = Math.max(emberOpenWindow, 9999);
+      for (var szi = 0; szi < extractPoints.length; szi++) { var szc = extractPoints[szi]; if (szc.state !== 'open') { szc.state = 'open'; szc.timer = 9999; szc.prog = 0; } }
+    }
     if (tipTimer > 0) { tipTimer -= dt; if (tipTimer <= 0 && tipEl) tipEl.style.display = 'none'; }
     // 天罚（雷系4阶）：每 skyCd 秒全屏闪电
     if (player.skyStrike > 0) { player.skyT -= dt; if (player.skyT <= 0) { player.skyT = player.skyCd; skyStrikeAll(); } }
@@ -2815,7 +2945,9 @@
     if (extractPoints && extractPoints.length) {
       for (var ei2 = 0; ei2 < extractPoints.length; ei2++) {
         var ez = extractPoints[ei2];
-        if (ez.state !== 'open') continue;
+        // 设计：撤离点仅在余烬相开放窗口（前 8s）可发起读条
+        var phaseUsable = (phase === PHASE.EMBER && emberOpenWindow > 0);
+        if (ez.state !== 'open' || !phaseUsable) continue;
         var inside = player.x > ez.x && player.x < ez.x + ez.w && player.y > ez.y && player.y < ez.y + ez.h;
         if (inside) {
           exfil = true;
@@ -4243,6 +4375,44 @@
     }
     if (!isMobile) { ctx.fillStyle = '#8B95A0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Q 键使用丹药', bx + totalW / 2, by - 4); ctx.textAlign = 'left'; }
   }
+  function drawPhaseObjects() {
+    // 引力裂隙（吞噬借力触发点）
+    for (var gi = 0; gi < gravityRifts.length; gi++) {
+      var g = gravityRifts[gi];
+      ctx.save(); ctx.translate(g.x, g.y);
+      var pr = g.r * (0.9 + Math.sin(gameTime * 2 + gi) * 0.06);
+      var gg = ctx.createRadialGradient(0, 0, 0, 0, 0, pr);
+      gg.addColorStop(0, 'rgba(176,111,208,0.05)');
+      gg.addColorStop(0.6, 'rgba(176,111,208,0.22)');
+      gg.addColorStop(1, 'rgba(176,111,208,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(0, 0, pr, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(176,111,208,0.5)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, pr, 0, 7); ctx.stroke();
+      ctx.rotate(gameTime * 1.2);
+      ctx.strokeStyle = 'rgba(199,155,232,0.4)'; ctx.lineWidth = 1.5;
+      for (var sp = 0; sp < 3; sp++) { ctx.beginPath(); ctx.arc(0, 0, pr * (0.3 + sp * 0.22), sp, sp + 4.2); ctx.stroke(); }
+      ctx.restore();
+    }
+    // 相位柱（触碰强制翻转，CD 显示）
+    for (var pi = 0; pi < phasePillars.length; pi++) {
+      var p = phasePillars[pi];
+      ctx.save(); ctx.translate(p.x, p.y);
+      var ready = p.cd <= 0;
+      var col = phase === PHASE.EMBER ? '#C8642A' : '#C9A24B';
+      ctx.globalAlpha = ready ? 1 : 0.4;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, p.r * 0.5, p.r * 1.1, p.r * 0.5, 0, 0, 7); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 7); ctx.stroke();
+      ctx.fillStyle = col; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(ready ? '⇄' : Math.ceil(p.cd) + '', 0, 6); ctx.textAlign = 'left';
+      ctx.globalAlpha = 1; ctx.restore();
+    }
+    // 磁锁秘库（吞噬借力开门入口）
+    if (secretVault) {
+      ctx.save(); ctx.translate(secretVault.x, secretVault.y);
+      var svcol = secretVault.opened ? '#8FD8C0' : '#E0B84A';
+      ctx.strokeStyle = svcol; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, secretVault.r, 0, 7); ctx.stroke();
+      ctx.fillStyle = svcol; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(secretVault.opened ? '已开' : '秘库', 0, 5); ctx.textAlign = 'left';
+      ctx.restore();
+    }
+  }
   function drawHUD() {
     function hp(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke(); }
     var lootVal = run.loot.reduce(function (s, it) { return s + RARVAL[RAR.indexOf(it.rarity)]; }, 0);
@@ -4263,6 +4433,17 @@
         hp(W / 2 - ww / 2 - 16, 48, ww + 32, 24, 12);
         ctx.fillStyle = '#E0B84A'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(wt, W / 2, 64); ctx.textAlign = 'left';
       }
+    }
+    // 相位潮汐指示（左上角）
+    {
+      var pcol = phase === PHASE.EMBER ? '#C8642A' : '#C9A24B';
+      var plabel = phase === PHASE.EMBER ? '余烬相' : '鎏金相';
+      var ptxt = plabel + ' ' + Math.ceil(Math.max(phaseTransT, phaseTimer)) + 's' + (phase === PHASE.EMBER ? (' · 撤离窗 ' + Math.ceil(Math.max(0, emberOpenWindow)) + 's') : ' · 蓄能');
+      ctx.font = 'bold 13px sans-serif';
+      var pw = ctx.measureText(ptxt).width;
+      ctx.fillStyle = 'rgba(6,12,24,0.74)'; ctx.strokeStyle = pcol; ctx.lineWidth = 1;
+      hp(10, 10, pw + 24, 26, 13);
+      ctx.fillStyle = pcol; ctx.textAlign = 'left'; ctx.fillText(ptxt, 22, 28); ctx.textAlign = 'left';
     }
     // 左下：状态面板（HP + 护盾）
     var lpW = isMobile ? 180 : 236, lpH = isMobile ? 52 : 66;
@@ -4339,6 +4520,17 @@
       hp(W / 2 - vtw / 2 - 18, vpY, vtw + 36, isMobile ? 24 : 30, 15);
       ctx.fillStyle = nearV.type === 'seal' ? '#E0B84A' : '#C79BE8'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(vtxt, W / 2, vpY + (isMobile ? 16 : 20)); ctx.textAlign = 'left';
     }
+    // 相位柱交互提示（就近显示）
+    var nearP = null, npd = 1e9;
+    for (var _pp = 0; _pp < phasePillars.length; _pp++) { var _p = phasePillars[_pp]; var _dd = Math.hypot(player.x - _p.x, player.y - _p.y); if (_dd < _p.r + 44 && _dd < npd) { npd = _dd; nearP = _p; } }
+    if (nearP) {
+      var ptxt2 = nearP.cd <= 0 ? '相位柱 · 触碰强制翻转相位' : ('相位柱冷却 ' + Math.ceil(nearP.cd) + 's');
+      ctx.font = 'bold 13px sans-serif'; var ptw = ctx.measureText(ptxt2).width;
+      ctx.fillStyle = 'rgba(6,12,24,0.78)'; ctx.strokeStyle = '#C9A24B';
+      var ppy = isMobile ? H - 210 : H - 140;
+      hp(W / 2 - ptw / 2 - 16, ppy, ptw + 32, 26, 13);
+      ctx.fillStyle = '#E0B84A'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(ptxt2, W / 2, ppy + 18); ctx.textAlign = 'left';
+    }
     // 底部提示行（胶囊底）
     if (hintTimer > 0 && !isMobile) {
       ctx.globalAlpha = clamp(hintTimer / 2, 0, 1);
@@ -4404,7 +4596,7 @@
     ctx.save();
     if (k > 0) ctx.translate(rand(-k, k), rand(-k, k)); // 随机短促偏移：一瞬轻晃，不持续不飘（移动跟手）
     ctx.translate(-cam.x, -cam.y); // 相机：把世界坐标平移到屏幕
-    drawGrid(); drawObstacles(); drawNodes(); drawVaults(); drawTotems(); drawLoot(); drawRift(); drawExtract(); drawEnemies(); if (boss) drawBoss(); drawVfxLines(); drawBulletTrails(); drawBullets(); drawParticles(); drawVfxSprites(); drawPlayer();
+    drawGrid(); drawObstacles(); drawNodes(); drawVaults(); drawTotems(); drawLoot(); drawRift(); drawExtract(); drawPhaseObjects(); drawEnemies(); if (boss) drawBoss(); drawVfxLines(); drawBulletTrails(); drawBullets(); drawParticles(); drawVfxSprites(); drawPlayer();
     ctx.restore();
     drawHUD();
     drawEdgeArrows();
