@@ -2146,7 +2146,7 @@
     });
     document.getElementById('mergeLegend').innerHTML =
       '白10 · 绿25 · 蓝60 · 紫140 · 橙320（越稀有越值钱，撤离带回越多）<br>' +
-      '点 2 个同色 → 2合1 升阶；凑齐 3 个同色可点下方「⚡3合1」升级并+随机词条';
+      '点 2 个同色 → 2合1 <b>必升一阶（安全）</b>；凑齐 3 个同色 → ⚡3合1 <b>赌博</b>：大概率升1阶 / 小概率跳2阶 / 极小概率跳3阶，但 <b>15% 湮灭（三件全失）</b>，最高只到紫（金不可熔）';
     // 3合1 按钮可用状态
     var can3 = false;
     for (var ri = 0; ri < 4; ri++) { if (run.loot.filter(function (it) { return it.rarity === RAR[ri]; }).length >= 3) { can3 = true; break; } }
@@ -2187,19 +2187,31 @@
   }
   function pickName(rar) { var pool = LOOT_NAMES[rar] || LOOT_NAMES.white; return pool[randi(0, pool.length - 1)]; }
   function threeMergeFrom(idxs) {
-    var ri = RAR.indexOf(run.loot[idxs[0]].rarity);
+    var baseRar = run.loot[idxs[0]].rarity;
     var sl3 = run.loot[idxs[0]].slot || pickSlot();
+    var ri = RAR.indexOf(baseRar);
+    if (ri < 0 || ri >= FG_CAP) {
+      banner = { text: '史诗不可熔·返还', life: 1.3 };
+      return; // 先判上限再移除：零损失返还
+    }
     idxs.sort(function (a, b) { return b - a; }).forEach(function (k) { run.loot.splice(k, 1); });
-    run.loot.push({ rarity: RAR[ri + 1], name: pickName(RAR[ri + 1]), slot: sl3 });
+    var roll = rollForge3(baseRar);
+    if (roll.state === 'destroy') {
+      burst(player.x, player.y, '#C94F4F', 16);
+      try { tone(110, 0.32, 'sawtooth', 0.14); } catch (e) {}
+      banner = { text: '⚡三合失败·湮灭！', life: 1.6 };
+      return;
+    }
+    run.loot.push({ rarity: roll.out, name: pickName(roll.out), slot: sl3 });
     // 随机小词条（微小永久增益本局）
     var affix = randi(0, 3);
     if (affix === 0) player.atkMult *= 1.05;
     else if (affix === 1) player.fireRate = Math.min(15, player.fireRate * 1.05);
     else if (affix === 2) { player.maxhp += 8; player.hp += 8; }
     else player.bulletSpeed *= 1.05;
-    burst(player.x, player.y, RARCOL[RAR[ri + 1]], 14);
-    AudioSys.sfx.merge();
-    banner = { text: '⚡3合1 → ' + RARNAME[RAR[ri + 1]] + ' (+词条)', life: 1.6 };
+    burst(player.x, player.y, RARCOL[roll.out], 14);
+    try { AudioSys.sfx.merge(); } catch (e) {}
+    banner = { text: '⚡3合1 → ' + RARNAME[roll.out] + (roll.out !== baseRar ? '（跳阶！+词条）' : ' (+词条)'), life: 1.6 };
   }
   function doThreeMerge() {
     for (var ri = 0; ri < 4; ri++) {
@@ -5301,6 +5313,40 @@
     renderForge();
   }
   // 熔炉预览：根据当前投料推衍产物（与按钮校验规则一致）
+  // ---------- 熔炼台·三合概率规则（2026-08-17 重做）----------
+  // 三合一 = 概率赌博 + 湮灭惩罚；最高产出锁「史诗(紫)」，传说(金)不可熔。
+  var FG_W_DESTROY = 0.15;   // 湮灭：三件材料全失、无产出
+  var FG_W1 = 0.76;          // 跳 +1 阶（大概率）
+  var FG_W2 = 0.075;         // 跳 +2 阶（小概率）
+  var FG_W3 = 0.015;         // 跳 +3 阶（极小极小概率）
+  var FG_CAP = RAR.length - 2; // = 3 紫；产出封顶
+  function rollForge3(baseRar) {
+    var ri = RAR.indexOf(baseRar);
+    if (ri < 0 || ri >= FG_CAP) return { state: 'maxed' }; // 紫/橙/非法 → 不可熔
+    var r = Math.random();
+    if (r < FG_W_DESTROY) return { state: 'destroy' };
+    var rr = r - FG_W_DESTROY;
+    var d = (rr < FG_W1) ? 1 : (rr < FG_W1 + FG_W2) ? 2 : 3;
+    var out = Math.min(ri + d, FG_CAP);
+    return { state: 'ok', out: RAR[out] };
+  }
+  function fmtForge3Odds(baseRar) {
+    var ri = RAR.indexOf(baseRar);
+    var dist = { destroy: FG_W_DESTROY };
+    [1, 2, 3].forEach(function (d) {
+      var r = Math.min(ri + d, FG_CAP);
+      if (r >= RAR.length) return;
+      var w = d === 1 ? FG_W1 : (d === 2 ? FG_W2 : FG_W3);
+      dist[RAR[r]] = (dist[RAR[r]] || 0) + w;
+    });
+    var parts = [];
+    RAR.forEach(function (rar) {
+      if (rar === 'orange') return;
+      if (dist[rar]) parts.push(RARNAME[rar].charAt(0) + Math.round(dist[rar] * 100) + '%');
+    });
+    parts.push('湮灭' + Math.round(FG_W_DESTROY * 100) + '%');
+    return parts.join(' · ');
+  }
   function forgePreview(arts) {
     if (arts.length === 0) return { ready: false, title: '熔炉', sub: '点选左侧材料投料' };
     var slot = arts[0].slot;
@@ -5310,14 +5356,17 @@
     if (arts.length === 2) {
       if (sameSlot && arts[0].rarity === arts[1].rarity) {
         var ri = RAR.indexOf(arts[0].rarity);
-        if (ri >= 0 && ri < RAR.length - 1) return { ready: true, title: RARNAME[RAR[ri + 1]] + '·' + SLOTNAME[slot], sub: '二合一 · 升稀一阶', color: RARCOL[RAR[ri + 1]] };
+        if (ri >= 0 && ri < RAR.length - 1) return { ready: true, title: RARNAME[RAR[ri + 1]] + '·' + SLOTNAME[slot], sub: '二合一 · 必升一阶（安全）', color: RARCOL[RAR[ri + 1]] };
       }
       return { ready: false, title: '无法合成', sub: '需同槽位·同稀有度 ×2' };
     }
     if (arts.length === 3) {
       if (sameSlot) {
         var ri2 = RAR.indexOf(arts[0].rarity);
-        if (ri2 >= 0 && ri2 < RAR.length - 1) return { ready: true, title: RARNAME[RAR[ri2 + 1]] + '·' + SLOTNAME[slot], sub: '三合一 · 升阶 + 额外词条', color: RARCOL[RAR[ri2 + 1]] };
+        if (ri2 >= 0 && ri2 < RAR.length - 1) {
+          if (ri2 >= FG_CAP) return { ready: false, title: '已达上限', sub: '史诗不可熔炼·勿熔', color: RARCOL.purple };
+          return { ready: true, title: '三合·赌博升稀', sub: fmtForge3Odds(arts[0].rarity), color: RARCOL[Math.min(ri2 + 1, FG_CAP)] };
+        }
       }
       return { ready: false, title: '无法合成', sub: '需同槽位 ×3' };
     }
@@ -5331,22 +5380,37 @@
     var allSame = arts.every(function (a) { return a.slot === slot; });
     var notOrange = arts.every(function (a) { return a.rarity !== 'orange'; });
     if (!allSame || !notOrange) { forgeSel = []; renderForge(); return false; }
-    var ri = RAR.indexOf(arts[0].rarity);
-    if (ri < 0 || ri >= RAR.length - 1) { forgeSel = []; renderForge(); return false; }
-    // 移除三件材料
+    var baseRar = arts[0].rarity;
+    var ri = RAR.indexOf(baseRar);
+    if (ri < 0 || ri >= FG_CAP) {
+      banner = { text: '史诗已达熔炼上限·不可熔', life: 1.4 };
+      forgeSel = []; renderForge(); return false;
+    }
+    var roll = rollForge3(baseRar);
+    if (roll.state === 'destroy') {
+      // 湮灭惩罚：三件材料全失、无产出
+      forgeSel.forEach(function (id) { removeArt(id); });
+      forgeSel = []; saveMeta(); renderBase();
+      burst(W / 2, H / 2, '#C94F4F', 16);
+      try { tone(110, 0.32, 'sawtooth', 0.14); } catch (e) {}
+      banner = { text: '熔炼失败·材料湮灭！', life: 1.7 };
+      return true;
+    }
+    // 移除三件材料 → 生成跳阶法器（附带额外随机词条）
     forgeSel.forEach(function (id) { removeArt(id); });
-    // 生成升阶法器（3合1 → 升一阶，附带额外随机词条）
-    var newArt = makeArtifact(slot, RAR[ri + 1]);
-    // 额外加一条随机小词条
+    var newArt = makeArtifact(slot, roll.out);
     var bonusMods = [
       { dmg: 2 }, { maxhp: 10 }, { fireRate: 0.3 }, { speed: 0.2 },
       { critChance: 0.05 }, { pierce: 1 }, { dodgeChance: 0.03 }
     ];
     var bm = bonusMods[randi(0, bonusMods.length - 1)];
     for (var k in bm) newArt.mods[k] = (newArt.mods[k] || 0) + bm[k];
-    newArt.name = RARNAME[RAR[ri + 1]] + '·' + SLOTNAME[slot] + '(三合)';
+    newArt.name = RARNAME[roll.out] + '·' + SLOTNAME[slot] + '(三合)';
     meta.arsenal.push(newArt);
     forgeSel = [];
+    burst(W / 2, H / 2, RARCOL[roll.out], 16);
+    try { AudioSys.sfx.merge(); } catch (e) {}
+    banner = { text: '⚡三合 → ' + RARNAME[roll.out] + (roll.out !== baseRar ? '（跳阶！）' : ''), life: 1.6 };
     saveMeta();
     renderBase();
     return true;
