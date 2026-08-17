@@ -998,6 +998,16 @@
     ctx.drawImage(im, sx, sy, fw, fh, -w / 2, -h / 2, w, h);
     ctx.restore(); return true;
   }
+  // 覆盖缩放绘制精灵（object-fit: cover），不拉伸；调用方负责裁剪区域
+  function blitCover(key, cx, cy, w, h) {
+    var im = IMG[key];
+    if (!im || !im.complete || im.naturalWidth === 0) return false;
+    var sw = im.naturalWidth, sh = im.naturalHeight;
+    var scale = Math.max(w / sw, h / sh);
+    var dw = sw * scale, dh = sh * scale;
+    ctx.drawImage(im, cx - dw / 2, cy - dh / 2, dw, dh);
+    return true;
+  }
   var A1 = 'assets/v1/sprites/';
   loadImg('ply_a', A1 + 'player/ply_cruiser_a.png');
   loadImg('ply_a_sheet', 'assets/v3/player/qingfalcon_idle_sheet.png');
@@ -1033,6 +1043,9 @@
   loadImg('terminal_active', A1 + 'environment/obj_terminal_active.png');
   loadImg('terminal_idle', A1 + 'environment/obj_terminal_idle.png');
   loadImg('vault_door', A1 + 'environment/env_vault_door.png');
+  // 地图障碍真精灵（岩石残垣 / 掩体块）—— 见 drawObstacles
+  loadImg('env_ruin_barrier', A1 + 'environment/env_ruin_barrier.png');
+  loadImg('env_cover_block', A1 + 'environment/env_cover_block.png');
   // 法阵：封印宝箱 / 撤离点共用（金/青）
   loadImg('seal_circle_gold', 'assets/v4/vfx/seal_circle_gold.png');
   loadImg('seal_circle_teal', 'assets/v4/vfx/seal_circle_teal.png');
@@ -3709,27 +3722,36 @@
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
       if (ob.type === 'rock') {
+        // 残垣屏障：真精灵 env_ruin_barrier，圆形裁剪 + 覆盖缩放（不拉伸）
         ctx.save(); ctx.translate(ob.x, ob.y);
-        ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.ellipse(0, ob.r * 0.5, ob.r * 1.02, ob.r * 0.5, 0, 0, 7); ctx.fill(); // 接地阴影
-        ctx.beginPath();
-        for (var v = 0; v < ob.verts.length; v++) { var p = ob.verts[v]; if (v === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
-        ctx.closePath();
-        ctx.fillStyle = '#39404e'; ctx.fill();
+        ctx.globalAlpha = 0.30; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(0, ob.r * 0.55, ob.r * 1.02, ob.r * 0.5, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.restore();
+        var rd = ob.r * 2.2;
+        ctx.save(); ctx.translate(ob.x, ob.y); ctx.beginPath(); ctx.arc(0, 0, ob.r, 0, 7); ctx.clip();
+        if (!blitCover('env_ruin_barrier', 0, 0, rd, rd)) {
+          ctx.fillStyle = '#39404e'; ctx.beginPath();
+          for (var v = 0; v < ob.verts.length; v++) { var p = ob.verts[v]; if (v === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
+          ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+        ctx.save(); ctx.translate(ob.x, ob.y);
         if (glowOn) { ctx.shadowColor = '#6b7686'; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = '#5b6678'; ctx.lineWidth = 2; ctx.stroke();
-        if (glowOn) ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(150,170,190,0.18)'; ctx.beginPath(); ctx.arc(-ob.r * 0.25, -ob.r * 0.3, ob.r * 0.42, 0, 7); ctx.fill(); // 顶部高光
+        ctx.strokeStyle = '#7a8699'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, ob.r + 1.5, 0, 7); ctx.stroke();
         ctx.restore();
       } else if (ob.type === 'wall') {
+        // 掩体块：真精灵 env_cover_block，矩形裁剪 + 覆盖缩放（细长墙不被拉伸变形）
+        var wx = ob.x - ob.hw, wy = ob.y - ob.hh, ww = ob.hw * 2, wh = ob.hh * 2;
+        ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(wx, wy + 6, ww, wh); ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
+        if (!blitCover('env_cover_block', wx + ww / 2, wy + wh / 2, ww, wh)) {
+          var grd = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+          grd.addColorStop(0, '#4a5260'); grd.addColorStop(1, '#2c323d');
+          ctx.fillStyle = grd; ctx.fillRect(wx, wy, ww, wh);
+        }
+        ctx.restore();
         ctx.save();
-        ctx.fillStyle = 'rgba(0,0,0,0.30)'; ctx.fillRect(ob.x - ob.hw, ob.y - ob.hh + 6, ob.hw * 2, ob.hh * 2); // 接地阴影
-        var grd = ctx.createLinearGradient(ob.x, ob.y - ob.hh, ob.x, ob.y + ob.hh);
-        grd.addColorStop(0, '#4a5260'); grd.addColorStop(1, '#2c323d');
-        ctx.fillStyle = grd; ctx.fillRect(ob.x - ob.hw, ob.y - ob.hh, ob.hw * 2, ob.hh * 2);
         if (glowOn) { ctx.shadowColor = '#6b7686'; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = '#6b7686'; ctx.lineWidth = 2; ctx.strokeRect(ob.x - ob.hw, ob.y - ob.hh, ob.hw * 2, ob.hh * 2);
-        if (glowOn) ctx.shadowBlur = 0;
-        ctx.fillStyle = 'rgba(170,190,210,0.16)'; ctx.fillRect(ob.x - ob.hw + 3, ob.y - ob.hh + 3, ob.hw * 2 - 6, Math.min(8, ob.hh)); // 顶部高光
+        ctx.strokeStyle = '#7a8699'; ctx.lineWidth = 2; ctx.strokeRect(wx, wy, ww, wh);
         ctx.restore();
       } else { // 灵脉裂隙：持续伤害区
         var pulse = 0.5 + Math.sin(gameTime * 3 + ob.pulse) * 0.25;
