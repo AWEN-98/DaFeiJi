@@ -1604,35 +1604,38 @@
     .hall-brand .hall-nav .tab { flex: 1 1 0; height: 30px; font-size: 11px; aspect-ratio: auto; }
     .hall-brand .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
-    /* 军械库竖屏彻底重写（2026-08-19 续）：用户指定 column wrapper 上下分区 —— 上半：左槽位 34% + 右仓库 66%；下半：底部吸底【装配】【卸下】【回收】三按钮并排；每张槽位改为垂直卡片，隐藏槽内冗余卸下按钮（用全局底部栏），彻底消除"卸下铸"式文字穿插 */
-    #tab-arsenal.on { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
-    /* 上半区第一行：左槽位 34% */
-    #tab-arsenal .mf-slots { flex: 0 0 34% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
+    /* 军械库竖屏（2026-08-19 Boss 指令）：装备槽改顶部横排 4 等分 · 左右对称；仓库与操作在下 */
+    #tab-arsenal.on { flex-direction: column !important; flex-wrap: nowrap !important; align-items: stretch !important; gap: 6px !important; }
+    /* 装备槽：顶部整行横排 */
+    #tab-arsenal .mf-slots { flex: 0 0 auto !important; width: 100% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
     #tab-arsenal .mf-slots .mf-title { font-size: 13px; }
     #tab-arsenal .mf-slots .mf-sub { display: none; }
-    #tab-arsenal .mf-slots .mf-body { overflow-y: auto; overflow-x: hidden; min-height: 0; padding: 0; }
-    /* 槽位列表：4 张垂直卡片等分顶满 */
-    #tab-arsenal #equipSlots { display: flex !important; flex-direction: column !important; grid-template-columns: none !important; gap: 4px !important; height: 100% !important; justify-content: space-between; align-items: stretch; padding: 0 !important; }
-    /* 每张槽位：垂直卡片（图标居中占主视觉，信息单行贴底，卸下按钮让位给全局底部栏） */
+    #tab-arsenal .mf-slots .mf-body { overflow: visible !important; min-height: 0; padding: 0; }
+    /* 4 槽横排等分，左右对称 */
+    #tab-arsenal #equipSlots { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; flex-direction: row !important; gap: 4px !important; height: auto !important; justify-content: space-between !important; align-items: stretch !important; padding: 0 !important; }
+    /* 每张槽位：紧凑垂直卡片，图标为主 */
     #tab-arsenal .eq-slot {
-      flex: 1 1 0 !important;
-      min-height: 0 !important;
+      flex: 1 1 auto !important;
+      min-height: 86px !important;
+      height: auto !important;
       width: 100% !important;
       flex-direction: column !important;
       align-items: center !important;
-      justify-content: center !important;
+      justify-content: flex-start !important;
       padding: 4px 2px !important;
-      gap: 3px !important;
+      gap: 2px !important;
       overflow: hidden !important;
     }
-    #tab-arsenal .eq-icon { width: 86% !important; height: auto !important; flex: 1 1 auto !important; max-width: 76px !important; aspect-ratio: 1/1; }
+    #tab-arsenal .eq-icon { width: 56px !important; height: 56px !important; flex: 0 0 auto !important; max-width: none !important; aspect-ratio: 1/1; }
     #tab-arsenal .eq-info { flex: 0 0 auto !important; width: 100% !important; align-items: center !important; text-align: center !important; padding-top: 0 !important; gap: 1px !important; min-width: 0 !important; }
     #tab-arsenal .eq-type { font-size: 9px !important; letter-spacing: 0; }
+    #tab-arsenal .eq-rarity { justify-content: center !important; }
     #tab-arsenal .eq-item-name { font-size: 10px !important; max-width: 100% !important; line-height: 1.2; }
-    /* 隐藏每张槽位卡片内的卸下按钮（避免窄列里与槽位类型标签重叠 —— 卸下用底部操作栏的全局按钮） */
+    #tab-arsenal .eq-rarity .rarity-badge { width: 10px !important; height: 16px !important; }
+    /* 隐藏每张槽位卡片内的卸下按钮（用底部操作栏的全局按钮） */
     #tab-arsenal .eq-off { display: none !important; }
-    /* 上半区第一行：右仓库 66% */
-    #tab-arsenal .mf-stock { flex: 1 1 66% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
+    /* 仓库：占满剩余宽度 */
+    #tab-arsenal .mf-stock { flex: 1 1 auto !important; width: 100% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
     #tab-arsenal .mf-stock .mf-title { font-size: 13px; }
     #tab-arsenal .mf-stock .mf-sub { display: none; }
     #tab-arsenal .mf-stock .mf-body { overflow-y: auto !important; min-height: 0; padding: 0; }
@@ -1643,9 +1646,10 @@
     #tab-arsenal .inv-row .rar { font-size: 9px !important; white-space: normal; }
     #tab-arsenal .inv-row .mods { font-size: 9px !important; line-height: 1.35; }
     #tab-arsenal .inv-row .rec { font-size: 10px; }
-    /* 下半区第二行：吸底操作条，三金属按钮并排，禁止文字穿插 */
+    /* 操作区：吸底三按钮并排 */
     #tab-arsenal .mf-ops {
-      flex: 0 0 100% !important;
+      flex: 0 0 auto !important;
+      width: 100% !important;
       min-height: 0;
       position: relative !important;
       bottom: auto !important;
