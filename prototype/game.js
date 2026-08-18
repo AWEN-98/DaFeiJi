@@ -6802,39 +6802,51 @@
     renderForge();
   }
   // 熔炉预览：根据当前投料推衍产物（与按钮校验规则一致）
-  // ---------- 熔炼台·三合概率规则（2026-08-17 重做）----------
-  // 三合一 = 概率赌博 + 湮灭惩罚；最高产出锁「史诗(紫)」，传说(金)不可熔。
-  var FG_W_DESTROY = 0.15;   // 湮灭：三件材料全失、无产出
-  var FG_W1 = 0.76;          // 跳 +1 阶（大概率）
-  var FG_W2 = 0.075;         // 跳 +2 阶（小概率）
-  var FG_W3 = 0.015;         // 跳 +3 阶（极小极小概率）
-  var FG_CAP = RAR.length - 2; // = 3 紫；产出封顶
+  // ---------- 熔炼台·自由合成（跨部位·跨品质）期望值点数矩阵（2026-08-19 重构）----------
+  // Boss 指定品质点数表（common=白 … legendary=金）；与现有 RAR 键 white/green/blue/purple/orange 一一对应。
+  var QUALITY_SCORE = { common: 1, fine: 2, rare: 4, epic: 8, legendary: 16 };
+  var RAR_TO_QKEY = { white: 'common', green: 'fine', blue: 'rare', purple: 'epic', orange: 'legendary' };
+  var QKEY_TO_RAR = { common: 'white', fine: 'green', rare: 'blue', epic: 'purple', legendary: 'orange' };
+  function qScore(rar) { return QUALITY_SCORE[RAR_TO_QKEY[rar]] || 0; } // 任一品质点数
+  // 品质阶数（0..4），用于期望值升阶计算
+  var TIER_OF = { white: 0, green: 1, blue: 2, purple: 3, orange: 4 };
+  // 产出品阶上限：默认允许传说(legendary, 金=阶4)；若经济需收紧改为 3（封顶史诗）
+  var FORGE_CAP_TIER = 4;
+  // 湮灭惩罚：保留 15% 三件全失（Boss 指定保留赌博机制）；确定性产出阶仍按期望值给定
+  var FG_W_DESTROY = 0.15;
+  // 期望值判定：三件阶数均值 +0.5 偏置四舍五入 → 期望产出阶（确定性）；跨品质按点数权重
+  // 产出槽位：多数部位优先，平局取点数(稀有度)最高件
+  function forgeExpected(arts) {
+    var sumT = 0, sumScore = 0;
+    arts.forEach(function (a) { sumT += (TIER_OF[a.rarity] || 0); sumScore += qScore(a.rarity); });
+    var avgT = sumT / Math.max(1, arts.length);
+    var outTier = Math.round(avgT + 0.5);
+    if (outTier < 0) outTier = 0;
+    if (outTier > FORGE_CAP_TIER) outTier = FORGE_CAP_TIER;
+    var outRar = RAR[outTier];
+    // 槽位：多数部位优先，平局取点数最高件
+    var bySlot = {};
+    arts.forEach(function (a) { bySlot[a.slot] = (bySlot[a.slot] || 0) + 1; });
+    var bestSlot = arts[0].slot, bestCount = -1, bestScore = -1;
+    arts.forEach(function (a) {
+      var c = bySlot[a.slot];
+      var sc = qScore(a.rarity);
+      if (c > bestCount || (c === bestCount && sc > bestScore)) { bestCount = c; bestSlot = a.slot; bestScore = sc; }
+    });
+    return { outRar: outRar, slot: bestSlot, points: sumScore, avgT: avgT, outTier: outTier };
+  }
+  // ---- 局内 M 键战利品 3 合1 赌博（与基地熔炉自由合成相互独立，保留原概率规则与封顶；仅被 threeMergeFrom 使用）----
+  var FG_CAP = RAR.length - 2; // = 3 紫；局内 3 合1 产出封顶（金不可熔）
+  var FG_RM_W_DESTROY = 0.15, FG_RM_W1 = 0.76, FG_RM_W2 = 0.075, FG_RM_W3 = 0.015;
   function rollForge3(baseRar) {
     var ri = RAR.indexOf(baseRar);
-    if (ri < 0 || ri >= FG_CAP) return { state: 'maxed' }; // 紫/橙/非法 → 不可熔
+    if (ri < 0 || ri >= FG_CAP) return { state: 'maxed' };
     var r = Math.random();
-    if (r < FG_W_DESTROY) return { state: 'destroy' };
-    var rr = r - FG_W_DESTROY;
-    var d = (rr < FG_W1) ? 1 : (rr < FG_W1 + FG_W2) ? 2 : 3;
+    if (r < FG_RM_W_DESTROY) return { state: 'destroy' };
+    var rr = r - FG_RM_W_DESTROY;
+    var d = (rr < FG_RM_W1) ? 1 : (rr < FG_RM_W1 + FG_RM_W2) ? 2 : 3;
     var out = Math.min(ri + d, FG_CAP);
     return { state: 'ok', out: RAR[out] };
-  }
-  function fmtForge3Odds(baseRar) {
-    var ri = RAR.indexOf(baseRar);
-    var dist = { destroy: FG_W_DESTROY };
-    [1, 2, 3].forEach(function (d) {
-      var r = Math.min(ri + d, FG_CAP);
-      if (r >= RAR.length) return;
-      var w = d === 1 ? FG_W1 : (d === 2 ? FG_W2 : FG_W3);
-      dist[RAR[r]] = (dist[RAR[r]] || 0) + w;
-    });
-    var parts = [];
-    RAR.forEach(function (rar) {
-      if (rar === 'orange') return;
-      if (dist[rar]) parts.push(RARNAME[rar].charAt(0) + Math.round(dist[rar] * 100) + '%');
-    });
-    parts.push('湮灭' + Math.round(FG_W_DESTROY * 100) + '%');
-    return parts.join(' · ');
   }
   // ---------- 数值继承合成（2026-08-17 v2）----------
   // 核心：把投入的低阶装备数值求和，按产出品质系数放大，沉淀为一件高阶装备。
@@ -6872,65 +6884,37 @@
   ];
   function rollForgeBonus() { return FORGE_BONUS_POOL[randi(0, FORGE_BONUS_POOL.length - 1)]; }
   function forgePreview(arts) {
-    if (arts.length === 0) return { ready: false, title: '熔炉', sub: '点击下方 3 个圆盘槽位放入法宝进行合成' };
-    var slot = arts[0].slot;
-    var sameSlot = arts.every(function (a) { return a.slot === slot; });
-    var hasOrange = arts.some(function (a) { return a.rarity === 'orange'; });
-    if (hasOrange) return { ready: false, title: '不可熔炼', sub: '传说法器禁止入炉' };
+    if (arts.length === 0) return { ready: false, title: '熔炉', sub: '点击下方槽位或列表选择 2~3 件法宝投料' };
+    if (arts.length === 1) return { ready: false, title: '已选 1 件', sub: '再选 2 件即可自由合成（任意部位·任意品质）' };
     if (arts.length === 2) {
-      if (sameSlot && arts[0].rarity === arts[1].rarity) {
+      // 旧安全路径：同槽位·同稀有度 → 必升 1 阶（无湮灭）；跨槽/跨质需补第 3 件走自由合成
+      if (arts[0].slot === arts[1].slot && arts[0].rarity === arts[1].rarity) {
         var ri = RAR.indexOf(arts[0].rarity);
         if (ri >= 0 && ri < RAR.length - 1) {
           var outRar2 = RAR[ri + 1];
-          return { ready: true, title: RARNAME[outRar2] + '·' + SLOTNAME[slot], sub: '二合一 · 必升一阶（安全）', color: RARCOL[outRar2], previewMods: inheritMods([arts[0], arts[1]], outRar2, null) };
+          return { ready: true, title: RARNAME[outRar2] + '·' + SLOTNAME[arts[0].slot], sub: '二合一 · 必升一阶（安全·无湮灭）', color: RARCOL[outRar2], previewMods: inheritMods([arts[0], arts[1]], outRar2, null) };
         }
+        return { ready: false, title: '已是最高阶', sub: '传说不可再升', color: RARCOL.orange };
       }
-      return { ready: false, title: '无法合成', sub: '需同槽位·同稀有度 ×2' };
+      return { ready: false, title: '需 3 件自由合成', sub: '2 件不同槽/不同质 → 补第 3 件跨部位合成' };
     }
     if (arts.length === 3) {
-      if (sameSlot) {
-        var ri2 = RAR.indexOf(arts[0].rarity);
-        if (ri2 >= 0 && ri2 < RAR.length - 1) {
-          if (ri2 >= FG_CAP) return { ready: false, title: '已达上限', sub: '史诗不可熔炼·勿熔', color: RARCOL.purple };
-          var estRar = RAR[Math.min(ri2 + 1, FG_CAP)];
-          // 概率升阶，预览按"保底升一阶"估值展示数值（实际可能跳更高，也可能湮灭）
-          return { ready: true, title: '三合·赌博升稀', sub: fmtForge3Odds(arts[0].rarity) + '（保底升阶估值）', color: RARCOL[estRar], previewMods: inheritMods(arts, estRar, { dmg: 3 }) };
-        }
-      }
-      return { ready: false, title: '无法合成', sub: '需同槽位 ×3' };
+      // 自由合成：跨部位·跨品质，期望值点数矩阵判定（确定性产出阶 + 15% 湮灭保留）
+      var exp = forgeExpected(arts);
+      var dpct = Math.round(FG_W_DESTROY * 100);
+      return {
+        ready: true,
+        title: RARNAME[exp.outRar] + '·' + SLOTNAME[exp.slot],
+        sub: '跨部位·跨品质自由合成 → 期望 ' + RARNAME[exp.outRar] + '（点数 ' + exp.points + ' · 湮灭 ' + dpct + '%）',
+        color: RARCOL[exp.outRar],
+        previewMods: inheritMods(arts, exp.outRar, null)
+      };
     }
-    return { ready: false, title: '已选 ' + arts.length + ' 件', sub: '同槽×2 升稀 / 同槽×3 升级' };
+    return { ready: false, title: '已选 ' + arts.length + ' 件', sub: '请选 2 件（同槽同质安全）或 3 件（自由合成）' };
   }
   function setForgeResult(kind, title, sub, color) {
     forgeResult = { kind: kind, title: title, sub: sub, color: color };
     renderForge();
-  }
-  function forge3MergeBase() {
-    if (forgeSel.length < 3) return { ok: false, kind: 'disallowed', title: '不允许', sub: '需 3 件材料', color: '#C8642A' };
-    var arts = forgeSel.map(getArt).filter(Boolean);
-    if (arts.length < 3) { return { ok: false, kind: 'disallowed', title: '不允许', sub: '材料丢失', color: '#C8642A' }; }
-    var slot = arts[0].slot;
-    var allSame = arts.every(function (a) { return a.slot === slot; });
-    var notOrange = arts.every(function (a) { return a.rarity !== 'orange'; });
-    if (!allSame) return { ok: false, kind: 'disallowed', title: '不允许', sub: '需同槽位 ×3', color: '#C8642A' };
-    if (!notOrange) return { ok: false, kind: 'disallowed', title: '不允许', sub: '传说禁熔·勿入', color: '#C8642A' };
-    var baseRar = arts[0].rarity;
-    var ri = RAR.indexOf(baseRar);
-    if (ri < 0 || ri >= FG_CAP) {
-      return { ok: false, kind: 'disallowed', title: '不允许', sub: '史诗已达上限', color: '#C8642A' };
-    }
-    var roll = rollForge3(baseRar);
-    if (roll.state === 'destroy') {
-      // 湮灭惩罚：三件材料全失、无产出
-      forgeSel.forEach(function (id) { removeArt(id); });
-      return { ok: true, kind: 'destroy', title: '摧毁', sub: '三件湮灭·无产出', color: '#C94F4F', arts: arts };
-    }
-    // 移除三件材料 → 生成继承数值的跳阶法器（数值继承 + 随机额外词条）
-    forgeSel.forEach(function (id) { removeArt(id); });
-    var bm = rollForgeBonus();
-    var newArt = makeArtifact(slot, roll.out, RARNAME[roll.out] + '·' + SLOTNAME[slot] + '(三合)', inheritMods(arts, roll.out, bm));
-    meta.arsenal.push(newArt);
-    return { ok: true, kind: 'success', title: '成功', sub: RARNAME[roll.out] + '·' + SLOTNAME[slot] + (roll.out !== baseRar ? '（跳阶）' : ''), color: RARCOL[roll.out], art: newArt };
   }
   function autoForgeMerge(count) {
     // 自动找 count 件同槽位同稀有度非橙色法器合成
@@ -7114,7 +7098,7 @@
         box.appendChild(noMatch);
       } else {
         var tip = document.createElement('div'); tip.className = 'forge-tip';
-        tip.textContent = '点选材料投料（最多 3 件）：投入装备的数值会被继承并放大到产出上。同槽位·同稀有度 ×2 安全升阶；同槽位 ×3 概率跳阶 + 额外词条（15% 湮灭）；传说禁止入炉。';
+        tip.textContent = '点选材料投料（最多 3 件）：投入装备的数值会被继承并放大到产出上。任意 2 件同槽同质 → 安全升 1 阶；任意 3 件（跨部位·跨品质）→ 期望值点数矩阵判定产出阶（15% 湮灭）。';
         box.appendChild(tip);
         var list = document.createElement('div'); list.className = 'forge-mat-list';
         shown.forEach(function (a) {
@@ -7181,8 +7165,8 @@
         hint.innerHTML = h;
       } else {
         var arts = forgeSel.map(getArt).filter(Boolean);
-        if (forgeSel.length === 0) hint.innerHTML = '请选择 2 或 3 件材料';
-        else if (forgeSel.length === 1) hint.innerHTML = '再选 1 件同槽位·同稀有度可安全升阶<br>或再选 2 件同槽位进行赌博升阶';
+        if (forgeSel.length === 0) hint.innerHTML = '请选择 2 件（同槽同质安全升阶）或 3 件（跨部位·跨品质自由合成）';
+        else if (forgeSel.length === 1) hint.innerHTML = '再选 1 件同槽同质 → 安全升阶<br>或再选 2 件任意部位品质 → 自由合成';
         else {
           var pv = forgePreview(arts);
           if (pv.ready) hint.innerHTML = '<span style="color:' + (pv.color || 'var(--paper)') + '">可合成：' + pv.sub + '</span>';
@@ -7531,20 +7515,14 @@
       return { ok: false, kind: 'fail', title: '失败', sub: '需同槽位·同稀有度 ×2', color: '#C94F4F' };
     }
     if (forgeSel.length === 3) {
+      // 自由合成：跨部位·跨品质，期望值点数矩阵判定（确定性产出阶）+ 15% 湮灭保留
       var arts = forgeSel.map(getArt).filter(Boolean);
       if (arts.length < 3) return { ok: false, kind: 'disallowed', title: '不允许', sub: '材料丢失', color: '#C8642A' };
-      var slot = arts[0].slot;
-      var allSame = arts.every(function (a) { return a.slot === slot; });
-      var notOrange = arts.every(function (a) { return a.rarity !== 'orange'; });
-      if (!allSame) return { ok: false, kind: 'disallowed', title: '不允许', sub: '需同槽位 ×3', color: '#C8642A' };
-      if (!notOrange) return { ok: false, kind: 'disallowed', title: '不允许', sub: '传说禁熔·勿入', color: '#C8642A' };
-      var baseRar = arts[0].rarity;
-      var ri = RAR.indexOf(baseRar);
-      if (ri < 0 || ri >= FG_CAP) return { ok: false, kind: 'disallowed', title: '不允许', sub: '史诗已达上限', color: '#C8642A' };
-      var roll = rollForge3(baseRar);
-      if (roll.state === 'destroy') {
+      var exp = forgeExpected(arts);
+      if (Math.random() < FG_W_DESTROY) {
+        // 湮灭赌博：三件材料全失、无产出
         return {
-          ok: true, kind: 'destroy', title: '摧毁', sub: '三件湮灭·无产出', color: '#C94F4F',
+          ok: true, kind: 'destroy', title: '湮灭', sub: '三件全失·无产出（期望 ' + RARNAME[exp.outRar] + '·' + SLOTNAME[exp.slot] + '）', color: '#C94F4F',
           exec: function () {
             forgeSel.forEach(function (id) { removeArt(id); });
             return null;
@@ -7553,12 +7531,12 @@
       }
       return {
         ok: true, kind: 'success', title: '成功',
-        sub: RARNAME[roll.out] + '·' + SLOTNAME[slot] + (roll.out !== baseRar ? '（跳阶）' : ''),
-        color: RARCOL[roll.out],
+        sub: RARNAME[exp.outRar] + '·' + SLOTNAME[exp.slot] + '（期望升阶）',
+        color: RARCOL[exp.outRar],
         exec: function () {
           forgeSel.forEach(function (id) { removeArt(id); });
           var bm = rollForgeBonus();
-          var newArt = makeArtifact(slot, roll.out, RARNAME[roll.out] + '·' + SLOTNAME[slot] + '(三合)', inheritMods(arts, roll.out, bm));
+          var newArt = makeArtifact(exp.slot, exp.outRar, RARNAME[exp.outRar] + '·' + SLOTNAME[exp.slot] + '(自由合)', inheritMods(arts, exp.outRar, bm));
           meta.arsenal.push(newArt);
           return newArt;
         }
