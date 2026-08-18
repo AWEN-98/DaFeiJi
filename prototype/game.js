@@ -126,7 +126,7 @@
 
   // ---------- 元进度 ----------
   function defaultMeta() {
-    return { currency: 0, unlocked: { a: true, b: false, c: false }, runs: 0, bestKills: 0,
+    return { currency: 0, ore: 0, unlocked: { a: true, b: false, c: false }, runs: 0, bestKills: 0,
       maxTier: 1, bossCleared: false, seenTutorial: false,
       up: { hp: 0, dmg: 0, speed: 0, shield: 0, pickup: 0 },
       arsenal: [], equipped: { weapon: null, armor: null, core: null, ammo: null },
@@ -2102,7 +2102,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null;
-    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]) };
+    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]) };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2411,11 +2411,13 @@
     if (from === 'player' && opts.elem && ELEM_VFX[opts.elem]) b.trail = { elem: opts.elem, age: 0, fps: 18, size: 46 };
     bullets.push(b);
   }
-  // type: 'artifact'(法器) | 'jade'(灵玉砂) | 'consumable'(丹药) | 'legendary'(传说核心) | 'bossrelic'(Boss遗物) | 'legendary_weapon'(传说武器)
-  function dropLoot(x, y, rarity, type, relicData) {
+  // type: 'artifact'(法器) | 'jade'(灵玉砂) | 'consumable'(丹药) | 'ore'(灵矿碎屑) | 'legendary'(传说核心) | 'bossrelic'(Boss遗物) | 'legendary_weapon'(传说武器)
+  function dropLoot(x, y, rarity, type, relicData, opt) {
     type = type || 'artifact';
-    var el = { x: x, y: y, type: type, rarity: rarity || 'white', slot: pickSlot(), vx: rand(-18, 18), vy: rand(-18, 18), life: type === 'bossrelic' ? 45 : (type === 'legendary' || type === 'legendary_weapon' ? 32 : 30), age: 0 };
-    if (type === 'jade') { el.amount = 8 + Math.floor((run ? run.tier : 1) * 4) + randi(0, 7); }
+    opt = opt || {};
+    var el = { x: x, y: y, type: type, rarity: rarity || 'white', slot: pickSlot(), vx: rand(-18, 18), vy: rand(-18, 18), life: type === 'bossrelic' ? 45 : (type === 'legendary' || type === 'legendary_weapon' ? 32 : (type === 'ore' ? 26 : 30)), age: 0 };
+    if (type === 'jade') { el.amount = opt.amount != null ? opt.amount : (8 + Math.floor((run ? run.tier : 1) * 4) + randi(0, 7)); }
+    else if (type === 'ore') { el.amount = opt.amount != null ? opt.amount : 1; }
     else if (type === 'consumable') { el.consKey = ['bomb', 'shield', 'heal', 'slow'][randi(0, 3)]; }
     else if (type === 'bossrelic' && relicData) {
       el.name = relicData.name; el.slot = relicData.slot; el.relicMods = relicData.mods; el.rarity = relicData.rarity;
@@ -2432,6 +2434,15 @@
       el2.vx = rand(-18, 18); el2.vy = rand(-18, 18); el2.x = x + rand(-10, 10); el2.y = y + rand(-10, 10); el2.age = 0;
       loot.push(el2);
     }
+  }
+  // ============ 掉落分层重构（2026-08-19）：单局整装预算硬控 + 灵矿碎屑材料 ============
+  // 灵矿碎屑（材料）：自动磁吸，不占背包格，累积进 meta.ore（供后续强化/合成系统消耗）
+  function dropOre(x, y, amount) { dropLoot(x, y, 'white', 'ore', null, { amount: amount || 1 }); }
+  // 单局整装总产出预算：所有整装掉落（精英/Boss/宝箱）须过此闸；归零后整装降级为灵玉，严格把单局整装锁在 12~20 件
+  function budgetArtifact(rar) {
+    if (!run || !run.artBudget || run.artBudget <= 0) return false;
+    run.artBudget--;
+    return true;
   }
   // 背包系统（§4：有限格子→取舍）：满则自动舍弃最低价值件，逼出“带什么走”的抉择
   // #C2 修复：occupied=已占用的外部格子数（裂隙宝库用 run.loot.length 合并判满）；已带 rift 标志的件不再被覆盖（保住阵亡 50% 保底语义）
@@ -2707,6 +2718,12 @@
       AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#D9B64A', 8);
       loot.splice(idx, 1); return;
     }
+    if (it.type === 'ore') {
+      var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt;
+      floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8');
+      AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
+      loot.splice(idx, 1); return;
+    }
     // artifact / legendary / bossrelic / legendary_weapon → 入背包（满则取舍）
     var tgt = inRift ? riftLoot : run.loot;
     var lootItem = { rarity: it.rarity, name: it.name, slot: it.slot || pickSlot(), rift: inRift, uid: ++run._uid };
@@ -2732,7 +2749,7 @@
     var best = -1, bestD = player.pickR * player.pickR * 2.2; // 略大于自动拾取范围，方便精准抓取
     for (var i = 0; i < loot.length; i++) {
       var it = loot[i];
-      if (!it.rarity || it.type === 'xp') continue;
+      if (!it.rarity || it.type === 'xp' || it.type === 'jade' || it.type === 'ore') continue; // 自动磁吸物不进手动抓取
       var d = dist2(it.x, it.y, player.x, player.y);
       if (d < bestD) { bestD = d; best = i; }
     }
@@ -2872,7 +2889,8 @@
     var R = 300, R2 = R * R, arr = [];
     for (var i = 0; i < loot.length; i++) {
       var it = loot[i];
-      if (!it.rarity || it.type === 'xp') continue; // 经验灵蕴自动吸，不列入清单
+      // 经验灵蕴 / 灵玉 / 灵矿碎屑 均自动磁吸，不列入手动拾取清单；只有整件法宝（含遗物/传说）才触发右侧【拾取】按键
+      if (!it.rarity || it.type === 'xp' || it.type === 'jade' || it.type === 'ore') continue;
       var d = dist2(it.x, it.y, player.x, player.y);
       if (d <= R2) arr.push({ idx: i, it: it, d: d });
     }
@@ -3399,15 +3417,16 @@
     burst(boss.x, boss.y, '#B03A3A', 16, { ring: true, ringR: 60 });
     addShake(6, 420, 150, true); addFreeze(180); addTint('#ffffff', 0.4); screenFlash = { color: '#ffffff', a: 0.4 };
     AudioSys.sfx.bossDie();
-    // 常规战利品
-    var dropsByKind = {
-      qiongqi: ['orange', 'purple', 'purple', 'blue', 'blue', 'green'],
-      taowu:   ['purple', 'purple', 'orange', 'blue', 'blue', 'green'],
-      taotie:  ['orange', 'purple', 'blue', 'blue', 'green', 'green'],
-      hundun:  ['orange', 'orange', 'purple', 'blue', 'green', 'green']
-    };
-    var drops = dropsByKind[boss.kind] || dropsByKind.taowu;
-    for (var i = 0; i < drops.length; i++) dropLoot(boss.x + rand(-45, 45), boss.y + rand(-45, 45), drops[i]);
+    // 常规战利品（掉落分层重构 2026-08-19）：150 灵玉 + 10 灵矿碎屑 + 2~3 件整装（60%蓝/38%紫/2%橙），整装过单局预算则降级为灵玉
+    dropLoot(boss.x, boss.y, 'blue', 'jade', null, { amount: 150 });
+    dropOre(boss.x, boss.y, 10);
+    var nb = randi(2, 3);
+    for (var bi2 = 0; bi2 < nb; bi2++) {
+      var br = Math.random(), brar = br < 0.60 ? 'blue' : (br < 0.98 ? 'purple' : 'orange');
+      var bx = boss.x + rand(-45, 45), by = boss.y + rand(-45, 45);
+      if (budgetArtifact(brar)) dropLoot(bx, by, brar, 'artifact');
+      else dropLoot(bx, by, 'blue', 'jade', null, { amount: 40 });
+    }
     // ★ Boss 专属遗物（保底1件，从该Boss遗物表随机选）
     var relics = BOSS_RELICS[boss.kind] || BOSS_RELICS.taowu;
     var relic = relics[randi(0, relics.length - 1)];
@@ -3553,22 +3572,22 @@
         floatText(player.x, player.y - 22, '爆裂 -' + volDmg, '#FF6A2A', 'crit');
       }
     }
-    // 战利品丰富化：类型分流 + 保底(每8杀蓝+) + 表现加成
+    // 掉落分层重构（2026-08-19）：严禁杂兵批量掉整装，单局整装总量由 run.artBudget 硬控 12~20 件
     run.pity = (run.pity || 0) + 1;
     var pitied = run.pity >= 8; if (pitied) run.pity = 0;
     run.lootBonus = Math.min(0.12, (run.tier - 1) * 0.02 + Math.min(0.06, (run.kills || 0) * 0.0012) + (player.hp >= player.maxhp ? 0.02 : 0));
-    // v12：降低普通击杀战利品密度（约 45% 概率掉 1 件），经验灵蕴仍必掉；战利品改为手动拾取
-    if (Math.random() < 0.45) {
-      var dr = Math.random();
-      if (dr < 0.42) { dropLoot(e.x, e.y, 'blue', 'jade'); }              // 灵玉砂（货币）权重提高
-      else if (dr < 0.58) { dropLoot(e.x, e.y, 'green', 'consumable'); }  // 丹药（消耗品）
-      else {
-        var rar = pitied ? 'blue' : rollRarity(diffTier(), run.lootBonus);
-        if (e.elite && RAR.indexOf(rar) < 2) rar = 'blue';
-        dropLoot(e.x, e.y, rar, 'artifact');
-      }
+    if (e.elite) {
+      // 精英：30~50 灵玉 + 3~5 灵矿碎屑 + 100% 整装（75% 绿 / 25% 蓝），整装过预算则降级为灵玉
+      dropLoot(e.x - 6, e.y, 'blue', 'jade', null, { amount: randi(30, 50) });
+      dropOre(e.x + 6, e.y, randi(3, 5));
+      var erar = Math.random() < 0.75 ? 'green' : 'blue';
+      if (budgetArtifact(erar)) dropLoot(e.x, e.y, erar, 'artifact');
+      else dropLoot(e.x, e.y, 'blue', 'jade', null, { amount: randi(20, 35) });
+    } else {
+      // 普通杂兵：1~3 灵玉（自动磁吸） + 15% 灵矿碎屑；绝不掉整装
+      dropLoot(e.x, e.y, 'blue', 'jade', null, { amount: randi(1, 3) });
+      if (Math.random() < 0.15) dropOre(e.x, e.y, 1);
     }
-    if (e.elite) dropLoot(e.x + 10, e.y, 'green', 'artifact'); // 精英保底 1 件
     if (e.arche === 'split' && !e.small) {
       for (var s = 0; s < 2; s++) { var ne = spawnEnemy(e.x + rand(-20, 20), e.y + rand(-20, 20), e.tier, { arche: 'split' }); ne.small = true; ne.r = 9; ne.hp = ne.maxhp = Math.round(e.maxhp * 0.4); ne.ram = true; ne.col = RARCOL.purple; ne.edge = '#2a0a2a'; } // #M3 修复：直建 split，不再随机到 swarm 多刷 2-4 只/触发横幅
     }
@@ -4494,16 +4513,21 @@
       if (player.magnet) { var mdx = player.x - it.x, mdy = player.y - it.y, md = Math.hypot(mdx, mdy) || 1; if (md < 300) { it.x += (mdx / md) * 220 * dt; it.y += (mdy / md) * 220 * dt; } }
       else { it.x += it.vx * dt; it.y += it.vy * dt; it.vx *= 0.9; it.vy *= 0.9; }
       if (it.type === 'xp') { var pdx = player.x - it.x, pdy = player.y - it.y, pd = Math.hypot(pdx, pdy) || 1; if (pd < 150) { it.x += (pdx / pd) * 260 * dt; it.y += (pdy / pd) * 260 * dt; } } // 灵蕴自带微弱吸附，手感更顺
-      // 灵玉（基础通货）靠近 100px 自动磁吸入包，与经验灵蕴一致的手感（桌面/移动双端通用）
-      if (it.type === 'jade') { var jdx = player.x - it.x, jdy = player.y - it.y, jd = Math.hypot(jdx, jdy) || 1; if (jd < 100) { it.x += (jdx / jd) * 300 * dt; it.y += (jdy / jd) * 300 * dt; } }
+      // 灵玉（基础通货）与灵矿碎屑（材料）：战机靠近 150px 自动磁吸入包，不占背包格（2026-08-19 掉落分层）
+      if (it.type === 'jade') { var jdx = player.x - it.x, jdy = player.y - it.y, jd = Math.hypot(jdx, jdy) || 1; if (jd < 150) { it.x += (jdx / jd) * 300 * dt; it.y += (jdy / jd) * 300 * dt; } }
+      if (it.type === 'ore') { var odx = player.x - it.x, ody = player.y - it.y, od = Math.hypot(odx, ody) || 1; if (od < 150) { it.x += (odx / od) * 300 * dt; it.y += (ody / od) * 300 * dt; } }
       if (it.life <= 0) { loot.splice(l, 1); continue; }
-      // v12b：经验灵蕴 + 灵玉（基础通货）自动吸取；其余战利品（丹药/装备/遗物）改为手动拾取
+      // v12b：经验灵蕴 + 灵玉（基础通货）自动吸取；灵矿碎屑同理；其余战利品（丹药/装备/遗物）改为手动拾取
       if (it.type === 'xp' && dist2(it.x, it.y, player.x, player.y) < player.pickR * player.pickR) {
         addXp(it.val); floatText(it.x, it.y, '+' + it.val + ' 灵蕴', '#E0B84A'); AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#E0B84A', 5, { ring: true, ringR: 14 });
         loot.splice(l, 1); continue;
       }
       if (it.type === 'jade' && dist2(it.x, it.y, player.x, player.y) < player.pickR * player.pickR) {
         var jamt = it.amount || 10; meta.currency += jamt; floatText(it.x, it.y, '+' + jamt + ' 灵玉', '#C9A24B'); AudioSys.sfx.pickup('blue'); burst(it.x, it.y, '#C9A24B', 6, { ring: true, ringR: 16 });
+        loot.splice(l, 1); continue;
+      }
+      if (it.type === 'ore' && dist2(it.x, it.y, player.x, player.y) < player.pickR * player.pickR) {
+        var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt; floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8'); AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
         loot.splice(l, 1); continue;
       }
       // 其余战利品保留在地面，等待玩家手动拾取（点按 / 触屏点按）
@@ -4520,6 +4544,8 @@
     // 被 #197 掉落筛选过滤的稀有度不掉入背包，改为掉到地面（暗化显示，E 键可强制捡回）
     function chestGain(rar) {
       run.picked++;
+      // 单局整装预算耗尽 → 折算灵玉（不超 12~20 硬上限）
+      if (!budgetArtifact(rar)) { dropLoot(nd.x, nd.y, 'blue', 'jade', null, { amount: (RARVAL[RAR.indexOf(rar)] || 1) * 6 }); return rar; }
       var item = { rarity: rar, name: pickName(rar), slot: pickSlot() };
       if (run.pickupFilter && !run.pickupFilter[RAR.indexOf(rar)]) {
         loot.push({ x: nd.x + rand(-14, 14), y: nd.y + rand(-14, 14), type: 'artifact', rarity: item.rarity, name: item.name, slot: item.slot, vx: rand(-18, 18), vy: rand(-18, 18), life: 22, age: 0 });
@@ -5612,7 +5638,7 @@
     for (var i = 0; i < loot.length; i++) {
       var it = loot[i]; var age = it.age || 0; var bob = Math.sin(age * 3 + i) * 2;
       // #197 已过滤掉落物：暗化弱化渲染（仍可见），不影响 xp/灵玉/丹药
-      var _isArtLoot = it.type !== 'xp' && it.type !== 'jade' && it.type !== 'consumable';
+      var _isArtLoot = it.type !== 'xp' && it.type !== 'jade' && it.type !== 'consumable' && it.type !== 'ore';
       if (_isArtLoot && it.rarity && run && run.pickupFilter && !run.pickupFilter[RAR.indexOf(it.rarity)]) {
         var _fcol = RARCOL[it.rarity] || '#888';
         ctx.save(); ctx.translate(it.x, it.y + bob);
@@ -5644,6 +5670,14 @@
         var cc = CONSUMABLES[it.consKey]; ctx.save(); ctx.translate(it.x, it.y + bob); ctx.shadowColor = '#7EAD9A'; ctx.shadowBlur = 10;
         ctx.fillStyle = '#1c2e26'; ctx.strokeStyle = '#7EAD9A'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 0, 7, 0, 7); ctx.fill(); ctx.stroke();
         ctx.fillStyle = '#7FB069'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(cc ? cc.glyph : '丹', 0, 0.5);
+        ctx.shadowBlur = 0; ctx.restore(); continue;
+      }
+      if (it.type === 'ore') {
+        var op = 0.6 + Math.sin(age * 5) * 0.4; ctx.save(); ctx.translate(it.x, it.y + bob); ctx.scale(ICON_SCALE, ICON_SCALE); ctx.shadowColor = '#8FB0C8'; ctx.shadowBlur = 10;
+        ctx.fillStyle = '#9FB8CC'; ctx.strokeStyle = '#5E7C92'; ctx.lineWidth = 1.4; ctx.beginPath();
+        for (var _k2 = 0; _k2 < 6; _k2++) { var _a2 = _k2 * Math.PI / 3 + age * 0.5, _r2 = (_k2 % 2 ? 4 : 6); if (_k2 === 0) ctx.moveTo(Math.cos(_a2) * _r2, Math.sin(_a2) * _r2); else ctx.lineTo(Math.cos(_a2) * _r2, Math.sin(_a2) * _r2); }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#DCEAF5'; ctx.font = 'bold 6px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('矿', 0, 0.5);
         ctx.shadowBlur = 0; ctx.restore(); continue;
       }
       if (it.type === 'legendary') {
@@ -6611,6 +6645,8 @@
     // === 资源 & 其他页 ===
     var resJade = document.getElementById('resJade');
     if (resJade) resJade.textContent = meta.currency;
+    var resOre = document.getElementById('resOre');
+    if (resOre) resOre.textContent = (meta.ore || 0);
     var resArsenal = document.getElementById('resArsenal');
     if (resArsenal) resArsenal.textContent = meta.arsenal.length;
     var resProgress = document.getElementById('resProgress');
@@ -7395,7 +7431,7 @@
     else if (nm.length) html += '<div class="mini" style="text-align:right">' + nm.join('、') + '…</div>';
     var _bs = bondSummary();
     if (_bs.length) html += '<div class="stat-card"><span>本局羁绊</span><b>' + _bs.join(' · ') + '</b></div>';
-    html += '<div class="stat-card"><span>库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉</b></div>';
+    html += '<div class="stat-card"><span>库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉 · ' + (meta.ore || 0) + ' 灵矿碎屑</b></div>';
     html += '<div class="muted" style="margin-top:12px">回基地「军械库」装载法器、「熔炼台」合成升稀、「研究院」解锁永久被动。本局拾取符文 ' + player.runes.length + ' 枚。</div>';
     document.getElementById('resultBody').innerHTML = html;
   }
