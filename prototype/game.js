@@ -1046,6 +1046,10 @@
   loadImg('enm_split', A1 + 'enemy/enm_splitter.png');
   loadImg('enm_looter', A1 + 'enemy/enm_looter.png');
   loadImg('enm_elite', A1 + 'enemy/enm_elite.png');
+  // v10 新增敌人：从现有资产中挑选最合适的直接落盘使用
+  loadImg('enm_sniper', A1 + 'enemy/enm_sniper.png');      // 源：enm_lantern_imp（漂浮灯笼精 → 幽灵狙击手气质）
+  loadImg('enm_shielder', A1 + 'enemy/enm_shielder.png');  // 源：enm_golden_mask（金鬼面 → 厚重护盾兵）
+  loadImg('enm_swarm', A1 + 'enemy/enm_swarm.png');        // 源：enm_paper_effigy（小纸人 → 蜂群数量感）
   loadImg('boss_taowu', 'assets/v4/bosses/boss_taowu.png');
   loadImg('boss_qiongqi', 'assets/v4/bosses/boss_qiongqi.png');
   loadImg('boss_taotie', 'assets/v4/bosses/boss_taotie.png');
