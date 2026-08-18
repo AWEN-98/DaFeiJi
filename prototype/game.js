@@ -5228,20 +5228,8 @@
     //     ctx.translate(player.x, player.y); ctx.rotate(gameTime * 0.4); ctx.drawImage(bua, -42, -42, 84, 84); ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     //   } else { ctx.save(); ctx.globalAlpha = 0.4 + Math.sin(gameTime * 4) * 0.15; ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(player.x, player.y, 26, 0, 7); ctx.stroke(); ctx.restore(); }
     // }
-    // 移动端瞄准激光/锥形指示线（轻量半透明，给弹道预判）
-    if (isMobile && (player.aimLineT || 0) > 0 && scene === 'mission') {
-      var _al = clamp(player.aimLineT / 0.22, 0, 1);
-      var _ax = Math.cos(player.ang), _ay = Math.sin(player.ang);
-      ctx.save();
-      ctx.globalAlpha = 0.5 * _al; ctx.strokeStyle = '#E8DCC4'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(player.x + _ax * 150, player.y + _ay * 150); ctx.stroke();
-      ctx.globalAlpha = 0.16 * _al; ctx.fillStyle = '#C9A24B';
-      ctx.beginPath(); ctx.moveTo(player.x, player.y);
-      ctx.lineTo(player.x + Math.cos(player.ang - 0.05) * 150, player.y + Math.sin(player.ang - 0.05) * 150);
-      ctx.lineTo(player.x + Math.cos(player.ang + 0.05) * 150, player.y + Math.sin(player.ang + 0.05) * 150);
-      ctx.closePath(); ctx.fill();
-      ctx.restore(); ctx.globalAlpha = 1;
-    }
+    // 2026-08-19：移除自机机头瞄准指示线/锥形光束（drawPlayer 内原 5231–5244 段）。
+    // 射击方向已由 player.angle 旋转自然呈现，机头前方不再绘制任何实体粗线/锥形，保持战斗画面干净。
   }
   function drawEnemies() {
     for (var i = 0; i < enemies.length; i++) {
