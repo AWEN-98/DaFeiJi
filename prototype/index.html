@@ -1599,32 +1599,61 @@
     .hall-brand .hall-nav .tab { flex: 1 1 0; height: 30px; font-size: 11px; aspect-ratio: auto; }
     .hall-brand .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
-    /* 军械库竖屏重写（2026-08-19）：左槽位 32% · 右仓库 68% 水平双栏 + 底部吸底三操作条，杜绝右侧黑屏盲区与穿插重叠 */
+    /* 军械库竖屏彻底重写（2026-08-19 续）：用户指定 column wrapper 上下分区 —— 上半：左槽位 34% + 右仓库 66%；下半：底部吸底【装配】【卸下】【回收】三按钮并排；每张槽位改为垂直卡片，隐藏槽内冗余卸下按钮（用全局底部栏），彻底消除"卸下铸"式文字穿插 */
     #tab-arsenal.on { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
-    #tab-arsenal .mf-slots { flex: 0 0 32% !important; min-width: 0; padding: 10px 8px; }
+    /* 上半区第一行：左槽位 34% */
+    #tab-arsenal .mf-slots { flex: 0 0 34% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
+    #tab-arsenal .mf-slots .mf-title { font-size: 13px; }
     #tab-arsenal .mf-slots .mf-sub { display: none; }
-    #tab-arsenal .mf-slots .mf-body { overflow-y: auto; }
-    #tab-arsenal #equipSlots { display: flex !important; flex-direction: column !important; grid-template-columns: none !important; gap: 8px; height: 100%; justify-content: space-between; align-items: stretch; padding: 0 !important; }
-    #tab-arsenal .eq-slot { flex: 1 1 0; min-height: 56px; width: 100% !important; flex-direction: row; align-items: center; padding: 6px 8px; gap: 8px; }
-    #tab-arsenal .eq-icon { width: 44px; height: 50px; flex: 0 0 auto; }
-    #tab-arsenal .eq-info { flex: 1 1 auto; min-width: 0; width: auto; align-items: flex-start; text-align: left; }
-    #tab-arsenal .mf-stock { flex: 1 1 68% !important; min-width: 0; padding: 10px 10px 0; }
+    #tab-arsenal .mf-slots .mf-body { overflow-y: auto; overflow-x: hidden; min-height: 0; padding: 0; }
+    /* 槽位列表：4 张垂直卡片等分顶满 */
+    #tab-arsenal #equipSlots { display: flex !important; flex-direction: column !important; grid-template-columns: none !important; gap: 4px !important; height: 100% !important; justify-content: space-between; align-items: stretch; padding: 0 !important; }
+    /* 每张槽位：垂直卡片（图标居中占主视觉，信息单行贴底，卸下按钮让位给全局底部栏） */
+    #tab-arsenal .eq-slot {
+      flex: 1 1 0 !important;
+      min-height: 0 !important;
+      width: 100% !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: 4px 2px !important;
+      gap: 3px !important;
+      overflow: hidden !important;
+    }
+    #tab-arsenal .eq-icon { width: 86% !important; height: auto !important; flex: 1 1 auto !important; max-width: 76px !important; aspect-ratio: 1/1; }
+    #tab-arsenal .eq-info { flex: 0 0 auto !important; width: 100% !important; align-items: center !important; text-align: center !important; padding-top: 0 !important; gap: 1px !important; min-width: 0 !important; }
+    #tab-arsenal .eq-type { font-size: 9px !important; letter-spacing: 0; }
+    #tab-arsenal .eq-item-name { font-size: 10px !important; max-width: 100% !important; line-height: 1.2; }
+    /* 隐藏每张槽位卡片内的卸下按钮（避免窄列里与槽位类型标签重叠 —— 卸下用底部操作栏的全局按钮） */
+    #tab-arsenal .eq-off { display: none !important; }
+    /* 上半区第一行：右仓库 66% */
+    #tab-arsenal .mf-stock { flex: 1 1 66% !important; min-width: 0; padding: 6px 4px; min-height: 0; }
+    #tab-arsenal .mf-stock .mf-title { font-size: 13px; }
     #tab-arsenal .mf-stock .mf-sub { display: none; }
-    #tab-arsenal .mf-stock .mf-body { overflow-y: auto; }
-    /* 仓库：2 列网格滑动，彻底填满右侧 */
-    #tab-arsenal .inv-list { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; }
-    #tab-arsenal .inv-row { flex-direction: column; align-items: stretch; padding: 7px 8px; gap: 3px; }
-    #tab-arsenal .inv-row .artline { flex-wrap: wrap; gap: 4px; }
-    #tab-arsenal .inv-row .rar { font-size: 9px; white-space: normal; }
-    #tab-arsenal .inv-row .mods { font-size: 9px; }
+    #tab-arsenal .mf-stock .mf-body { overflow-y: auto !important; min-height: 0; padding: 0; }
+    /* 仓库：2 列网格滚动 */
+    #tab-arsenal .inv-list { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 4px !important; }
+    #tab-arsenal .inv-row { flex-direction: column !important; padding: 5px 6px !important; gap: 2px !important; }
+    #tab-arsenal .inv-row .artline { flex-wrap: wrap; gap: 3px; }
+    #tab-arsenal .inv-row .rar { font-size: 9px !important; white-space: normal; }
+    #tab-arsenal .inv-row .mods { font-size: 9px !important; line-height: 1.35; }
     #tab-arsenal .inv-row .rec { font-size: 10px; }
-    /* 底部吸底操作条：装配/卸下/回收 三金属大按钮并排，移除穿插文字 */
-    #tab-arsenal .mf-ops { flex: 0 0 100% !important; min-height: 0; position: sticky; bottom: 0; z-index: 5;
-      background: linear-gradient(180deg, rgba(14,11,8,0.6) 0%, rgba(14,11,8,0.97) 24%, rgba(14,11,8,0.99) 100%);
-      border-top: 1px solid rgba(201,162,75,0.35); border-radius: 12px 12px 0 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+    /* 下半区第二行：吸底操作条，三金属按钮并排，禁止文字穿插 */
+    #tab-arsenal .mf-ops {
+      flex: 0 0 100% !important;
+      min-height: 0;
+      position: relative !important;
+      bottom: auto !important;
+      background: linear-gradient(180deg, rgba(14,11,8,0.55) 0%, rgba(14,11,8,0.97) 26%, rgba(14,11,8,0.99) 100%);
+      border-top: 1px solid rgba(201,162,75,0.35);
+      border-radius: 10px 10px 0 0;
+      padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+      height: 50px;
+    }
+    #tab-arsenal .mf-ops .mf-title { font-size: 13px; }
     #tab-arsenal .mf-ops .mf-sub, #tab-arsenal .mf-ops .ops-hint { display: none !important; }
-    #tab-arsenal .mf-ops .ops-body { display: flex; flex-direction: row; gap: 10px; }
-    #tab-arsenal .mf-ops .v3btn { flex: 1 1 0; width: auto; height: 48px; min-height: 48px; font-size: 15px; margin: 0; }
+    #tab-arsenal .mf-ops .ops-body { display: flex; flex-direction: row; gap: 6px; align-items: stretch; height: 36px; }
+    #tab-arsenal .mf-ops .v3btn { flex: 1 1 0 !important; width: auto !important; height: 100% !important; min-height: 34px !important; font-size: 13px !important; margin: 0 !important; }
     /* 熔炼台竖屏（图三）：八卦熔炉居中置顶 + 点击槽位弹底抽 + 下方合成/清空 */
     #tab-forge.on { flex-direction: column; }
     #tab-forge .mf-mats { display: none !important; }
