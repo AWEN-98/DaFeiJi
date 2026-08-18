@@ -42,7 +42,7 @@
   .shop.canbuy { cursor: pointer; border-color: rgba(232,220,196,0.5); } .shop.canbuy:hover { filter: brightness(1.12); background: rgba(20,14,8,0.9); }
   .shop.maxed { opacity: 0.6; } .shop.cant { opacity: 0.55; }
   .sname { font-size: 15px; font-weight: 700; color: #C9A227; } .slevel { font-size: 12px; color: #A9B4BD; margin-top: 4px; }
-  .tip { font-size: 13px; color: #8B95A0; margin-top: 8px; }
+  .tip { font-size: 13px; color: #8B95A0; margin-top: 8px; line-height: 1.7; }
   .tut-step { margin: 8px 0; padding-left: 28px; position: relative; line-height: 1.7; }
   .tut-step b { color: #C9A24B; }
   .tut-step .n { position: absolute; left: 0; top: 2px; width: 20px; height: 20px; border-radius: 50%; background: #C9A24B; color: #0A2E26; font-size: 12px; font-weight: 700; text-align: center; line-height: 20px; }
@@ -536,6 +536,8 @@
   .stat-card.big { padding: 12px 16px; font-size: 16px; }
   .stat-card.ok { border-color: rgba(232,220,196,0.35); } .stat-card.bad { border-color: rgba(201,79,79,0.35); }
   .center-panel { text-align: center; max-width: 460px; }
+  .pause-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; }
+  .pause-actions .btn-sprite { min-height: 44px; min-width: 110px; flex: 1 1 calc(50% - 8px); max-width: 210px; }
   .buff-panel { max-width: 620px; }
   .merge-panel { max-width: 620px; }
   .result-panel { max-width: 540px; }
@@ -643,8 +645,10 @@
     .panel { max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     .btn { min-height: 46px; min-width: 46px; font-size: 15px; padding: 12px 18px; border-radius: 12px; touch-action: none; }
     .btn.btn-small { min-height: 46px; }
+    .btn-sprite { min-height: 44px; }
     .merge-panel .actions, .panel .actions { flex-wrap: wrap; gap: 10px; }
-    .merge-panel .actions .btn, .panel .actions .btn { flex: 1 1 auto; }
+    .merge-panel .actions .btn, .panel .actions .btn { flex: 1 1 auto; min-height: 44px; }
+    .pause-actions .btn-sprite { flex: 1 1 100%; max-width: none; min-height: 46px; }
   }
   /* #197 拾取筛选浮层 */
   .pf-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
@@ -2062,10 +2066,12 @@
     <h2>已暂停</h2>
     <div class="muted">按 P 或 ESC 可继续</div>
     <div id="pauseStats" class="mini"></div>
-    <button id="pauseResume" class="btn-sprite btn-primary">继续游戏</button>
-    <button id="pauseAutoFire" class="btn btn-sprite btn-secondary">自动开火：开</button>
-    <button id="pauseHelp" class="btn btn-sprite btn-secondary">怎么玩</button>
-    <button id="pauseQuit" class="btn btn-sprite btn-secondary" style="filter:hue-rotate(-20deg) saturate(1.3) brightness(0.9);">放弃本局（带回 30%）</button>
+    <div class="pause-actions">
+      <button id="pauseResume" class="btn-sprite btn-primary">继续游戏</button>
+      <button id="pauseAutoFire" class="btn btn-sprite btn-secondary">自动开火：开</button>
+      <button id="pauseHelp" class="btn btn-sprite btn-secondary">怎么玩</button>
+      <button id="pauseQuit" class="btn btn-sprite btn-secondary" style="filter:hue-rotate(-20deg) saturate(1.3) brightness(0.9);">放弃本局（带回 30%）</button>
+    </div>
   </div>
 </div>
 
