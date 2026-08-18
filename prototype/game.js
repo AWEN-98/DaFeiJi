@@ -7047,12 +7047,13 @@
       shown.forEach(function (a) {
         var on = a.id === meta.equipped[slot];
         var row = document.createElement('div'); row.className = 'inv-row' + (on ? ' on' : '');
-        var left = document.createElement('div'); left.style.cssText = 'flex:1;min-width:0;';
-        var gearIcon = a.slot === 'weapon' ? weaponIconHtml(a, 'wpn-icon-row') : gearIconHtml(a, 'gear-icon-row');
-        left.innerHTML = '<span class="rarity-badge rarity-' + a.rarity + '"></span><div class="artline"><span class="wpn-left">' + gearIcon + '<span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span></span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
+        var iconBox = document.createElement('div'); iconBox.className = 'inv-icon';
+        iconBox.innerHTML = a.slot === 'weapon' ? weaponIconHtml(a, 'wpn-icon-row') : gearIconHtml(a, 'gear-icon-row');
+        var txt = document.createElement('div'); txt.className = 'inv-txt';
+        txt.innerHTML = '<div class="inv-1"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
         var rec = document.createElement('span'); rec.className = 'rec'; rec.textContent = '回收';
         rec.onclick = function (ev) { ev.stopPropagation(); recycleArtifact(a.id); };
-        row.appendChild(left); row.appendChild(rec);
+        row.appendChild(iconBox); row.appendChild(txt); row.appendChild(rec);
         row.onclick = function () { equipArtifact(a.slot, a.id); };
         list.appendChild(row);
       });
