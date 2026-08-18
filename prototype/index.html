@@ -607,24 +607,27 @@
   .cons-btn.empty { opacity: 0.26; }
   .cons-btn .cons-label { font-size: 7px; margin-top: 1px; opacity: 0.7; }
 
-  /* —— 左上工具带 v3（2026-08-18）：废弃纵向 2 列网格（阻碍走位视线），改为顶部边缘单行小按钮带 —— */
+  /* —— 左上工具带（2026-08-18 重构）：仅保留「暂停」与「背包」两个全局控件，拾取/合成/翻相已全部迁入右侧扇形轮盘 —— */
   .pause-btn { width: 40px; height: 40px; left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); border-color: rgba(232,220,196,0.35); background: rgba(16,13,9,0.45); font-size: 16px; }
   .pause-btn.on { background: rgba(232,220,196,0.32); }
   .bp-btn { width: 40px; height: 40px; left: calc(52px + var(--sa-l)); top: calc(8px + var(--sa-t)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 16px; line-height: 1; }
   .bp-btn.on { background: rgba(127,176,105,0.55); }
   .bp-btn.empty { opacity: 0.28; }
-  .phase-btn { width: 44px; height: 44px; left: calc(100px + var(--sa-l)); top: calc(6px + var(--sa-t)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 18px; line-height: 1; }
+  /* —— 右侧扇形交互轮盘（2026-08-18 重构）：绝技/冲刺为内环核心战斗区，翻相/合成/拾取为外环战术交互区，
+       全部弧形排布于右下「主开火键（右摇杆）」圆心周围，左手走位、右手战斗+交互一站式 —— */
+  .phase-btn { width: 44px; height: 44px; right: calc(62px + var(--sa-r)); bottom: calc(150px + var(--sa-b)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 18px; line-height: 1; }
   .phase-btn.on { background: rgba(201,162,75,0.55); }
   .phase-btn.cd { opacity: 0.3; }
-  .merge-btn { width: 44px; height: 44px; left: calc(148px + var(--sa-l)); top: calc(6px + var(--sa-t)); border-color: rgba(176,111,208,0.6); background: rgba(176,111,208,0.2); font-size: 18px; line-height: 1; }
+  .merge-btn { width: 44px; height: 44px; right: calc(150px + var(--sa-r)); bottom: calc(92px + var(--sa-b)); border-color: rgba(176,111,208,0.6); background: rgba(176,111,208,0.2); font-size: 18px; line-height: 1; }
   .merge-btn.on { background: rgba(176,111,208,0.55); }
   .merge-btn.empty { opacity: 0.28; }
   .merge-btn.hint { animation: mergePulse 1.2s ease-in-out infinite; }
   @keyframes mergePulse { 0%, 100% { box-shadow: 0 0 8px 3px rgba(176,111,208,0.4); } 50% { box-shadow: 0 0 20px 6px rgba(176,111,208,0.8); } }
-  .pick-btn { width: 44px; height: 44px; left: calc(196px + var(--sa-l)); top: calc(6px + var(--sa-t)); border-color: rgba(201,162,75,0.7); background: rgba(201,162,75,0.24); font-size: 18px; line-height: 1; color: #C9A24B; }
+  /* 拾取键：动态上下文感知 —— 无战利品→半透明微缩；附近有可拾取→高亮放大+呼吸光晕（盲操拇指也能精准拾取） */
+  .pick-btn { width: 42px; height: 42px; right: calc(64px + var(--sa-r)); bottom: calc(92px + var(--sa-b)); border-color: rgba(201,162,75,0.7); background: rgba(201,162,75,0.24); font-size: 18px; line-height: 1; color: #C9A24B; transition: transform .14s, opacity .14s, box-shadow .14s, background .1s; }
   .pick-btn.on { background: rgba(201,162,75,0.6); }
-  .pick-btn.empty { opacity: 0.28; }
-  .pick-btn.glow { animation: pickGlow 1s ease-in-out infinite; border-color: #E0B84A; }
+  .pick-btn.empty { opacity: 0.2; transform: scale(0.74); }
+  .pick-btn.glow { transform: scale(1.16); border-color: #FFE9A8; background: rgba(224,184,74,0.5); animation: pickGlow 1s ease-in-out infinite; }
   @keyframes pickGlow { 0%, 100% { box-shadow: 0 0 8px 3px rgba(224,184,74,0.45); } 50% { box-shadow: 0 0 22px 7px rgba(224,184,74,0.85); } }
   /* 移动端弹层：彻底拦截底层事件 + 大卡片栅格 + 可达关闭键（拇指易触） */
   .overlay, .panel { touch-action: none; }
@@ -645,15 +648,67 @@
   .pf-name { font-weight: 700; flex: 1; }
   .pf-val { font-size: 12px; color: #8B95A0; }
   .pf-sw { font-size: 13px; font-weight: 700; min-width: 64px; text-align: right; }
-  /* #198 背包整理浮层 */
-  .bp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 12px; }
-  .bp-card { position: relative; border: 1px solid; border-radius: 10px; padding: 10px 28px 10px 12px; background: rgba(20,16,10,0.7); cursor: pointer; transition: .12s; }
-  .bp-card:hover { filter: brightness(1.12); }
-  .bp-card.sel { box-shadow: 0 0 14px rgba(201,162,75,0.5); background: rgba(30,24,14,0.7); }
-  .bp-card-name { font-weight: 700; font-size: 14px; }
-  .bp-card-sub { font-size: 11px; color: #8B95A0; margin-top: 3px; }
-  .bp-drop { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(201,79,79,0.5); background: rgba(201,79,79,0.2); color: #E8907C; font-size: 11px; cursor: pointer; line-height: 18px; text-align: center; padding: 0; }
-  .bp-drop:hover { background: rgba(201,79,79,0.5); color: #fff; }
+  /* #198 战利品储物舱 · 高品质重构 v2（毛玻璃 + 国风金框 + 状态栏 + 品质流光网格 + 详情即时换装） */
+  #backpackOverlay.bp-overlay { background: rgba(8,7,10,0.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  .bp-panel { width: min(880px, 94vw); max-height: 92vh; display: flex; flex-direction: column; padding: 0; overflow: hidden;
+    border: 1px solid rgba(201,162,75,0.5); border-radius: 18px;
+    background: linear-gradient(180deg, rgba(34,26,16,0.97), rgba(20,15,9,0.97));
+    box-shadow: 0 0 60px rgba(201,162,75,0.22), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(201,162,75,0.18); }
+  /* 国风金属雕花内框 */
+  .bp-panel::before { content: ''; position: absolute; inset: 7px; border: 1px solid rgba(201,162,75,0.26); border-radius: 13px; pointer-events: none; }
+  /* 顶部状态栏 */
+  .bp-status { display: flex; align-items: center; gap: 14px; padding: 14px 18px 12px; border-bottom: 1px solid rgba(201,162,75,0.28);
+    background: linear-gradient(180deg, rgba(201,162,75,0.12), transparent); flex-wrap: wrap; }
+  .bp-status h2 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #E8DCC4; text-shadow: 0 0 14px rgba(201,162,75,0.4); white-space: nowrap; }
+  .bp-stat-row { display: flex; gap: 10px; flex: 1; flex-wrap: wrap; }
+  .bp-stat { font-size: 12px; color: #B8A98A; padding: 5px 11px; border: 1px solid rgba(201,162,75,0.3); border-radius: 9px; background: rgba(20,16,10,0.5); }
+  .bp-stat b { color: #E0B84A; font-size: 14px; margin-left: 5px; }
+  .bp-status #backpackClose { margin-left: auto; }
+  /* 3-4 列品质流光金属框网格 */
+  .bp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; padding: 14px 18px; overflow-y: auto; }
+  .bp-card { position: relative; border: 1.5px solid var(--rc, #C9A24B); border-radius: 11px; padding: 11px 30px 11px 13px;
+    background: linear-gradient(160deg, rgba(28,22,13,0.92), rgba(16,12,8,0.92)); cursor: pointer; overflow: hidden;
+    transition: transform .12s, box-shadow .14s, filter .12s; }
+  .bp-card::before { content: ''; position: absolute; inset: 0; border-radius: 11px; pointer-events: none;
+    background: linear-gradient(180deg, var(--rc, #C9A24B), transparent 58%); opacity: 0.12; }
+  .bp-card:hover { transform: translateY(-2px); filter: brightness(1.14); box-shadow: 0 6px 18px rgba(0,0,0,0.5), 0 0 14px color-mix(in srgb, var(--rc, #C9A24B) 40%, transparent); }
+  .bp-card.sel { box-shadow: 0 0 16px rgba(201,162,75,0.6); background: rgba(34,26,15,0.95); }
+  .bp-card.equipped { box-shadow: 0 0 14px rgba(127,176,105,0.55); }
+  .bp-card-name { font-weight: 800; font-size: 14px; letter-spacing: .3px; }
+  .bp-card-sub { font-size: 11px; color: #9A8E72; margin-top: 4px; }
+  .bp-card-eq { position: absolute; top: 7px; right: 28px; font-size: 9px; color: #7FB069; border: 1px solid rgba(127,176,105,0.5); border-radius: 6px; padding: 1px 5px; }
+  .bp-card-empty { border-style: dashed; opacity: 0.45; }
+  .bp-drop { position: absolute; top: 7px; right: 7px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(201,79,79,0.5); background: rgba(201,79,79,0.2); color: #E8907C; font-size: 11px; cursor: pointer; line-height: 18px; text-align: center; padding: 0; transition: .12s; z-index: 2; }
+  .bp-drop:hover { background: rgba(201,79,79,0.55); color: #fff; }
+  /* 详情卡 */
+  .bp-detail { padding: 14px 18px 18px; overflow-y: auto; }
+  .bp-detail-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .bp-detail-name { font-weight: 800; font-size: 17px; letter-spacing: .3px; }
+  .bp-detail-slot { font-size: 11px; color: #B8A98A; border: 1px solid rgba(201,162,75,0.35); border-radius: 7px; padding: 2px 8px; }
+  .bp-detail-rar { font-size: 11px; padding: 2px 8px; border-radius: 7px; border: 1px solid; }
+  .bp-detail-affix, .bp-compare { background: rgba(16,13,9,0.6); border: 1px solid rgba(201,162,75,0.2); border-radius: 10px; padding: 10px 12px; margin: 10px 0; }
+  .bp-detail-affix h4, .bp-compare h4 { margin: 0 0 6px; font-size: 12px; color: #C9A227; letter-spacing: 1px; }
+  .bp-affix-line { font-size: 13px; color: #E8DCC4; padding: 2px 0; }
+  .bp-cmp-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+  .bp-cmp-row .bp-cmp-key { color: #B8A98A; width: 84px; flex-shrink: 0; }
+  .bp-cmp-row .bp-cmp-eq { color: #9A8E72; flex: 1; }
+  .bp-cmp-row .bp-cmp-new { flex: 1; font-weight: 600; }
+  .bp-up { color: #7FB069; font-weight: 800; }
+  .bp-down { color: #C94F4F; font-weight: 800; }
+  .bp-same { color: #9A8E72; }
+  .bp-detail-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .bp-detail-actions .btn { flex: 1 1 auto; min-width: 120px; }
+  .btn-bp-equip { border-color: rgba(127,176,105,0.7) !important; background: rgba(127,176,105,0.18) !important; color: #cfe8c0 !important; }
+  .btn-bp-jade { border-color: rgba(201,162,75,0.7) !important; background: rgba(201,162,75,0.16) !important; color: #E0B84A !important; }
+  .btn-bp-armor { border-color: rgba(94,159,208,0.7) !important; background: rgba(94,159,208,0.16) !important; color: #a9d4f0 !important; }
+  .btn-bp-drop { border-color: rgba(201,79,79,0.6) !important; background: rgba(201,79,79,0.14) !important; color: #E8907C !important; }
+  .btn-bp-back { border-color: rgba(139,149,160,0.5) !important; background: rgba(139,149,160,0.12) !important; color: #cfd4da !important; }
+  /* 移动端：半屏滑出抽屉（底部上滑） */
+  @media (max-width: 768px) {
+    #backpackOverlay.bp-overlay { justify-content: flex-end; background: rgba(8,7,10,0.35); }
+    .bp-panel { width: 100vw; max-width: 100vw; max-height: 86vh; border-radius: 18px 18px 0 0; margin: 0; align-self: flex-end; animation: bpSlideUp .28s ease-out; }
+    @keyframes bpSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  }
 
   /* 竖屏软提示：顶部横幅，非全屏封锁；仅标题页竖屏显示 */
   #rotatePrompt { position: absolute; top: 0; left: 0; right: 0; z-index: 60; display: none; flex-direction: column; align-items: center; gap: 8px; background: rgba(14,11,8,0.92); border-bottom: 1px solid rgba(201,162,75,0.45); text-align: center; padding: 10px 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.5); }
@@ -671,9 +726,9 @@
   body[data-orient="portrait"] .cons-btn { width: 44px; height: 44px; right: calc(158px + var(--sa-r)); bottom: calc(74px + var(--sa-b)); }
   body[data-orient="portrait"] .mbtn.pause-btn { left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
   body[data-orient="portrait"] .mbtn.bp-btn { left: calc(50px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
-  body[data-orient="portrait"] .mbtn.phase-btn { left: calc(96px + var(--sa-l)); top: calc(6px + var(--sa-t)); width: 42px; height: 42px; font-size: 17px; }
-  body[data-orient="portrait"] .mbtn.merge-btn { left: calc(142px + var(--sa-l)); top: calc(6px + var(--sa-t)); width: 42px; height: 42px; font-size: 17px; }
-  body[data-orient="portrait"] .mbtn.pick-btn { left: calc(188px + var(--sa-l)); top: calc(6px + var(--sa-t)); width: 42px; height: 42px; font-size: 17px; }
+  body[data-orient="portrait"] .mbtn.phase-btn { right: calc(58px + var(--sa-r)); bottom: calc(140px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
+  body[data-orient="portrait"] .mbtn.merge-btn { right: calc(140px + var(--sa-r)); bottom: calc(84px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
+  body[data-orient="portrait"] .mbtn.pick-btn { right: calc(60px + var(--sa-r)); bottom: calc(84px + var(--sa-b)); width: 38px; height: 38px; font-size: 16px; }
   body[data-orient="portrait"] .mbtn .mb-label { font-size: 7px; }
   body[data-orient="portrait"] .joy-base { width: 120px; height: 120px; }
   body[data-orient="portrait"] .joy-knob { width: 52px; height: 52px; }
@@ -1865,13 +1920,21 @@
   </div>
 </div>
 
-<!-- #198 背包整理 -->
-<div id="backpackOverlay" class="overlay">
-  <div class="panel">
-    <h2>背包 <span id="backpackCount" style="color:#C9A227">0 / 8</span></h2>
-    <div class="muted">桌面拖拽卡片交换位置；移动端点选两张交换。点 ✕ 丢弃释放格位。</div>
+<!-- #198 背包整理 · 战利品储物舱（高品质重构 v2：毛玻璃+国风金框+状态栏+详情即时换装） -->
+<div id="backpackOverlay" class="overlay bp-overlay">
+  <div class="panel bp-panel">
+    <div class="bp-status">
+      <h2>战利品储物舱</h2>
+      <div class="bp-stat-row">
+        <span class="bp-stat">搜刮法宝<b id="bpStatLoot">0</b></span>
+        <span class="bp-stat">灵玉获得<b id="bpStatJade">0</b></span>
+        <span class="bp-stat">仓储<b id="backpackCount">0 / 8</b></span>
+      </div>
+      <button id="backpackClose" class="btn btn-sprite btn-small">关闭 (B)</button>
+    </div>
     <div id="backpackGrid" class="bp-grid"></div>
-    <div class="actions"><button id="backpackSort" class="btn btn-sprite btn-secondary">整理（稀有度↓）</button><button id="backpackClose" class="btn btn-sprite btn-small">关闭 (B)</button></div>
+    <div id="backpackDetail" class="bp-detail" style="display:none"></div>
+    <div class="actions"><button id="backpackSort" class="btn btn-sprite btn-secondary">整理（稀有度↓）</button><span class="muted">点卡片看详情 · 桌面可拖拽换位</span></div>
   </div>
 </div>
 

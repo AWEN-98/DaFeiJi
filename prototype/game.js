@@ -372,10 +372,10 @@
     if (setKey) { art.setKey = setKey; }
     return art;
   }
-  function applyArtifactMods(m) {
+  function applyArtifactMods(m, alsoHp) {
     if (!m) return;
     if (m.dmg) player.dmg += m.dmg;
-    if (m.maxhp) { player.maxhp += m.maxhp; player.hp += m.maxhp; }
+    if (m.maxhp) { player.maxhp += m.maxhp; if (alsoHp !== false) player.hp += m.maxhp; } // #BP2：重算时 alsoHp=false，避免换装回血
     if (m.maxshield) player.maxshield += m.maxshield;
     if (m.regen) player.regen += m.regen;
     if (m.fireRate) player.fireRate += m.fireRate;
@@ -401,8 +401,8 @@
     if (m.jadeBonus) player.jadeBonus = (player.jadeBonus || 0) + m.jadeBonus;
     if (m.dropBonus) player.dropBonus = (player.dropBonus || 0) + m.dropBonus;
   }
-  // 应用子类型基础属性
-  function applySubtypeBonus(art) {
+  // 应用子类型基础属性（#BP2：safe=true 时跳过「hp=maxhp」回血副作用，供 recomputeRunStats 安全重算）
+  function applySubtypeBonus(art, safe) {
     var b = art.subBonus; if (!b) return;
     var s = art.subtype;
     // 武器子类型
@@ -412,16 +412,16 @@
     else if (s === 'splash') { player.explode = Math.max(player.explode, b.explodeR); player.splashRatio = b.splashRatio; }
     else if (s === 'chain') { player.chain = (player.chain || 0) + (b.chainJump || 0); player.chainDecay = b.chainDecay; player.chainRange = b.chainRange; }
     // 护甲子类型
-    else if (s === 'heavy') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); player.hp = player.maxhp; player.speed = Math.round(player.speed * (1 - (b.speedPenalty || 0))); }
-    else if (s === 'light') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); player.hp = player.maxhp; player.dodgeChance = Math.min(0.6, player.dodgeChance + (b.dodgeBonus || 0)); }
-    else if (s === 'regen') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); player.hp = player.maxhp; player.regen *= (b.regenMult || 1); }
-    else if (s === 'shield') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); player.hp = player.maxhp; player.maxshield = Math.round(player.maxshield * (b.shieldMult || 1)); player.shieldBreakIframe = b.breakIframe; }
+    else if (s === 'heavy') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.speed = Math.round(player.speed * (1 - (b.speedPenalty || 0))); }
+    else if (s === 'light') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.dodgeChance = Math.min(0.6, player.dodgeChance + (b.dodgeBonus || 0)); }
+    else if (s === 'regen') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.regen *= (b.regenMult || 1); }
+    else if (s === 'shield') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.maxshield = Math.round(player.maxshield * (b.shieldMult || 1)); player.shieldBreakIframe = b.breakIframe; }
     // 核心子类型
     else if (s === 'mobility') { player.speed += (b.speedBonus || 0); player.dashCdReduce = (player.dashCdReduce || 0) + (b.dashCdReduce || 0); }
     else if (s === 'crit') { player.critChance = Math.min(0.85, player.critChance + (b.critBonus || 0)); player.critMult += (b.critMultBonus || 0); }
     else if (s === 'element') { player.elemBoost = (player.elemBoost || 0) + (b.elemBoost || 0); }
     else if (s === 'support') { player.pickR += (b.pickBonus || 0); player.jadeBonus = (player.jadeBonus || 0) + (b.jadeBonus || 0); player.dropBonus = (player.dropBonus || 0) + (b.dropBonus || 0); }
-    else if (s === 'thorns') { player.thorns = (player.thorns || 0) + Math.round(player.maxhp * (b.thornsRatio || 0)); player.maxhp += (b.hpBonus || 0); player.hp += (b.hpBonus || 0); }
+    else if (s === 'thorns') { player.thorns = (player.thorns || 0) + Math.round(player.maxhp * (b.thornsRatio || 0)); player.maxhp += (b.hpBonus || 0); if (!safe) player.hp += (b.hpBonus || 0); }
     // 弹药子类型
     else if (s === 'pierce') { player.pierce += (b.pierceBonus || 0); }
     else if (s === 'spread_a') { player.pellets = Math.min(9, player.pellets + (b.pelletsBonus || 0)); player.spreadAngle = (player.spreadAngle || 0) + (b.spreadBonus || 0); }
@@ -1220,6 +1220,7 @@
       if (e.key === '3') chooseBuff(2);
       if (e.key.toLowerCase() === 'm') toggleMerge();
       if (e.key.toLowerCase() === 'l') togglePickupFilter();
+      if (e.key === 'Tab') { if (scene === 'mission') { e.preventDefault(); toggleBackpack(); } return; } // #BP2：Tab 同 B 开关背包（PC 便捷键位）
       if (e.key.toLowerCase() === 'b') toggleBackpack();
       if (e.key.toLowerCase() === 'q') useConsumable();
       if (e.key.toLowerCase() === 'g') { glowOn = !glowOn; setBanner('辉光/拖尾 ' + (glowOn ? '开启' : '关闭'), 1.2); }
@@ -2080,6 +2081,7 @@
       attackAnimT: 0, attackSeq: 0, attackSide: 0, attackFired: [false, false], dashAnimT: 0, engineT: 0,
       consumables: [],
       bondTiers: {}, killExplode: 0, freezeChance: 0, skyStrike: 0, skyCd: 0, skyT: 0, gale: false, galeActive: false, outOfCombatT: 0,
+      runeDefs: [], // #BP2：本局已拾取符文定义（含 .apply 闭包），供 recomputeRunStats 重放，避免重算时丢失符文加成
       execute: 0, overload: 0, undying: false, undyingUsed: false, guardShock: 0,
       // 灵潮构筑流（v10）：连击 / 绝技充能 / 流派觉醒
       combo: 0, comboT: 0, comboBest: 0, ultCharge: 0, evolved: {}, aimLineT: 0
@@ -2089,7 +2091,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null;
-    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]) };
+    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]) };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2102,6 +2104,7 @@
     placeNodes(6 + tier);
     placeVeins(); // 灵脉共振（v11）：每系一条增益资源区，铺在节点之间的开阔空域
     applyEquipped(); // 把已装备法器 + 研究院被动实打实叠到这局属性上
+    run._gearFull = snapshotGearBase(); // #BP2：抓取「已叠完 meta 装备+研究院」的战斗属性基线（不含符文/战损），供 recomputeRunStats 安全重算；局内换装在此基线上叠加，绝不回血
     spawnPhaseObjects(); // 相位柱 / 引力裂隙 / 磁锁秘库布点
     if (meta.runs === 0) { var ek = isMobile ? '点按' : '[E]'; showTip('<b>目标：</b>搜刮战利品 → 撤离带回法器。天空有<b>礁石掩体/隔断墙</b>可当掩护、<b>五行灵脉</b>（小地图菱形点）飞过即吸灵韵喂羁绊；<b>封印宝箱</b>按住' + ek + '解封（会刷敌）、<b>符文宝箱</b>击破环绕符文柱解锁，都在特殊位置、保底高品质。撤离点<b>限时开放</b>（光柱亮起才能走）。战利品改为<b>手动拾取</b>：靠近按' + ek + '或点按拾取（不再触碰即捡）', 5); }
     vfxLines.length = 0;
@@ -2540,7 +2543,7 @@
   function chooseBuff(idx) {
     if (!paused || !buffChoices[idx]) return;
     var b = buffChoices[idx]; b.apply();
-    player.buffs.push(b.name); player.runes.push(b.name);
+    player.buffs.push(b.name); player.runes.push(b.name); player.runeDefs.push(b); // #BP2：存定义供 recomputeRunStats 重放符文加成
     runeCount++; buffTimer = 0; killForBuff = runeNextReq(runeCount); // 每次取符文后，下一枚所需击杀数依次叠加（封顶）
     if (b.elem) { player.elements[b.elem] = (player.elements[b.elem] || 0) + 1; recalcBonds(); }
     setBanner('获得符文：' + b.name, 1.5);
@@ -2695,9 +2698,9 @@
     }
     // artifact / legendary / bossrelic / legendary_weapon → 入背包（满则取舍）
     var tgt = inRift ? riftLoot : run.loot;
-    var lootItem = { rarity: it.rarity, name: it.name, slot: it.slot || pickSlot(), rift: inRift };
+    var lootItem = { rarity: it.rarity, name: it.name, slot: it.slot || pickSlot(), rift: inRift, uid: ++run._uid };
     if (it.type === 'bossrelic' && it.relicMods) lootItem.relicMods = it.relicMods;
-    if (it.type === 'legendary_weapon' && it.relicMods) { lootItem.relicMods = it.relicMods; lootItem.isLegendaryWeapon = true; lootItem.legendaryPassive = it.legendaryPassive; lootItem.subtype = it.subtype; }
+    if (it.type === 'legendary_weapon' && it.relicMods) { lootItem.relicMods = it.relicMods; lootItem.isLegendaryWeapon = true; lootItem.legendaryPassive = it.legendaryPassive; lootItem.subtype = it.subtype; lootItem.subBonus = it.subBonus || (SUBTYPE_PARAMS[it.subtype] || null); }
     pushToLoot(tgt, lootItem, it.x, it.y);
     if (!inRift) run.picked++;
     AudioSys.sfx.pickup(it.rarity);
@@ -2728,6 +2731,124 @@
 
   // ============ #198 背包可打开整理 ============
   var backpackSel = []; // 移动端点选交换的选中索引
+  var backpackDetail = null; // #BP2：当前查看详情的背包索引（非空时渲染详情卡而非网格）
+
+  // #BP2 局内即时换装 / 折价熔解 / 属性对比 支撑函数
+  // 受「装备/研究院/符文」影响的战斗字段（不含 hp —— 换装绝不回血）
+  var GEAR_KEYS = ['dmg', 'maxhp', 'atkMult', 'bulletSpeed', 'speed', 'fireRate', 'maxshield', 'regen', 'critChance', 'critMult', 'pierce', 'dodgeChance', 'burn', 'pellets', 'explode', 'homing', 'homingTurnRate', 'shieldRegen', 'lifesteal', 'chain', 'chainDecay', 'chainRange', 'dmgReduce', 'blockChance', 'thorns', 'reflect', 'slowAuraR', 'slowFactor', 'magnet', 'dashCdReduce', 'jadeBonus', 'dropBonus', 'elemBoost', 'spreadAngle', 'falloff', 'splashRatio', 'shieldBreakIframe', 'pickR', 'extractBonus', 'setMarkCrit', 'setStandStillReduce', 'setStandStillAura', 'setStandStillSlow', 'setStandStillTime', 'setDashTrail', 'setDashProj', 'setDashIframeBonus', 'setElemBonus', 'setMergeGuaranteed2', 'setBondReduce', 'activeSets', 'legendaryPassive'];
+  function cloneVal(v) { if (v && typeof v === 'object') { try { return JSON.parse(JSON.stringify(v)); } catch (e) { return v; } } return v; }
+  function snapshotGearBase() { var o = {}; for (var i = 0; i < GEAR_KEYS.length; i++) { var k = GEAR_KEYS[i]; o[k] = cloneVal(player[k]); } return o; }
+  function findLootByUid(uid) { if (uid == null) return null; for (var i = 0; i < run.loot.length; i++) if (run.loot[i].uid === uid) return run.loot[i]; return null; }
+  // 当前槽位「生效中的装备」：优先本局换装的背包件，否则 meta 军械库已装配件
+  function getEquippedForSlot(slot) {
+    var uid = run.equipped[slot];
+    if (uid != null) { var l = findLootByUid(uid); if (l) return l; }
+    return getArt(meta.equipped[slot]);
+  }
+  // 安全重算玩家战斗属性：基线(run._gearFull=已叠完 meta 装备+研究院，不含符文/战损) → 重放符文 → 叠加局内换装覆盖件；绝不回血
+  function recomputeRunStats() {
+    if (!run || !run._gearFull) return;
+    var base = run._gearFull;
+    for (var i = 0; i < GEAR_KEYS.length; i++) { var k = GEAR_KEYS[i]; player[k] = cloneVal(base[k]); }
+    if (player.runeDefs) for (var r = 0; r < player.runeDefs.length; r++) { var d = player.runeDefs[r]; if (d && d.apply) d.apply(); }
+    for (var s = 0; s < SLOTS.length; s++) {
+      var uid = run.equipped[SLOTS[s]]; if (uid == null) continue;
+      var it = findLootByUid(uid); if (!it) { run.equipped[SLOTS[s]] = null; continue; }
+      var m = it.relicMods || it.mods; if (m) applyArtifactMods(m, false);
+      if (it.subtype) applySubtypeBonus({ subtype: it.subtype, subBonus: it.subBonus }, true);
+      if (it.isLegendaryWeapon && it.legendaryPassive) player.legendaryPassive = it.legendaryPassive;
+    }
+    if (player.hp > player.maxhp) player.hp = player.maxhp;
+  }
+  function bpSetName(it) { return (it.relicMods ? '★ ' : '') + it.name; }
+  var BP_MOD_LABEL = { dmg: '伤害', maxhp: '生命', maxshield: '护盾', regen: '回盾', fireRate: '射速', critChance: '暴击', critMult: '暴伤', bulletSpeed: '弹速', speed: '移速', dodgeChance: '闪避', pierce: '穿透', burn: '灼烧', pellets: '弹片', explode: '爆裂', lifesteal: '吸血', chain: '连锁', homing: '追踪' };
+  function bpFmtMod(k, v) {
+    if (v == null) return '—';
+    if (k === 'critChance' || k === 'dodgeChance') return Math.round(v * 100) + '%';
+    if (k === 'homing') return '有';
+    return '' + v;
+  }
+  // 详情卡：词条属性 + 与当前装配对比（绿色↑提升 / 红色↓下降）
+  function renderBackpackDetail(idx) {
+    var grid = document.getElementById('backpackGrid'), det = document.getElementById('backpackDetail');
+    if (!grid || !det) return;
+    grid.style.display = 'none'; det.style.display = '';
+    var it = run.loot[idx];
+    if (!it) { backpackDetail = null; renderBackpack(); return; }
+    var rc = RARCOL[it.rarity] || '#C9A24B';
+    var mods = it.relicMods || it.mods || null;
+    var affixHtml = '<div class="bp-detail-affix"><h4>词条属性</h4>';
+    if (mods) affixHtml += modsText(mods).split(' · ').map(function (s) { return '<div class="bp-affix-line">' + s + '</div>'; }).join('');
+    else affixHtml += '<div class="bp-affix-line muted">无特殊词条（基础法宝）</div>';
+    affixHtml += '</div>';
+    // 对比当前装配
+    var eq = getEquippedForSlot(it.slot);
+    var myMods = mods || {}, eqMods = eq ? (eq.relicMods || eq.mods || {}) : {};
+    var cmpRows = '', any = false;
+    Object.keys(BP_MOD_LABEL).forEach(function (k) {
+      var a = myMods[k], b = eqMods[k]; if (a == null && b == null) return; any = true;
+      var av = (a != null) ? a : 0, bv = (b != null) ? b : 0, cls = 'bp-same', arrow = '＝';
+      if (av > bv) { cls = 'bp-up'; arrow = '↑'; } else if (av < bv) { cls = 'bp-down'; arrow = '↓'; }
+      cmpRows += '<div class="bp-cmp-row"><span class="bp-cmp-key">' + BP_MOD_LABEL[k] + '</span>' +
+        '<span class="bp-cmp-eq">' + bpFmtMod(k, b) + '</span>' +
+        '<span class="bp-cmp-new ' + cls + '">' + bpFmtMod(k, a) + ' ' + arrow + '</span></div>';
+    });
+    var eqName = eq ? ((eq.relicMods ? '★ ' : '') + eq.name) : '（空槽）';
+    var cmpHtml = '<div class="bp-compare"><h4>对比当前装配 · ' + (SLOTNAME[it.slot] || '装备') + '：' + eqName + '</h4>';
+    if (!any) cmpHtml += '<div class="bp-affix-line muted">本件与当前装配均无数值词条，差异体现在稀有度/类型。</div>';
+    cmpHtml += cmpRows + '</div>';
+    var equipped = (run.equipped[it.slot] === it.uid);
+    det.innerHTML =
+      '<div class="bp-detail-head">' +
+        '<div class="bp-detail-name" style="color:' + rc + '">' + bpSetName(it) + '</div>' +
+        '<span class="bp-detail-slot">' + (SLOTNAME[it.slot] || '装备') + '</span>' +
+        '<span class="bp-detail-rar" style="color:' + rc + ';border-color:' + rc + '">' + RARNAME[it.rarity] + '</span>' +
+        (it.isLegendaryWeapon ? '<span class="bp-detail-rar" style="color:#FFE9A8;border-color:#FFE9A8">传说武器</span>' : '') +
+      '</div>' + affixHtml + cmpHtml +
+      '<div class="bp-detail-actions">' +
+        (equipped ? '<button class="btn btn-sprite btn-bp-back" disabled style="opacity:.6">已装配·本局生效</button>'
+                  : '<button class="btn btn-sprite btn-bp-equip" id="bpEquipBtn">⌁ 立即替换</button>') +
+        '<button class="btn btn-sprite btn-bp-jade" id="bpJadeBtn">⚒ 折价熔解·换灵玉</button>' +
+        '<button class="btn btn-sprite btn-bp-armor" id="bpArmorBtn">🛡 紧急熔解·回装甲</button>' +
+        '<button class="btn btn-sprite btn-bp-drop" id="bpDropBtn">✕ 丢弃</button>' +
+        '<button class="btn btn-sprite btn-bp-back" id="bpBackBtn">← 返回</button>' +
+      '</div>';
+    if (!equipped) { var eb = document.getElementById('bpEquipBtn'); if (eb) eb.onclick = function () { equipFromBackpack(idx); }; }
+    var jb = document.getElementById('bpJadeBtn'); if (jb) jb.onclick = function () { salvageFromBackpack(idx, 'jade'); };
+    var ab = document.getElementById('bpArmorBtn'); if (ab) ab.onclick = function () { salvageFromBackpack(idx, 'armor'); };
+    var db = document.getElementById('bpDropBtn'); if (db) db.onclick = function () { dropFromBackpack(idx); };
+    var bb = document.getElementById('bpBackBtn'); if (bb) bb.onclick = function () { backpackDetail = null; renderBackpack(); };
+  }
+  function equipFromBackpack(idx) {
+    var it = run.loot[idx]; if (!it) return;
+    var slot = it.slot;
+    if (it.uid == null) it.uid = ++run._uid;
+    // 换装：旧装备仍留背包（run.equipped 仅记录当前生效 uid），不 splice 删除；
+    // 否则 recomputeRunStats / getEquippedForSlot 经 findLootByUid 找不到生效件 → 换装静默失效（#BP2 校验发现）
+    run.equipped[slot] = it.uid;
+    recomputeRunStats();
+    floatText(player.x, player.y - 30, '已装配「' + it.name + '」', '#7FB069');
+    burst(player.x, player.y, '#7FB069', 8);
+    backpackDetail = null; renderBackpack();
+  }
+  function salvageFromBackpack(idx, mode) {
+    var it = run.loot[idx]; if (!it) return;
+    var val = Math.round((RARVAL[RAR.indexOf(it.rarity)] || 0) * 0.5);
+    if (run.equipped[it.slot] === it.uid) { run.equipped[it.slot] = null; recomputeRunStats(); }
+    run.loot.splice(idx, 1);
+    if (mode === 'jade') {
+      run.jade += val; meta.currency += val;
+      floatText(player.x, player.y - 30, '折价熔解 → +' + val + ' 灵玉', '#E0B84A');
+      burst(player.x, player.y, '#E0B84A', 8);
+    } else {
+      var heal = Math.round(player.maxhp * 0.15);
+      player.hp = Math.min(player.maxhp, player.hp + heal);
+      floatText(player.x, player.y - 30, '紧急熔解 → 回复 ' + heal + ' 装甲', '#5EA0D0');
+      burst(player.x, player.y, '#5EA0D0', 8);
+    }
+    backpackDetail = null; renderBackpack();
+  }
+  // __BP_TEST_HOOK__ 已移除（验证通过：背包即时换装/折价熔解/recomputeRunStats 0 错误）
 
   // v12b 拾取列表（吃鸡式）：按 F 打开附近地面物品清单，键鼠/触屏选择拾取
   var pickupOpen = false, pickupSel = 0;
@@ -2810,40 +2931,49 @@
     var ov = document.getElementById('backpackOverlay');
     if (paused && ov.style.display === 'flex') { ov.style.display = 'none'; paused = false; showMobileControls(); return; }
     if (paused) return;
-    paused = true; backpackSel = []; renderBackpack(); ov.style.display = 'flex'; showMobileControls();
+    paused = true; backpackSel = []; backpackDetail = null; renderBackpack(); ov.style.display = 'flex'; showMobileControls();
   }
   function renderBackpack() {
-    var box = document.getElementById('backpackGrid'); if (!box) return; box.innerHTML = '';
-    var cnt = document.getElementById('backpackCount'); if (cnt) cnt.textContent = run.loot.length + ' / ' + invMax;
-    if (run.loot.length === 0) { box.innerHTML = '<div class="muted">背包空空，先去搜刮战利品</div>'; return; }
+    var grid = document.getElementById('backpackGrid'), det = document.getElementById('backpackDetail');
+    var cnt = document.getElementById('backpackCount'), stLoot = document.getElementById('bpStatLoot'), stJade = document.getElementById('bpStatJade');
+    if (cnt) cnt.textContent = run.loot.length + ' / ' + invMax;
+    if (stLoot) stLoot.textContent = run.loot.length;
+    if (stJade) stJade.textContent = run.jade || 0;
+    if (!grid || !det) return;
+    if (backpackDetail != null) { renderBackpackDetail(backpackDetail); return; }
+    grid.style.display = ''; det.style.display = 'none'; grid.innerHTML = '';
+    if (run.loot.length === 0) { grid.innerHTML = '<div class="muted" style="grid-column:1/-1">背包空空，先去搜刮战利品</div>'; return; }
     run.loot.forEach(function (it, idx) {
       var card = document.createElement('div');
-      card.className = 'bp-card r-' + it.rarity + (backpackSel.indexOf(idx) >= 0 ? ' sel' : '');
-      card.style.borderColor = RARCOL[it.rarity];
-      var setName = (it.relicMods ? '★ ' : '') + it.name;
-      card.innerHTML = '<div class="bp-card-name" style="color:' + RARCOL[it.rarity] + '">' + setName + '</div>' +
-        '<div class="bp-card-sub">' + RARNAME[it.rarity] + ' · ' + (it.slot || '装备') + ' · 价值' + RARVAL[RAR.indexOf(it.rarity)] + '</div>' +
+      var rc = RARCOL[it.rarity] || '#C9A24B';
+      card.className = 'bp-card r-' + it.rarity;
+      card.style.setProperty('--rc', rc);
+      card.style.borderColor = rc;
+      var equipped = (run.equipped[it.slot] === it.uid);
+      if (equipped) card.classList.add('equipped');
+      var sub = RARNAME[it.rarity] + ' · ' + (SLOTNAME[it.slot] || '装备') + ' · 价值' + RARVAL[RAR.indexOf(it.rarity)];
+      card.innerHTML = '<div class="bp-card-name" style="color:' + rc + '">' + bpSetName(it) + '</div>' +
+        '<div class="bp-card-sub">' + sub + '</div>' +
+        (equipped ? '<div class="bp-card-eq">已装配</div>' : '') +
         '<button class="bp-drop" title="丢弃">✕</button>';
       card.querySelector('.bp-drop').onclick = function (e) { e.stopPropagation(); dropFromBackpack(idx); };
       card.onclick = function () { onBackpackCardClick(idx); };
-      // 桌面拖拽交换位置
+      // 桌面拖拽交换位置（移动端用详情卡操作）
       card.draggable = true;
       card.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/bp', String(idx)); });
       card.addEventListener('dragover', function (e) { e.preventDefault(); });
       card.addEventListener('drop', function (e) { e.preventDefault(); var from = parseInt(e.dataTransfer.getData('text/bp'), 10); if (!isNaN(from) && from !== idx) { swapBackpack(from, idx); } });
-      box.appendChild(card);
+      grid.appendChild(card);
     });
   }
   function onBackpackCardClick(idx) {
-    // 移动端/桌面点选：选两张交换位置
-    var pos = backpackSel.indexOf(idx);
-    if (pos >= 0) { backpackSel.splice(pos, 1); }
-    else { backpackSel.push(idx); if (backpackSel.length === 2) { swapBackpack(backpackSel[0], backpackSel[1]); return; } }
-    renderBackpack();
+    // #BP2：点选卡片 → 打开详情卡（词条+对比+即时换装/熔解），桌面仍可拖拽换位
+    backpackDetail = idx; renderBackpack();
   }
   function swapBackpack(a, b) {
     if (a === b || a < 0 || b < 0 || a >= run.loot.length || b >= run.loot.length) { backpackSel = []; renderBackpack(); return; }
     var tmp = run.loot[a]; run.loot[a] = run.loot[b]; run.loot[b] = tmp;
+    if (backpackDetail === a) backpackDetail = b; else if (backpackDetail === b) backpackDetail = a;
     backpackSel = []; renderBackpack();
     burst(player.x, player.y, COL.gold, 4);
   }
@@ -2856,14 +2986,17 @@
       if (sa !== sb) return sa < sb ? -1 : 1;
       return (a.name || '') < (b.name || '') ? -1 : ((a.name || '') > (b.name || '') ? 1 : 0);
     });
-    backpackSel = []; renderBackpack();
+    backpackDetail = null; backpackSel = []; renderBackpack();
     burst(player.x, player.y, COL.gold, 6);
   }
   function dropFromBackpack(idx) {
     if (idx < 0 || idx >= run.loot.length) return;
-    var d = run.loot.splice(idx, 1)[0];
+    var d = run.loot[idx];
+    if (run.equipped[d.slot] === d.uid) { run.equipped[d.slot] = null; recomputeRunStats(); }
+    run.loot.splice(idx, 1);
     floatText(player.x, player.y - 30, '丢弃「' + d.name + '」', '#C94F4F'); burst(player.x, player.y, '#C94F4F', 6);
-    backpackSel = []; renderBackpack();
+    if (backpackDetail === idx) backpackDetail = null;
+    renderBackpack();
   }
 
   // ---------- 丹药消耗品 ----------
