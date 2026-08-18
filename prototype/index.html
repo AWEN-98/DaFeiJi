@@ -1422,7 +1422,42 @@
       background: linear-gradient(180deg, rgba(14,11,8,0) 0%, rgba(14,11,8,0.94) 28%, rgba(14,11,8,0.98) 100%);
       padding: clamp(8px,1.6vh,16px) 0 clamp(10px,2vh,18px);
     }
-    #tab-hangar .launch { width: 100%; }
+    /* 法器槽：竖屏强制单行 4 联排，废除 2x2 巨型网格（破“法器框占满半屏”） */
+    #tab-hangar .loadout-row {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: space-between !important;
+      gap: 8px !important;
+      width: 100% !important;
+      flex: 0 0 auto !important;
+    }
+    #tab-hangar .loadout-row .eq-slot {
+      flex: 1 1 0 !important;
+      max-width: 72px !important;
+      aspect-ratio: 1 / 1 !important;
+      height: auto !important;
+      min-height: 0 !important;
+      width: auto !important;
+    }
+    #tab-hangar .loadout-row .eq-slot .box {
+      width: 100% !important; height: 100% !important;
+      aspect-ratio: 1 / 1 !important; flex: 1 1 auto !important;
+    }
+    /* 出击按钮：吸底 + 防压缩，永远饱满 48px（破“按钮被挤成一条线”） */
+    #tab-hangar .r-area.deploy-area { flex: 0 0 auto !important; }
+    #tab-hangar .launch {
+      flex-shrink: 0 !important;
+      min-height: 48px !important;
+      height: 48px !important;
+      width: 100% !important;
+      font-size: 18px !important;
+      font-weight: bold !important;
+      margin-top: 12px !important;
+      margin-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    }
+    #tab-hangar .launch .main { font-size: 18px !important; letter-spacing: 6px; }
+    /* 竖屏主内容容器保底可纵向滚动，杜绝任何元素被压扁 */
+    #tab-hangar { overflow-y: auto; -webkit-overflow-scrolling: touch; }
     /* 竖屏顶部栏：双行紧凑（第一行标题+资源，第二行 Tab 平分占满） */
     .hall-brand { flex-wrap: wrap; padding: 6px 12px; gap: 8px; align-items: center; }
     .hall-brand .nav-brand { flex: 1 1 auto; min-width: 0; order: 1; }
