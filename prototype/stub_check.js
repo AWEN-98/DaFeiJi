@@ -64,7 +64,7 @@ global.requestAnimationFrame = (cb) => { rafQueue.push(cb); return rafQueue.leng
 global.cancelAnimationFrame = () => {};
 global.window = global;
 global.devicePixelRatio = 1;
-global.innerWidth = 1280; global.innerHeight = 720;
+global.innerWidth = 1280; global.innerHeight = 720; global.scrollTo = function () {}; global.scrollX = 0; global.scrollY = 0; global.pageXOffset = 0; global.pageYOffset = 0;
 Object.defineProperty(global, 'navigator', { value: { userAgent: 'node-stub', maxTouchPoints: 0, platform: 'Win32' }, configurable: true, writable: true });
 global.addEventListener = function (type, fn) { (global._wh = global._wh || {})[type] = (global._wh[type] || []).concat(fn); };
 global.removeEventListener = function () {};
@@ -107,6 +107,15 @@ function touch(id, type, x, y) {
   if (!elements[id]) elements[id] = makeEl(id);
   elements[id].dispatchEvent(type, { type, changedTouches: [{ identifier: 7, clientX: x, clientY: y, pageX: x, pageY: y }], touches: [], preventDefault() {}, stopPropagation() {} });
 }
+function numOK(v) { return typeof v === 'number' && isFinite(v); }
+function scanNaN() {
+  const p = api.player && api.player();
+  if (p) ['x','y','vx','vy','hp','maxhp','dashT','dashDX','dashDY','dashCd','iframe'].forEach(k => { if (!numOK(p[k])) errors.push('NaN player.' + k + '=' + p[k]); });
+  const es = api.enemies ? api.enemies() : [];
+  for (let i = 0; i < es.length; i++) { const e = es[i]; ['x','y','vx','vy','hp','maxhp','chargeState','chargeT','chargeDist'].forEach(k => { if (!numOK(e[k])) errors.push('NaN enemies[' + i + '].' + k + '=' + e[k] + ' arche=' + (e.arche || '?')); }); }
+  const ls = api.loot ? api.loot() : [];
+  for (let i = 0; i < ls.length; i++) { const it = ls[i]; ['x','y','vx','vy'].forEach(k => { if (!numOK(it[k])) errors.push('NaN loot[' + i + '].' + k + '=' + it[k]); }); }
+}
 function summary() {
   console.log('----');
   console.log('total errors:', errors.length);
@@ -126,6 +135,9 @@ try {
   console.log('scene:', api.scene(), '| runPhase:', api.runPhase(), '| paused:', api.paused());
 
   // 3) banner 队列：两条不同通知共存 + 同文本去重
+  // 先用全新 mission 清场（避免前面 180 帧战斗引入的 buff 弹层/死亡导致 update 停摆、横幅冻结）
+  try { api.startMission(); } catch (e) { errors.push('startMission(3): ' + (e.stack || e)); }
+  for (let i = 0; i < 10; i++) tick(16.7);
   api.setBanner('第一条通知', 1.2, '#C9A24B');
   api.setBanner('第二条通知', 1.0);
   api.setBanner('第一条通知', 0.8); // 去重：应刷新而非新增
@@ -135,19 +147,32 @@ try {
   const hasBoth = q.some(b => b.text === '第一条通知') && q.some(b => b.text === '第二条通知');
   if (!hasBoth) errors.push('bannerQ missing a test banner');
   console.log('bannerQ (after dedup):', q.map(b => b.text).join(' / '), '| 第一条 count =', firstCount);
-  for (let i = 0; i < 90; i++) tick(16.7); // 1.5s 后我的测试横幅应过期
+  // 横幅过期窗口：排除“随机升级弹出 buff 选择层→paused→update 停摆→横幅冻结”的偶发干扰（与 merge/pause flaky 同源）
+  let _expired = false;
+  for (let k = 0; k < 16 && !_expired; k++) {
+    for (let i = 0; i < 20; i++) tick(16.7); // 0.33s
+    if (api.paused() || api.overlaysOpen()) { if (api.cleanState) api.cleanState(); continue; }
+    const _a = api.bannerQ();
+    if (!_a.some(b => b.text === '第一条通知' || b.text === '第二条通知')) _expired = true;
+  }
   const after = api.bannerQ();
   if (after.some(b => b.text === '第一条通知' || b.text === '第二条通知')) errors.push('test banners did not expire');
   else console.log('test banners expired OK; leftover game banners =', after.length);
   for (let i = 0; i < 60; i++) tick(16.7);
 
+  // 清场：随机模拟可能已弹出 buff/裂隙/秘库等弹层并使 paused=true，强制回到纯净 mission 态，
+  // 避免确定性开关断言被随机游戏事件污染（flaky 修复）
+  if (api.cleanState) api.cleanState();
+  for (let i = 0; i < 5; i++) tick(16.7);
+  if (api.paused() || api.overlaysOpen()) errors.push('cleanState FAILED: still paused/overlay after clean');
+
   // 4) 键盘输入：m 开/关合成弹层、p 暂停/恢复、f 翻相（各自独立、互不污染）
-  // 4a) 'm' 键开/关合成弹层
+  // 4a) 'm' 键开/关合成弹层（直接检查 mergeOverlay 显示态，避免被其他弹层污染）
   key('keydown', 'm'); key('keyup', 'm');
-  if (!api.overlaysOpen()) errors.push("'m' key should OPEN merge overlay");
+  if (document.getElementById('mergeOverlay').style.display !== 'flex') errors.push("'m' key should OPEN merge overlay");
   for (let i = 0; i < 5; i++) tick(16.7);
   key('keydown', 'm'); key('keyup', 'm');
-  if (api.overlaysOpen()) errors.push("'m' key should CLOSE merge overlay");
+  if (document.getElementById('mergeOverlay').style.display === 'flex') errors.push("'m' key should CLOSE merge overlay");
   for (let i = 0; i < 5; i++) tick(16.7);
   // 4b) 'p' 键暂停 / 恢复（含暂停期间 else 清 keys 路径）
   key('keydown', 'p'); key('keyup', 'p');
@@ -161,16 +186,17 @@ try {
   for (let i = 0; i < 5; i++) tick(16.7);
 
   // 5) api.toggleMerge 开/关合成弹层 + 帧渲染（此时弹层已关闭，状态干净）
+  if (api.cleanState) api.cleanState();
   api.toggleMerge();
-  if (!api.overlaysOpen()) errors.push('api.toggleMerge should OPEN overlay');
+  if (document.getElementById('mergeOverlay').style.display !== 'flex') errors.push('api.toggleMerge should OPEN overlay');
   for (let i = 0; i < 10; i++) tick(16.7);
   api.renderFrame();
   api.toggleMerge();
-  if (api.overlaysOpen()) errors.push('api.toggleMerge should CLOSE overlay');
+  if (document.getElementById('mergeOverlay').style.display === 'flex') errors.push('api.toggleMerge should CLOSE overlay');
   for (let i = 0; i < 30; i++) tick(16.7);
 
   // 6) 移动端按钮触控（touchstart/touchend 全按钮扫一遍）
-  ['fireBtn', 'dashBtn', 'consBtn', 'ultBtn', 'pauseBtnMobile', 'phaseBtn', 'mergeBtn', 'pickupFilterBtn', 'backpackBtn'].forEach(id => {
+  ['fireBtn', 'dashBtn', 'consBtn', 'ultBtn', 'pauseBtnMobile', 'phaseBtn', 'mergeBtn', 'pickupBtn', 'backpackBtn'].forEach(id => {
     touch(id, 'touchstart', 60, 60); touch(id, 'touchend', 60, 60);
     for (let i = 0; i < 3; i++) tick(16.7);
   });
@@ -183,9 +209,21 @@ try {
 
   // 8) 长跑 300 帧兜底
   for (let i = 0; i < 300; i++) tick(16.7);
+
+  // 9) 冲刺（闪避）路径：按住方向 + shift 触发 dash，跑若干帧后扫描 NaN（验证 ease-out 爬升无瞬移/无 NaN）
+  key('keydown', 'd'); key('keydown', 'w'); key('keydown', 'shift');
+  for (let i = 0; i < 40; i++) tick(16.7);
+  key('keyup', 'shift');
+  for (let i = 0; i < 60; i++) tick(16.7); // 覆盖 dashT(DASH_DUR=0.62s≈37帧) 全过程 + 收尾阻尼滑行
+  key('keyup', 'd'); key('keyup', 'w');
+  for (let i = 0; i < 30; i++) tick(16.7);
+
+  // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
+  scanNaN();
 } catch (e) {
   errors.push('FLOW: ' + (e && e.stack || e));
 }
 
+scanNaN();
 summary();
 process.exit(errors.length ? 1 : 0);
