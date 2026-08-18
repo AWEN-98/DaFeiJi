@@ -1109,10 +1109,11 @@
   #tab-arsenal .rarity-badge.rarity-orange { background-position:100% 100%; }
 
   /* ---------- 军械库（鎏金暗色 · 克制版） ---------- */
-  #tab-arsenal.on { display:flex; gap:var(--s-3); }
-  #tab-arsenal .mf-slots { flex:0 0 360px; }
-  #tab-arsenal .mf-stock { flex:1 1 auto; min-width:0; }
-  #tab-arsenal .mf-ops { flex:0 0 272px; }
+  #tab-arsenal.on { display:flex; gap:8px; }
+  /* 横屏/桌面（2026-08-19 Boss 指令）：装备槽 38% · 仓库网格 38% · 操作与说明 24% —— 旧版固定 360/272px 把仓库压成单列；用 calc 减去半 gap 让三栏 + 2 个 gap 总和=100% 不溢出 */
+  #tab-arsenal .mf-slots { flex: 0 0 calc(38% - 6px); min-width: 0; }
+  #tab-arsenal .mf-stock { flex: 0 0 calc(38% - 6px); min-width: 0; }
+  #tab-arsenal .mf-ops { flex: 0 0 calc(24% - 6px); min-width: 0; }
 
   /* 装备槽：v3 切图仅作图标，文字信息放在切图下方独立卡片，彻底避免重叠 */
   #tab-arsenal #equipSlots {
@@ -1212,8 +1213,8 @@
   #tab-arsenal .stoggle:hover { color:var(--text-strong); }
   #tab-arsenal .stoggle.on { color:var(--gold); border-color:var(--border-strong); background:rgba(201,162,75,.1); font-weight:700; }
 
-  /* 仓库列表：清晰层级，选中态仅 1px 描边 + 微光 */
-  #tab-arsenal .inv-list { display:flex; flex-direction:column; gap:var(--s-2); }
+  /* 仓库列表：清晰层级，选中态仅 1px 描边 + 微光 —— 2026-08-19 Boss 指令：横屏也用 2 列网格，仓库宽度撑开后卡片不挤压 */
+  #tab-arsenal .inv-list { display:grid; grid-template-columns:1fr 1fr; gap:var(--s-2); }
   #tab-arsenal .inv-row {
     position:relative; background:var(--bg-surface); border:1px solid var(--border);
     border-radius:var(--r); padding:var(--s-3) var(--s-3) var(--s-3) var(--s-6);
