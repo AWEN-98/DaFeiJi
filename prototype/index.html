@@ -1759,6 +1759,80 @@
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
   }
+  /* ===== 机库右侧：永久强化 ↔ 已装法器 严格横向对称对齐（2026-08-19 Boss 指令）=====
+     两区外层 frame 同宽同 padding（已继承自 .r-area，right-col 竖排全宽）；
+     内层网格统一 display:flex + justify-content:space-between，
+     图标/槽位固定宽度 → 两区「左端第1项」与「右端末项」均垂直平齐、呼吸感一致。 */
+  #tab-hangar .shop-area,
+  #tab-hangar .loadout-area {
+    width: 100%;
+    box-sizing: border-box;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  #tab-hangar .shop-grid,
+  #tab-hangar .loadout-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+  #tab-hangar .shop-card {
+    flex: 0 1 auto !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+  }
+  #tab-hangar .shop-card .box {
+    width: 100% !important;
+    height: 50px !important;
+    aspect-ratio: 1 / 1 !important;
+    flex: 0 0 auto !important;
+  }
+  #tab-hangar .loadout-row .eq-slot,
+  #tab-hangar .eq-slot {
+    flex: 0 1 auto !important;
+    width: 56px !important;
+    min-width: 56px !important;
+    max-width: 56px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+  }
+  #tab-hangar .eq-slot .box {
+    width: 100% !important;
+    height: 56px !important;
+    aspect-ratio: 1 / 1 !important;
+    flex: 0 0 auto !important;
+  }
+  /* 窄屏安全：手机竖屏右栏偏窄时图标/槽位按比例微缩，仍保持 space-between 两端严格对齐 */
+  @media (max-width: 520px) {
+    #tab-hangar .shop-card { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
+    #tab-hangar .shop-card .box { height: 44px !important; }
+    #tab-hangar .eq-slot { width: 48px !important; min-width: 48px !important; max-width: 48px !important; }
+    #tab-hangar .eq-slot .box { height: 48px !important; }
+  }
+
 </style>
 </head>
 <body>
