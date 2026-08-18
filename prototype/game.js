@@ -6738,7 +6738,7 @@
   ];
   function rollForgeBonus() { return FORGE_BONUS_POOL[randi(0, FORGE_BONUS_POOL.length - 1)]; }
   function forgePreview(arts) {
-    if (arts.length === 0) return { ready: false, title: '熔炉', sub: '点选左侧材料投料' };
+    if (arts.length === 0) return { ready: false, title: '熔炉', sub: '点击下方 3 个圆盘槽位放入法宝进行合成' };
     var slot = arts[0].slot;
     var sameSlot = arts.every(function (a) { return a.slot === slot; });
     var hasOrange = arts.some(function (a) { return a.rarity === 'orange'; });

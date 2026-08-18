@@ -501,7 +501,7 @@
      此处不再单独指定 v3 单图，避免 background-size:500% 把单图拉伸变形。 */
 
   /* 按钮 — v3 独立切图 */
-  .btn.btn-sprite, .btn-sprite { border: none; border-radius: 0; box-shadow: none; padding: 0; color: #E8DCC4; font-weight: 700; cursor: pointer; display: inline-flex; text-shadow: 0 1px 3px rgba(0,0,0,0.9); transition: filter .12s; background-repeat: no-repeat; background-position: center; background-size: 100% 100%; align-items: center; justify-content: center; }
+  .btn.btn-sprite, .btn-sprite { border: none; border-radius: 0; box-shadow: none; padding: 0; color: #E8DCC4; font-weight: 700; cursor: pointer; display: inline-flex; text-shadow: 0 1px 3px rgba(0,0,0,0.9); transition: filter .12s; background: url('assets/v4/ui/buttons/btn_sheet.png?v=1018a') no-repeat; background-size: 400% 300%; background-position: 0 0; align-items: center; justify-content: center; }
   .btn.btn-sprite::after, .btn-sprite::after { display: none; }
   .btn-sprite:hover { filter: brightness(1.1); }
   .btn-sprite:active { filter: brightness(0.88); }
@@ -864,7 +864,7 @@
   .hall-brand .res-item b { font-size: clamp(14px, 2.2vh, 20px); color: #E8E4D8; }
 
   /* Tab 导航：精灵图标 + 文字标签（已嵌入 hall-brand 中段） */
-  .hall-brand .hall-nav .tab { height: 38px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 1; min-width: 0; }
+  .hall-brand .hall-nav .tab { height: 46px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 1; min-width: 0; }
   .tab-label { position: relative; z-index: 1; color: #F2E8CE; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); pointer-events: none; white-space: nowrap; }
   .tab.on .tab-label { color: #FFF4D6; text-shadow: 0 0 12px rgba(201,162,75,0.8); }
 
@@ -886,7 +886,7 @@
     }#tab-hangar .frame::before {content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.16) 3px);opacity:.22}#tab-hangar .frame::after {content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.5) 100%)}#tab-hangar .frame > * {position:relative;z-index:2}#tab-hangar .brand-bar {flex:0 0 auto;display:flex;flex-direction:column;gap:var(--gap)}#tab-hangar .brand {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--gap);padding:0 var(--pad)}#tab-hangar .brand .title {display:flex;align-items:baseline;gap:clamp(6px,1vw,14px)}#tab-hangar .brand .zh {font-size:clamp(16px,2.4vmin,30px);font-weight:900;color:var(--gold);letter-spacing:3px;text-shadow:0 0 18px rgba(201,162,75,.4)}#tab-hangar .brand .en {font-size:clamp(9px,1.1vmin,14px);color:var(--muted);letter-spacing:4px}#tab-hangar .res {display:flex;align-items:center;gap:clamp(8px,1vw,18px);background:linear-gradient(180deg,rgba(201,162,75,.12),rgba(201,162,75,.04));border:1px solid rgba(201,162,75,.35);border-radius:8px;padding:clamp(4px,0.6vmin,8px) clamp(10px,1.2vmin,18px);box-shadow:0 0 16px rgba(201,162,75,.1),inset 0 1px 0 rgba(255,255,255,.08)}#tab-hangar .res .r {display:flex;align-items:center;gap:clamp(4px,0.5vmin,8px)}#tab-hangar .res .r .icon {width:clamp(12px,1.4vmin,20px);height:clamp(12px,1.4vmin,20px);border-radius:50%;background:var(--gold);box-shadow:0 0 8px rgba(201,162,75,.5)}#tab-hangar .res .r .icon.soul {background:var(--ember)}#tab-hangar .res .r label {font-size:clamp(9px,1.1vmin,13px);color:var(--muted);letter-spacing:1px}#tab-hangar .res .r b {font-size:clamp(12px,1.5vmin,19px);color:var(--paper);margin-left:2px;letter-spacing:1px}#tab-hangar .top-tabs {flex:0 0 auto;display:flex;gap:clamp(3px,0.5cqw,8px);padding:clamp(5px,0.8cqw,12px);align-items:stretch}#tab-hangar .top-tabs .t {position:relative;flex:1 1 0;min-width:0;height:clamp(34px,5cqw,64px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:filter .15s;overflow:hidden}#tab-hangar .top-tabs .t img {width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}#tab-hangar .top-tabs .t span {position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:3;width:100%;text-align:center;white-space:nowrap;font-size:clamp(11px,2.4cqw,18px);font-weight:800;color:var(--paper);text-shadow:0 1px 3px rgba(0,0,0,.9);letter-spacing:1px;pointer-events:none}#tab-hangar .top-tabs .t.active {filter:drop-shadow(0 0 10px rgba(201,162,75,.55))}#tab-hangar .top-tabs .t.disabled {cursor:not-allowed;filter:grayscale(.4) brightness(.7)    }#tab-hangar .main {
       flex:1 1 auto;min-height:0;
       display:grid;
-      grid-template-columns:1.45fr 1fr;
+      grid-template-columns:1.27fr 1fr;
       gap:var(--gap);
       width:100%;height:100%;margin:0;container-type:inline-size;
       align-items:stretch;
@@ -1383,7 +1383,7 @@
   /* ============ 全平台响应式：横屏保持双栏 / 竖屏单列吸底 ============ */
   /* 横屏（含手机横屏）：始终保留机库左右双栏，结合 safe-area 留白 */
   @media (orientation: landscape) {
-    #tab-hangar .main { grid-template-columns: 1.45fr 1fr !important; grid-template-rows: 1fr !important; }
+    #tab-hangar .main { grid-template-columns: 1.3fr 1fr !important; grid-template-rows: 1fr !important; }
     #tab-hangar .frame, #tab-hangar .r-area { min-height: 0; }
     .hall-brand { padding-top: clamp(6px,1vh,12px); padding-bottom: clamp(6px,1vh,12px); }
     /* 战机立绘容器：严格等比护栏，杜绝拉伸/超出裁切（图二修复） */
@@ -1398,6 +1398,25 @@
     #tab-hangar .ap-lock { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); background: rgba(0,0,0,0.72); color: var(--gold); border: 1px solid rgba(201,162,75,0.5); border-radius: 6px; padding: 2px 8px; font-size: 10px; white-space: nowrap; pointer-events: none; }
     #tab-hangar .launch.locked { opacity: 0.45; filter: grayscale(0.7); pointer-events: none; }
     #tab-hangar .slot-label { max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.2; }
+    /* 横屏精修：资源条轻量 + 强化横排小图标 + 法宝 52 + 难度胶囊 + 出击 44 */
+    .hall-brand .res-item { padding: 3px 10px; gap: 5px; }
+    .hall-brand .res-item b { font-size: 14px; }
+    .hall-brand .res-item .res-lab { font-size: 11px; }
+    .hall-brand .nav-brand h1 { font-size: clamp(18px,2.6vh,26px); }
+    /* 永久强化：横排极简小图标，禁止被压成黑缝 */
+    #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; }
+    #tab-hangar .shop-area .shop-card { flex: 0 0 auto; width: 52px; height: 36px; min-width: 0; }
+    #tab-hangar .shop-area .shop-card .name { font-size: 10px; }
+    #tab-hangar .shop-area .shop-card .lv { font-size: 9px; }
+    /* 法宝插槽：52x52 固定，名称标签防重叠穿插 */
+    #tab-hangar .loadout-row { display: flex !important; flex-direction: row !important; justify-content: flex-start !important; gap: 8px !important; flex: 0 0 auto !important; }
+    #tab-hangar .loadout-row .eq-slot { width: 52px !important; height: 52px !important; max-width: 52px !important; flex: 0 0 auto !important; }
+    /* 难度选择：手游级三段胶囊（高 36） */
+    #tab-hangar .tier-box { display: flex; flex-direction: row; gap: 6px; }
+    #tab-hangar .tname-row { flex: 1 1 0; min-height: 36px; border-radius: 18px; font-size: 12px; }
+    /* 出击主按钮：固定 44px，完整展示不溢出 */
+    #tab-hangar .r-area.deploy-area { flex: 0 0 auto !important; }
+    #tab-hangar .launch { height: 44px !important; min-height: 44px !important; flex-shrink: 0 !important; }
   }
   /* 竖屏（手机）：标准自上而下单列垂直流 + 底部吸底出击 */
   @media (orientation: portrait) {
@@ -1468,8 +1487,8 @@
     .hall-brand .res-item b { font-size: 16px; }
     /* 军械库竖屏（图二）：左槽位(35%) · 右仓库(65%) · 底部固定操作栏 */
     #tab-arsenal.on { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
-    #tab-arsenal .mf-slots { flex: 0 0 35%; min-width: 0; overflow-y: auto; }
-    #tab-arsenal .mf-stock { flex: 0 0 65%; min-width: 0; }
+    #tab-arsenal .mf-slots { flex: 0 0 32%; min-width: 0; overflow-y: auto; }
+    #tab-arsenal .mf-stock { flex: 0 0 68%; min-width: 0; }
     #tab-arsenal .mf-ops { flex: 0 0 100%; min-height: 0; position: sticky; bottom: 0; z-index: 5;
       background: linear-gradient(180deg, rgba(14,11,8,0) 0%, rgba(14,11,8,0.96) 30%, rgba(14,11,8,0.99) 100%); padding: 10px 12px; }
     #tab-arsenal #equipSlots { grid-template-columns: 1fr !important; gap: 8px; padding: 8px 0; }
@@ -1765,7 +1784,7 @@
       <div class="tab-pane" id="tab-forge">
         <section class="mframe mf-mats">
           <div class="mf-title">材料</div>
-          <div class="mf-sub">点选法器投入熔炉（最多 3 件）</div>
+          <div class="mf-sub">点击下方 3 个圆盘槽位放入法宝进行合成</div>
           <div class="mf-body"><div id="forgeFilters"></div><div id="forgeList"></div></div>
         </section>
         <section class="mframe mf-stage">
