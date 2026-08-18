@@ -1358,7 +1358,7 @@
     }
     if (phaseBtnEl) { if (scene === 'mission' && !paused && phaseCore < CORE_PER_FLIP) phaseBtnEl.classList.add('cd'); else phaseBtnEl.classList.remove('cd'); }
     if (mergeBtnEl) { if (!run || !run.loot || run.loot.length === 0) mergeBtnEl.classList.add('empty'); else mergeBtnEl.classList.remove('empty'); mergeBtnEl.classList.toggle('hint', !!(run && run.loot && hasMergeable())); }
-    if (ultBtnEl) { var _ur = player && player.ultCharge >= ULT_MAX; ultBtnEl.classList.toggle('cd', !_ur); ultBtnEl.classList.toggle('ready', !!_ur); }
+    if (ultBtnEl) { var _ur = player && player.ultCharge >= ULT_MAX; ultBtnEl.classList.toggle('cd', !_ur); ultBtnEl.classList.toggle('ready', !!_ur); if (player) ultBtnEl.style.setProperty('--cdDeg', Math.max(0, 100 - Math.min(100, player.ultCharge / ULT_MAX * 100)) + '%'); }
     if (backpackBtnEl) { if (!run || !run.loot || run.loot.length === 0) backpackBtnEl.classList.add('empty'); else backpackBtnEl.classList.remove('empty'); }
     var _pb = document.getElementById('pickupBtn');
     if (_pb) { var _pn = getNearLoot().length; _pb.classList.toggle('on', !!pickupOpen); _pb.classList.toggle('empty', _pn === 0); _pb.classList.toggle('glow', _pn > 0 && !pickupOpen); }
@@ -1498,6 +1498,17 @@
     ultBtnEl.addEventListener('touchstart', function (e) { e.preventDefault(); e.stopPropagation(); if (scene === 'mission' && !paused && !overlaysOpen() && !pickupOpen) { castUlt(); this.classList.add('on'); } }, { passive: false });
     ultBtnEl.addEventListener('touchend', function (e) { e.preventDefault(); e.stopPropagation(); this.classList.remove('on'); }, { passive: false });
     ultBtnEl.addEventListener('click', function () { if (scene === 'mission' && !paused && !overlaysOpen()) castUlt(); });
+  }
+  // 主开火键（移动端，2026-08-19 轮盘重构）：固定右下 72px，按住持续开火（朝当前朝向/辅助瞄准）
+  var fireBtnEl = document.getElementById('fireBtn');
+  var fireBtnHeld = false;
+  if (fireBtnEl) {
+    fireBtnEl.addEventListener('touchstart', function (e) { e.preventDefault(); e.stopPropagation(); if (scene === 'mission' && !paused && !overlaysOpen() && !pickupOpen) { fireBtnHeld = true; this.classList.add('on'); } }, { passive: false });
+    fireBtnEl.addEventListener('touchend', function (e) { e.preventDefault(); e.stopPropagation(); fireBtnHeld = false; this.classList.remove('on'); }, { passive: false });
+    fireBtnEl.addEventListener('touchcancel', function (e) { e.preventDefault(); e.stopPropagation(); fireBtnHeld = false; this.classList.remove('on'); }, { passive: false });
+    fireBtnEl.addEventListener('mousedown', function () { if (scene === 'mission' && !paused && !overlaysOpen() && !pickupOpen) { fireBtnHeld = true; this.classList.add('on'); } });
+    fireBtnEl.addEventListener('mouseup', function () { fireBtnHeld = false; this.classList.remove('on'); });
+    window.addEventListener('mouseup', function () { fireBtnHeld = false; if (fireBtnEl) fireBtnEl.classList.remove('on'); });
   }
   // #197 拾取筛选按钮（移动端）
   var pickupFilterBtnEl = document.getElementById('pickupFilterBtn');
@@ -3863,8 +3874,8 @@
     player.ang += _diff * (1 - Math.exp(-dt / TURN_TAU));
     player.fireCd -= dt;
     if (player.firedT > 0) player.firedT -= dt;
-    // 开火条件（移动端）：右摇杆拉过死区持续开火 / 点按保底发射 / 可选 autoFire；PC 端保持鼠标左键或空格
-    var firing = isMobile ? (((aimJoy.active && aimJoy.mag > AIM_DEADZONE) || aimTapFire || autoFire) && !pickupOpen) : (mouse.down || keys[' ']);
+    // 开火条件（移动端）：主开火键按住 / 右摇杆拉过死区持续开火 / 点按保底发射 / 可选 autoFire；PC 端保持鼠标左键或空格
+    var firing = isMobile ? (((fireBtnHeld || (aimJoy.active && aimJoy.mag > AIM_DEADZONE) || aimTapFire || autoFire) && !pickupOpen && !paused && !overlaysOpen())) : (mouse.down || keys[' ']);
     if (firing) { player.firedT = 0.35; player.aimLineT = 0.22; }   // 开火窗口 + 瞄准激光显示计时
     var craft = run.aircraft || 'a';
     var isQing = craft === 'a';
@@ -6391,8 +6402,8 @@
       ctx.fillStyle = 'rgba(143,166,179,0.9)'; ctx.font = '11px sans-serif';
       ctx.fillText('Q 丹药 · M 合成 · Shift 冲刺 · P 暂停', 14, 148);
     }
-    // UX：有可合成组合时提示
-    if (hasMergeable()) {
+    // UX：有可合成组合时提示（移动端改由合成键呼吸光效提示，纯图标无键盘文案）
+    if (hasMergeable() && !isMobile) {
       ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
       ctx.fillText('💡 按 M 可合成', W - 22, 156); ctx.textAlign = 'left';
     }
@@ -6669,9 +6680,18 @@
     if (prev) prev.onclick = function(){ goAircraft(-1); };
     if (next) next.onclick = function(){ goAircraft(1); };
 
-    // info / bars / desc
+    // info / bars / desc（2026-08-19：装甲/机动/电容三维属性完整合并进右侧机体信息模块，紧跟弹道说明下方；左侧仅留立绘+轮播圆点）
     var acft = AIRCRAFT[selectedAircraft];
     var infoEl = document.getElementById('apInfo');
+    var armorPct = Math.max(8, Math.min(100, Math.round(acft.hp / 200 * 100)));
+    var mobPct = Math.max(8, Math.min(100, Math.round(acft.speed / 300 * 100)));
+    var capPct = Math.max(8, Math.min(100, Math.round(acft.fireRate / 8 * 100)));
+    var barsHtml =
+      '<div class="ap-bars-inline">' +
+      '<div class="ibar"><label>装甲</label><div class="track"><div class="fill" style="width:' + armorPct + '%"></div></div><div class="val">' + acft.hp + '</div></div>' +
+      '<div class="ibar"><label>机动</label><div class="track"><div class="fill" style="width:' + mobPct + '%"></div></div><div class="val">' + acft.speed + '</div></div>' +
+      '<div class="ibar"><label>电容</label><div class="track"><div class="fill" style="width:' + capPct + '%"></div></div><div class="val">' + acft.fireRate + '</div></div>' +
+      '</div>';
     if (infoEl) {
       infoEl.innerHTML =
         '<div class="label">机体信息</div>' +
@@ -6679,18 +6699,11 @@
         '<div class="itype">' + acft.desc + '</div>' +
         '<div class="imod">' + (acft.mod || '标准模组') + '</div>' +
         '<div class="iweapon"><b>主武器</b>' + acft.name + ' 标准武装</div>' +
-        '<div class="iweapon"><b>弹道</b>' + (acft.homing ? '追踪' : (acft.spread ? '散射' : '直射')) + (acft.pellets > 1 ? ' + 散射' : '') + '</div>';
+        '<div class="iweapon"><b>弹道</b>' + (acft.homing ? '追踪' : (acft.spread ? '散射' : '直射')) + (acft.pellets > 1 ? ' + 散射' : '') + '</div>' +
+        barsHtml;
     }
     var barsEl = document.getElementById('apBars');
-    if (barsEl) {
-      var armorPct = Math.max(8, Math.min(100, Math.round(acft.hp / 200 * 100)));
-      var mobPct = Math.max(8, Math.min(100, Math.round(acft.speed / 300 * 100)));
-      var capPct = Math.max(8, Math.min(100, Math.round(acft.fireRate / 8 * 100)));
-      barsEl.innerHTML =
-        '<div class="ibar"><label>装甲</label><div class="track"><div class="fill" style="width:' + armorPct + '%"></div></div><div class="val">' + acft.hp + '</div></div>' +
-        '<div class="ibar"><label>机动</label><div class="track"><div class="fill" style="width:' + mobPct + '%"></div></div><div class="val">' + acft.speed + '</div></div>' +
-        '<div class="ibar"><label>电容</label><div class="track"><div class="fill" style="width:' + capPct + '%"></div></div><div class="val">' + acft.fireRate + '</div></div>';
-    }
+    if (barsEl) barsEl.innerHTML = barsHtml;
     var descEl = document.getElementById('apDesc');
     if (descEl) {
       descEl.textContent = acft.name + '，' + acft.desc + '。配备标准武装，弹道' + (acft.homing ? '追踪' : (acft.spread ? '散射' : '直射')) + (acft.pellets > 1 ? '并带多重弹片' : '') + '。';
@@ -7131,9 +7144,9 @@
       var arts = forgeSel.map(getArt).filter(Boolean);
       for (var i = 0; i < 3; i++) {
         var s = document.createElement('div');
-        s.className = 'fg-slot' + (arts[i] ? '' : ' empty') + (forgeProcess ? ' melting' : '');
+        s.className = 'fg-slot forge-slot-hitbox' + (arts[i] ? '' : ' empty') + (forgeProcess ? ' melting' : '');
         s.setAttribute('data-pos', i);
-        s.style.pointerEvents = 'auto'; // 竖屏可点开底抽；PC 由 openForgeDrawer 内 orientation 守卫拦截
+        s.style.pointerEvents = 'auto'; // 圆盘相对百分比透明热区：点击即弹底抽选料（任意朝向）
         s.onclick = (function (p) { return function () { openForgeDrawer(p); }; })(i);
         if (arts[i]) {
           s.innerHTML = forgeIconHtml(arts[i], 'forge-slot-icon');
@@ -7200,6 +7213,8 @@
         }
       }
     }
+    // 合成按钮激活门槛：投满 2~3 件材料才可执行（不足 2 件禁用置灰）
+    var _fcBtn = document.getElementById('forgeCraft'); if (_fcBtn) _fcBtn.disabled = !(forgeSel.length >= 2);
   }
   // ---------- 熔炼台·竖屏底抽弹窗（点击熔炉槽位 → 选料填入对应槽位；PC 宽屏由 orientation 守卫不启用，逻辑不变） ----------
   var forgeDrawerPos = -1;
@@ -7214,7 +7229,7 @@
     var x = document.getElementById('forgeDrawerClose'); if (x) x.onclick = closeForgeDrawer;
   }
   function openForgeDrawer(pos) {
-    if (!(window.matchMedia && window.matchMedia('(orientation: portrait)').matches)) return; // PC 宽屏维持原「侧栏点选」逻辑，不开启底抽
+    // 2026-08-19：废除竖屏 orientation 守卫 —— 任意朝向（含 PC）点击熔炉圆盘热区均可弹底抽选料；PC 侧栏列表保留双通道
     forgeDrawerPos = pos;
     ensureForgeDrawer();
     renderForgeDrawer();
@@ -7440,6 +7455,11 @@
   // 帮助按钮：机库用 id，其他标签页用 .launch-help 类
   var helpBtns = document.querySelectorAll('#helpBtn, .launch-help');
   for (var hi = 0; hi < helpBtns.length; hi++) helpBtns[hi].onclick = function () { document.getElementById('tutorial').style.display = 'flex'; };
+  // 移动端弹层文案去 PC 键位：合成层关闭键 / 三选一提示（移动端纯图标/点按语义）
+  if (isMobile) {
+    var _mc2 = document.getElementById('mergeClose'); if (_mc2) _mc2.textContent = '关闭';
+    var _bh2 = document.querySelector('#buffOverlay .muted'); if (_bh2) _bh2.textContent = '点击卡片选择强化';
+  }
   document.getElementById('mergeClose').onclick = function () { document.getElementById('mergeOverlay').style.display = 'none'; paused = false; showMobileControls(); };
   document.getElementById('merge3btn').onclick = function () { doThreeMerge(); };
   // #197 拾取筛选浮层按钮
@@ -7629,6 +7649,13 @@
       playerAng: function () { return player.ang; },
       aimTapFireState: function () { return aimTapFire; },
       firedT: function () { return player.firedT || 0; },
+      // 主开火键 / 熔炼台底抽（2026-08-19 轮盘重构）：供桩断言按住开火与底抽选料链路
+      fireBtnHeldState: function () { return fireBtnHeld; },
+      openForgeDrawer: openForgeDrawer,
+      fillForgeSlot: fillForgeSlot,
+      closeForgeDrawer: closeForgeDrawer,
+      forgeSelCount: function () { return forgeSel.length; },
+      forgeCraftDisabled: function () { var b = document.getElementById('forgeCraft'); return b ? !!b.disabled : null; },
       // 锚点簇 PCG / 视线遮挡：暴露障碍/楼顶/LOS，供 stub_los.js 断言
       obstacles: function () { return obstacles; },
       buildingRooftops: function () { return buildingRooftops; },

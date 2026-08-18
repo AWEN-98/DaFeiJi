@@ -37,7 +37,7 @@ const elements = {};
 function makeEl(id) {
   const handlers = {};
   const el = {
-    id, width: 1280, height: 720, style: {}, dataset: {},
+    id, width: 1280, height: 720, style: { setProperty(k, v) { this[k] = String(v); }, getPropertyValue(k) { return this[k]; }, removeProperty(k) { const v = this[k]; delete this[k]; return v; } }, dataset: {},
     textContent: '', innerHTML: '', value: '', checked: false, disabled: false,
     classList: {
       _s: new Set(),
@@ -200,6 +200,29 @@ try {
     touch(id, 'touchstart', 60, 60); touch(id, 'touchend', 60, 60);
     for (let i = 0; i < 3; i++) tick(16.7);
   });
+
+  // 6b) 主开火键接线（桌面桩 isMobile=false，仅验证 touchstart/touchend 对 fireBtnHeld 的置位/复位；开火链路由 stub_mobile 断言）
+  if (api.cleanState) api.cleanState();
+  touch('fireBtn', 'touchstart', 60, 60);
+  if (api.fireBtnHeldState() !== true) errors.push('fireBtn touchstart should set fireBtnHeld=true');
+  touch('fireBtn', 'touchend', 60, 60);
+  if (api.fireBtnHeldState() !== false) errors.push('fireBtn touchend should reset fireBtnHeld=false');
+  console.log('fireBtn wiring OK (held toggle true→false)');
+
+  // 6c) 熔炼台底抽链路（2026-08-19）：点圆盘热区 → 底抽弹开 → 投料 2 件激活合成钮 / 1 件禁用
+  try { api.openForgeDrawer(0); } catch (e) { errors.push('openForgeDrawer: ' + (e.stack || e)); }
+  const fdEl = document.getElementById('forgeDrawer');
+  if (!fdEl || !fdEl.classList.contains('open')) errors.push('forge drawer should be .open after openForgeDrawer');
+  api.fillForgeSlot(0, '__t1');
+  api.fillForgeSlot(1, '__t2');
+  if (api.forgeSelCount() !== 2) errors.push('forgeSel should hold 2 after two fills (got ' + api.forgeSelCount() + ')');
+  if (api.forgeCraftDisabled() !== false) errors.push('forgeCraft should be ENABLED with 2 materials');
+  api.fillForgeSlot(0, '__t1'); // 已选 → 取消 → 剩 1 件
+  if (api.forgeSelCount() !== 1) errors.push('forgeSel should drop to 1 after toggle-off (got ' + api.forgeSelCount() + ')');
+  if (api.forgeCraftDisabled() !== true) errors.push('forgeCraft should be DISABLED with <2 materials');
+  try { api.closeForgeDrawer(); } catch (e) { errors.push('closeForgeDrawer: ' + (e.stack || e)); }
+  if (fdEl && fdEl.classList.contains('open')) errors.push('forge drawer should close after closeForgeDrawer');
+  console.log('forge drawer chain OK: open → fill×2 enable craft → toggle-off disable → close');
 
   // 7) canvas 触摸（弹层关闭态）+ 玩家受损到低血 vignette 路径
   touch('gameCanvas', 'touchstart', 100, 300);

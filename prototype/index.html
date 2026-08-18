@@ -592,17 +592,24 @@
   .aim-joy-base { position: absolute; width: 132px; height: 132px; border-radius: 50%; border: 2px solid rgba(232,220,196,0.45); background: radial-gradient(circle, rgba(16,13,9,0.4), rgba(16,13,9,0.08)); display: none; pointer-events: none; transition: opacity .15s; }
   .aim-joy-base.on { display: block; }
   .aim-joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; border-radius: 50%; background: rgba(232,220,196,0.42); border: 2px solid rgba(232,220,196,0.75); transform: translate(-50%,-50%); box-shadow: 0 0 18px rgba(232,220,196,0.35); }
-  /* —— 次级技能键人体工学重构（2026-08-18 续）：废除独立开火键，绝技/丹药弧形排布于右摇杆左上方，冲刺贴右摇杆上弧，杜绝与瞄准区重叠误触 —— */
-  .ult-btn { width: 62px; height: 62px; right: calc(172px + var(--sa-r)); bottom: calc(150px + var(--sa-b)); border-color: rgba(217,182,74,0.65); background: rgba(217,182,74,0.18); font-size: 22px; flex-direction: column; }
-  .ult-btn.on { background: rgba(217,182,74,0.6); }
-  .ult-btn.cd { opacity: 0.32; }
-  .ult-btn.ready { animation: ultPulse 1.1s ease-in-out infinite; }
-  @keyframes ultPulse { 0%, 100% { box-shadow: 0 0 8px 3px rgba(217,182,74,0.35); } 50% { box-shadow: 0 0 20px 6px rgba(217,182,74,0.75); } }
-  .dash-btn { width: 56px; height: 56px; right: calc(92px + var(--sa-r)); bottom: calc(174px + var(--sa-b)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 24px; line-height: 1; }
+  /* —— 右侧标准弧形扇面轮盘（2026-08-19 重构）：主开火键固定右下 72px 为圆心锚点，
+       冲刺（主火左上方）/绝技（冲刺正上方）构成内环核心战斗区，
+       翻相/合成/拾取/丹药沿外侧弧形排布（phase→merge→pick→cons），
+       两两间距实测 ≥8px，彻底消除重叠穿插；右瞄准摇杆仍为动态浮现的瞄准层 —— */
+  .fire-btn { width: 72px; height: 72px; right: calc(24px + var(--sa-r)); bottom: calc(24px + var(--sa-b)); border-color: rgba(200,100,42,0.75); background: radial-gradient(circle, rgba(200,100,42,0.32), rgba(200,100,42,0.12)); font-size: 26px; flex-direction: column; }
+  .fire-btn.on { background: radial-gradient(circle, rgba(200,100,42,0.75), rgba(200,100,42,0.42)); }
+  .dash-btn { width: 52px; height: 52px; right: calc(104px + var(--sa-r)); bottom: calc(100px + var(--sa-b)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 22px; line-height: 1; }
   .dash-btn.on { background: rgba(201,162,75,0.55); }
   .dash-btn.cd { opacity: 0.3; }
-  /* 道具栏：次级规格，弧形停靠右摇杆左上方，绝不压血条/瞄准区 */
-  .cons-btn { width: 48px; height: 48px; right: calc(172px + var(--sa-r)); bottom: calc(82px + var(--sa-b)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 22px; flex-direction: column; }
+  .ult-btn { width: 52px; height: 52px; right: calc(104px + var(--sa-r)); bottom: calc(162px + var(--sa-b)); border-color: rgba(217,182,74,0.65); background: rgba(217,182,74,0.18); font-size: 20px; flex-direction: column; }
+  .ult-btn.on { background: rgba(217,182,74,0.6); }
+  .ult-btn.cd { opacity: 0.9; }
+  /* 绝技冷却遮罩：conic-gradient 按剩余冷却百分比覆盖（--cdDeg 由 game.js 每帧更新） */
+  .ult-btn.cd::after { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: conic-gradient(rgba(8,6,4,0.84) var(--cdDeg, 100%), transparent 0); pointer-events: none; }
+  .ult-btn.ready { animation: ultPulse 1.1s ease-in-out infinite; }
+  @keyframes ultPulse { 0%, 100% { box-shadow: 0 0 8px 3px rgba(217,182,74,0.35); } 50% { box-shadow: 0 0 20px 6px rgba(217,182,74,0.75); } }
+  /* 道具栏：外弧最下位（主火左侧），绝不压血条/瞄准区 */
+  .cons-btn { width: 44px; height: 44px; right: calc(176px + var(--sa-r)); bottom: calc(84px + var(--sa-b)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 20px; flex-direction: column; }
   .cons-btn.on { background: rgba(127,176,105,0.55); }
   .cons-btn.empty { opacity: 0.26; }
   .cons-btn .cons-label { font-size: 7px; margin-top: 1px; opacity: 0.7; }
@@ -613,18 +620,18 @@
   .bp-btn { width: 40px; height: 40px; left: calc(52px + var(--sa-l)); top: calc(8px + var(--sa-t)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 16px; line-height: 1; }
   .bp-btn.on { background: rgba(127,176,105,0.55); }
   .bp-btn.empty { opacity: 0.28; }
-  /* —— 右侧扇形交互轮盘（2026-08-18 重构）：绝技/冲刺为内环核心战斗区，翻相/合成/拾取为外环战术交互区，
-       全部弧形排布于右下「主开火键（右摇杆）」圆心周围，左手走位、右手战斗+交互一站式 —— */
-  .phase-btn { width: 44px; height: 44px; right: calc(62px + var(--sa-r)); bottom: calc(150px + var(--sa-b)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 18px; line-height: 1; }
+  /* —— 外环战术交互区（翻相/合成/拾取）：沿冲刺·绝技外侧弧形排布（phase 顶 → merge 斜上 → pick 中左），
+       严禁叠在主火键或技能键正上方 —— */
+  .phase-btn { width: 44px; height: 44px; right: calc(106px + var(--sa-r)); bottom: calc(226px + var(--sa-b)); border-color: rgba(201,162,75,0.6); background: rgba(201,162,75,0.2); font-size: 18px; line-height: 1; }
   .phase-btn.on { background: rgba(201,162,75,0.55); }
   .phase-btn.cd { opacity: 0.3; }
-  .merge-btn { width: 44px; height: 44px; right: calc(150px + var(--sa-r)); bottom: calc(92px + var(--sa-b)); border-color: rgba(176,111,208,0.6); background: rgba(176,111,208,0.2); font-size: 18px; line-height: 1; }
+  .merge-btn { width: 44px; height: 44px; right: calc(172px + var(--sa-r)); bottom: calc(196px + var(--sa-b)); border-color: rgba(176,111,208,0.6); background: rgba(176,111,208,0.2); font-size: 18px; line-height: 1; }
   .merge-btn.on { background: rgba(176,111,208,0.55); }
   .merge-btn.empty { opacity: 0.28; }
   .merge-btn.hint { animation: mergePulse 1.2s ease-in-out infinite; }
   @keyframes mergePulse { 0%, 100% { box-shadow: 0 0 8px 3px rgba(176,111,208,0.4); } 50% { box-shadow: 0 0 20px 6px rgba(176,111,208,0.8); } }
   /* 拾取键：动态上下文感知 —— 无战利品→半透明微缩；附近有可拾取→高亮放大+呼吸光晕（盲操拇指也能精准拾取） */
-  .pick-btn { width: 42px; height: 42px; right: calc(64px + var(--sa-r)); bottom: calc(92px + var(--sa-b)); border-color: rgba(201,162,75,0.7); background: rgba(201,162,75,0.24); font-size: 18px; line-height: 1; color: #C9A24B; transition: transform .14s, opacity .14s, box-shadow .14s, background .1s; }
+  .pick-btn { width: 46px; height: 46px; right: calc(176px + var(--sa-r)); bottom: calc(140px + var(--sa-b)); border-color: rgba(201,162,75,0.7); background: rgba(201,162,75,0.24); font-size: 19px; line-height: 1; color: #C9A24B; transition: transform .14s, opacity .14s, box-shadow .14s, background .1s; }
   .pick-btn.on { background: rgba(201,162,75,0.6); }
   .pick-btn.empty { opacity: 0.2; transform: scale(0.74); }
   .pick-btn.glow { transform: scale(1.16); border-color: #FFE9A8; background: rgba(224,184,74,0.5); animation: pickGlow 1s ease-in-out infinite; }
@@ -721,14 +728,15 @@
   /* ============ 竖屏（窄长屏）控件自适应 v3：战斗轮盘稍小、顶部工具带单行收紧 ============ */
   body[data-orient="portrait"] .aim-joy-base { width: 120px; height: 120px; }
   body[data-orient="portrait"] .aim-joy-knob { width: 52px; height: 52px; }
-  body[data-orient="portrait"] .ult-btn { width: 56px; height: 56px; right: calc(158px + var(--sa-r)); bottom: calc(138px + var(--sa-b)); }
-  body[data-orient="portrait"] .dash-btn { width: 50px; height: 50px; right: calc(84px + var(--sa-r)); bottom: calc(162px + var(--sa-b)); }
-  body[data-orient="portrait"] .cons-btn { width: 44px; height: 44px; right: calc(158px + var(--sa-r)); bottom: calc(74px + var(--sa-b)); }
+  body[data-orient="portrait"] .fire-btn { width: 64px; height: 64px; right: calc(18px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); font-size: 23px; }
+  body[data-orient="portrait"] .ult-btn { width: 48px; height: 48px; right: calc(92px + var(--sa-r)); bottom: calc(146px + var(--sa-b)); }
+  body[data-orient="portrait"] .dash-btn { width: 48px; height: 48px; right: calc(92px + var(--sa-r)); bottom: calc(88px + var(--sa-b)); }
+  body[data-orient="portrait"] .cons-btn { width: 40px; height: 40px; right: calc(154px + var(--sa-r)); bottom: calc(72px + var(--sa-b)); }
   body[data-orient="portrait"] .mbtn.pause-btn { left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
   body[data-orient="portrait"] .mbtn.bp-btn { left: calc(50px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
-  body[data-orient="portrait"] .mbtn.phase-btn { right: calc(58px + var(--sa-r)); bottom: calc(140px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
-  body[data-orient="portrait"] .mbtn.merge-btn { right: calc(140px + var(--sa-r)); bottom: calc(84px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
-  body[data-orient="portrait"] .mbtn.pick-btn { right: calc(60px + var(--sa-r)); bottom: calc(84px + var(--sa-b)); width: 38px; height: 38px; font-size: 16px; }
+  body[data-orient="portrait"] .mbtn.phase-btn { right: calc(94px + var(--sa-r)); bottom: calc(204px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
+  body[data-orient="portrait"] .mbtn.merge-btn { right: calc(150px + var(--sa-r)); bottom: calc(176px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
+  body[data-orient="portrait"] .mbtn.pick-btn { right: calc(154px + var(--sa-r)); bottom: calc(124px + var(--sa-b)); width: 42px; height: 42px; font-size: 17px; }
   body[data-orient="portrait"] .mbtn .mb-label { font-size: 7px; }
   body[data-orient="portrait"] .joy-base { width: 120px; height: 120px; }
   body[data-orient="portrait"] .joy-knob { width: 52px; height: 52px; }
@@ -973,7 +981,9 @@
       font-size:clamp(16px,2.8cqw,26px);
       color:var(--gold);font-weight:900;letter-spacing:4px;
       text-shadow:0 0 12px rgba(201,162,75,.25);
-    }#tab-hangar .ap-info .iname {font-size:clamp(20px,3.6cqw,34px);font-weight:900;color:var(--paper);letter-spacing:2px;text-shadow:0 0 12px rgba(201,162,75,.2)}#tab-hangar .ap-info .itype {font-size:clamp(13px,2.2cqw,18px);color:var(--ember);font-weight:800;letter-spacing:1px}#tab-hangar .ap-info .imod {font-size:clamp(11px,1.8cqw,15px);color:var(--muted);letter-spacing:1px}#tab-hangar .ap-info .iweapon {font-size:clamp(10px,1.6cqw,14px);color:var(--paper)}#tab-hangar .ap-info .iweapon b {color:var(--ember);margin-right:4px;font-weight:800    }#tab-hangar .ap-bars {
+    }#tab-hangar .ap-info .iname {font-size:clamp(20px,3.6cqw,34px);font-weight:900;color:var(--paper);letter-spacing:2px;text-shadow:0 0 12px rgba(201,162,75,.2)}#tab-hangar .ap-info .itype {font-size:clamp(13px,2.2cqw,18px);color:var(--ember);font-weight:800;letter-spacing:1px}#tab-hangar .ap-info .imod {font-size:clamp(11px,1.8cqw,15px);color:var(--muted);letter-spacing:1px}#tab-hangar .ap-info .iweapon {font-size:clamp(10px,1.6cqw,14px);color:var(--paper)}#tab-hangar .ap-info .iweapon b {color:var(--ember);margin-right:4px;font-weight:800    }
+    /* 三维属性（装甲/机动/电容）：合并进右侧机体信息模块（紧跟弹道说明下方） */
+    #tab-hangar .ap-bars-inline {flex:0 0 auto;max-width:100%;display:flex;flex-direction:column;gap:clamp(5px,0.85cqw,10px);padding-top:clamp(6px,1cqw,12px);margin-top:clamp(2px,0.4cqw,6px);border-top:1px solid rgba(201,162,75,.18)}#tab-hangar .ap-bars {
       flex:0 0 auto;max-width:320px;align-self:flex-start;
       display:flex;flex-direction:column;gap:clamp(5px,0.85cqw,10px);
       padding-top:clamp(6px,1cqw,14px);
@@ -1341,6 +1351,29 @@
   .fg-result.disallowed, .fg-result.fail { text-shadow: 0 0 12px rgba(200,100,42,.95), 0 0 28px rgba(200,100,42,.6), 0 2px 4px rgba(0,0,0,.95); }
   .fg-result .fmods { font-size:10px; line-height:1.4; color:#E8DCC4; margin-top:5px; text-shadow:0 1px 2px rgba(0,0,0,.95); max-width:100%; }
   .fg-result .fprev { font-size:9px; color:#B8A98E; margin-top:4px; line-height:1.35; text-shadow:0 1px 2px rgba(0,0,0,.95); }
+
+  /* ---------- 熔炼台·圆盘热区 + 底抽选料弹窗（2026-08-19：迁出竖屏块为全局，修复 !important 压死 .open 的 Bug；任意朝向点圆盘均可弹底抽） ---------- */
+  .forge-slot-hitbox { min-width: 44px; min-height: 44px; cursor: pointer; }
+  .fg-slot.empty::before { content: ''; position: absolute; inset: 14%; border-radius: 50%; border: 1.5px dashed rgba(201,162,75,0.38); pointer-events: none; }
+  #forgeDrawer { display: none; }
+  #forgeDrawer.open { display: block; position: fixed; inset: 0; z-index: 60; }
+  #forgeDrawer .fd-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
+  #forgeDrawer .fd-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 68vh; display: flex; flex-direction: column; background: linear-gradient(180deg,#171209,#0c0a07); border-top: 2px solid var(--gold); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.6); animation: fdUp .25s ease; }
+  @keyframes fdUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  #forgeDrawer .fd-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: var(--gold); font-weight: 800; letter-spacing: 2px; border-bottom: 1px solid rgba(201,162,75,.25); }
+  #forgeDrawer .fd-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(201,162,75,.4); color: var(--paper); cursor: pointer; flex: 0 0 auto; }
+  #forgeDrawer .fd-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px calc(18px + env(safe-area-inset-bottom)); }
+  #forgeDrawer .forge-filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  #forgeDrawer .flabel { color: var(--muted); font-size: 12px; margin-right: 4px; flex: 0 0 auto; }
+  #forgeDrawer .fchip { padding: 6px 12px; border: 1px solid rgba(201,162,75,.35); border-radius: 999px; font-size: 13px; color: var(--paper); cursor: pointer; }
+  #forgeDrawer .fchip.on { background: var(--gold); color: #0c0a08; font-weight: 800; }
+  #forgeDrawer .forge-mat-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #forgeDrawer .art { border: 1px solid rgba(201,162,75,.3); border-radius: 10px; padding: 8px; background: rgba(255,255,255,0.02); cursor: pointer; }
+  #forgeDrawer .art.on { border-color: var(--gold); background: rgba(201,162,75,.12); }
+  #forgeDrawer .art .an { font-weight: 800; }
+  #forgeDrawer .art .rar, #forgeDrawer .art .mini { color: var(--muted); font-size: 11px; }
+  /* 合成按钮：材料不足 2 件时禁用（renderForge 每次渲染同步 disabled 态） */
+  .v3btn:disabled { filter: grayscale(0.7) brightness(0.55); cursor: not-allowed; }
   .forge-tip { font-size:11px; color:var(--muted); line-height:1.7; padding:8px 10px; background:rgba(0,0,0,.28); border:1px solid rgba(201,162,75,.18); border-radius:8px; margin-bottom:8px; }
   /* 材料筛选 */
   .forge-filters { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
@@ -1458,12 +1491,13 @@
     .hall-brand .res-item b { font-size: 14px; }
     .hall-brand .res-item .res-lab { font-size: 11px; }
     .hall-brand .nav-brand h1 { font-size: clamp(18px,2.6vh,26px); }
-    /* 永久强化：横排极简小图标，禁止被压成黑缝 */
+    /* 永久强化：横排 44×44 等比图标（与法宝槽视觉体量协调，杜绝缩成微小方块） */
     #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; }
-    #tab-hangar .shop-area .shop-card { flex: 0 0 auto; width: 52px; height: 36px; min-width: 0; }
+    #tab-hangar .shop-area .shop-card { flex: 0 0 auto; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     #tab-hangar .shop-area .shop-card .name { font-size: 10px; }
     #tab-hangar .shop-area .shop-card .lv { font-size: 9px; }
-    /* 法宝插槽：52x52 固定，名称标签防重叠穿插 */
+    /* 法宝插槽：52x52 固定，名称标签防重叠穿插；槽位区高度预留 ≥60px，杜绝被难度滑块挤压截断 */
+    #tab-hangar .loadout-area { flex: 0 0 auto !important; min-height: 72px; }
     #tab-hangar .loadout-row { display: flex !important; flex-direction: row !important; justify-content: flex-start !important; gap: 8px !important; flex: 0 0 auto !important; }
     #tab-hangar .loadout-row .eq-slot { width: 52px !important; height: 52px !important; max-width: 52px !important; flex: 0 0 auto !important; }
     /* 难度选择：手游级三段胶囊（高 36） */
@@ -1540,18 +1574,32 @@
     .hall-brand .hall-nav .tab { flex: 1 1 0; height: 30px; font-size: 11px; aspect-ratio: auto; }
     .hall-brand .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
-    /* 军械库竖屏（图二）：左槽位(35%) · 右仓库(65%) · 底部固定操作栏 */
+    /* 军械库竖屏重写（2026-08-19）：左槽位 32% · 右仓库 68% 水平双栏 + 底部吸底三操作条，杜绝右侧黑屏盲区与穿插重叠 */
     #tab-arsenal.on { flex-direction: row; flex-wrap: wrap; align-items: stretch; }
-    #tab-arsenal .mf-slots { flex: 0 0 32%; min-width: 0; overflow-y: auto; }
-    #tab-arsenal .mf-stock { flex: 0 0 68%; min-width: 0; }
-    #tab-arsenal .mf-ops { flex: 0 0 100%; min-height: 0; position: sticky; bottom: 0; z-index: 5;
-      background: linear-gradient(180deg, rgba(14,11,8,0) 0%, rgba(14,11,8,0.96) 30%, rgba(14,11,8,0.99) 100%); padding: 10px 12px; }
-    #tab-arsenal #equipSlots { grid-template-columns: 1fr !important; gap: 8px; padding: 8px 0; }
-    #tab-arsenal .eq-slot { width: 100% !important; flex-direction: row; align-items: center; min-height: 56px; padding: 8px 10px; }
+    #tab-arsenal .mf-slots { flex: 0 0 32% !important; min-width: 0; padding: 10px 8px; }
+    #tab-arsenal .mf-slots .mf-sub { display: none; }
+    #tab-arsenal .mf-slots .mf-body { overflow-y: auto; }
+    #tab-arsenal #equipSlots { display: flex !important; flex-direction: column !important; grid-template-columns: none !important; gap: 8px; height: 100%; justify-content: space-between; align-items: stretch; padding: 0 !important; }
+    #tab-arsenal .eq-slot { flex: 1 1 0; min-height: 56px; width: 100% !important; flex-direction: row; align-items: center; padding: 6px 8px; gap: 8px; }
     #tab-arsenal .eq-icon { width: 44px; height: 50px; flex: 0 0 auto; }
-    #tab-arsenal .eq-info { flex: 1 1 auto; min-width: 0; }
-    #tab-arsenal .mf-ops .ops-body { display: flex; flex-direction: row; gap: 8px; }
-    #tab-arsenal .mf-ops .v3btn { flex: 1 1 0; min-height: 48px; font-size: 15px; }
+    #tab-arsenal .eq-info { flex: 1 1 auto; min-width: 0; width: auto; align-items: flex-start; text-align: left; }
+    #tab-arsenal .mf-stock { flex: 1 1 68% !important; min-width: 0; padding: 10px 10px 0; }
+    #tab-arsenal .mf-stock .mf-sub { display: none; }
+    #tab-arsenal .mf-stock .mf-body { overflow-y: auto; }
+    /* 仓库：2 列网格滑动，彻底填满右侧 */
+    #tab-arsenal .inv-list { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; }
+    #tab-arsenal .inv-row { flex-direction: column; align-items: stretch; padding: 7px 8px; gap: 3px; }
+    #tab-arsenal .inv-row .artline { flex-wrap: wrap; gap: 4px; }
+    #tab-arsenal .inv-row .rar { font-size: 9px; white-space: normal; }
+    #tab-arsenal .inv-row .mods { font-size: 9px; }
+    #tab-arsenal .inv-row .rec { font-size: 10px; }
+    /* 底部吸底操作条：装配/卸下/回收 三金属大按钮并排，移除穿插文字 */
+    #tab-arsenal .mf-ops { flex: 0 0 100% !important; min-height: 0; position: sticky; bottom: 0; z-index: 5;
+      background: linear-gradient(180deg, rgba(14,11,8,0.6) 0%, rgba(14,11,8,0.97) 24%, rgba(14,11,8,0.99) 100%);
+      border-top: 1px solid rgba(201,162,75,0.35); border-radius: 12px 12px 0 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); }
+    #tab-arsenal .mf-ops .mf-sub, #tab-arsenal .mf-ops .ops-hint { display: none !important; }
+    #tab-arsenal .mf-ops .ops-body { display: flex; flex-direction: row; gap: 10px; }
+    #tab-arsenal .mf-ops .v3btn { flex: 1 1 0; width: auto; height: 48px; min-height: 48px; font-size: 15px; margin: 0; }
     /* 熔炼台竖屏（图三）：八卦熔炉居中置顶 + 点击槽位弹底抽 + 下方合成/清空 */
     #tab-forge.on { flex-direction: column; }
     #tab-forge .mf-mats { display: none !important; }
@@ -1559,36 +1607,17 @@
     #tab-forge .mf-ops { flex: 0 0 auto; width: 100%; }
     #tab-forge .mf-ops .ops-body { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
     #tab-forge .mf-ops .v3btn { width: 100%; min-height: 48px; font-size: 16px; }
-    #tab-forge .fg-slot { min-width: 56px; min-height: 56px; pointer-events: auto; cursor: pointer; }
-    /* 熔炼台底抽弹窗（仅竖屏 .open 启用；横屏由 #forgeDrawer{display:none!important} 守卫） */
-    #forgeDrawer.open { display: block; position: fixed; inset: 0; z-index: 60; }
-    #forgeDrawer .fd-mask { position: absolute; inset: 0; background: rgba(0,0,0,0.6); }
-    #forgeDrawer .fd-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 68vh; display: flex; flex-direction: column; background: linear-gradient(180deg,#171209,#0c0a07); border-top: 2px solid var(--gold); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 30px rgba(0,0,0,0.6); animation: fdUp .25s ease; }
-    @keyframes fdUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-    #forgeDrawer .fd-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; color: var(--gold); font-weight: 800; letter-spacing: 2px; border-bottom: 1px solid rgba(201,162,75,.25); }
-    #forgeDrawer .fd-close { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid rgba(201,162,75,.4); color: var(--paper); cursor: pointer; flex: 0 0 auto; }
-    #forgeDrawer .fd-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px 12px 18px; }
-    #forgeDrawer .forge-filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-    #forgeDrawer .flabel { color: var(--muted); font-size: 12px; margin-right: 4px; flex: 0 0 auto; }
-    #forgeDrawer .fchip { padding: 6px 12px; border: 1px solid rgba(201,162,75,.35); border-radius: 999px; font-size: 13px; color: var(--paper); cursor: pointer; }
-    #forgeDrawer .fchip.on { background: var(--gold); color: #0c0a08; font-weight: 800; }
-    #forgeDrawer .forge-mat-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    #forgeDrawer .art { border: 1px solid rgba(201,162,75,.3); border-radius: 10px; padding: 8px; background: rgba(255,255,255,0.02); cursor: pointer; }
-    #forgeDrawer .art.on { border-color: var(--gold); background: rgba(201,162,75,.12); }
-    #forgeDrawer .art .an { font-weight: 800; }
-    #forgeDrawer .art .rar, #forgeDrawer .art .mini { color: var(--muted); font-size: 11px; }
+    #tab-forge .fg-slot { min-width: 56px; min-height: 56px; }
     #tab-lab.on > .lab-panel, #tab-codex.on > .codex-panel { flex: 1 1 auto; min-height: 0; }
-    /* 竖屏：法宝名称防重叠 + 强化卡 48px 横滑 + 锁定标注/出击灰显 */
+    /* 竖屏：法宝名称防重叠 + 强化卡 44px 横滑 + 锁定标注/出击灰显 */
     #tab-hangar .slot-label { max-width: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.2; }
     #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding-bottom: 2px; }
-    #tab-hangar .shop-area .shop-card { flex: 0 0 48px; width: 48px; height: 48px; min-width: 0; }
+    #tab-hangar .shop-area .shop-card { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     #tab-hangar .shop-area .shop-card .box { aspect-ratio: 1 / 1; }
     #tab-hangar .ap-slide { position: relative; }
     #tab-hangar .ap-slide.locked img { filter: grayscale(0.7) brightness(0.6); }
     #tab-hangar .ap-lock { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); background: rgba(0,0,0,0.72); color: var(--gold); border: 1px solid rgba(201,162,75,0.5); border-radius: 6px; padding: 2px 8px; font-size: 10px; white-space: nowrap; pointer-events: none; }
     #tab-hangar .launch.locked { opacity: 0.45; filter: grayscale(0.7); pointer-events: none; }
-    /* 熔炼台底抽弹窗：仅在竖屏 .open 显示；横屏无论是否带 .open 一律隐藏，防旋转残留 */
-    #forgeDrawer { display: none !important; }
   }
   /* 中小桌面 / 横屏手机视口：顶部栏等比收敛，杜绝 Tab 与资源栏重叠 */
   @media (max-width: 980px) {
@@ -1657,12 +1686,17 @@
     #tab-hangar .r-title { font-size: 12px; margin-bottom: 1px; }
     #tab-hangar .r-sub { display: none; }
     #tab-hangar .shop-area { flex: 1 1 auto !important; min-height: 56px; max-height: 44%; }
-    #tab-hangar .loadout-area { flex: 0 0 52px !important; min-height: 0; }
+    #tab-hangar .loadout-area { flex: 0 0 auto !important; min-height: 64px; }
+    #tab-hangar .loadout-area .r-title { font-size: 10px; }
+    #tab-hangar .loadout-row .eq-slot { width: 48px !important; height: 48px !important; max-width: 48px !important; }
     #tab-hangar .tier-area { flex: 0 0 38px !important; min-height: 0; }
     #tab-hangar .tier-area .r-title { display: none; }
     #tab-hangar .deploy-area { flex: 0 0 44px !important; position: relative !important; margin-top: 0 !important; background: none !important; padding: 0 !important; min-height: 0; }
     #tab-hangar .deploy-area .launch { width: 100%; height: 100%; }
     #tab-hangar .loadout-row { grid-template-columns: repeat(4, 1fr); }
+    /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
+    #tab-forge .mf-mats { flex: 0 0 200px !important; }
+    #tab-forge .mf-ops { flex: 0 0 150px !important; }
   }
 </style>
 </head>
@@ -1681,6 +1715,7 @@
 <div id="mobileControls">
   <div id="joyBase" class="joy-base"><div id="joyKnob" class="joy-knob"></div></div>
   <div id="aimJoyBase" class="aim-joy-base"><div id="aimJoyKnob" class="aim-joy-knob"></div></div>
+  <div id="fireBtn" class="mbtn fire-btn">🔥<span class="mb-label">开火</span></div>
   <div id="dashBtn" class="mbtn dash-btn">⚡</div>
   <div id="consBtn" class="mbtn cons-btn empty">💊</div>
   <div id="ultBtn" class="mbtn ult-btn cd">☯<span class="mb-label">绝技</span></div>
@@ -1781,7 +1816,6 @@
               </div>
               <div class="ap-info" id="apInfo"></div>
             </div>
-            <div class="ap-bars" id="apBars"></div>
             <div class="ap-desc" id="apDesc"></div>
           </section>
 
@@ -1835,21 +1869,18 @@
         </section>
       </div>
 
-      <!-- 熔炼台：左侧材料+筛选 / 中间大熔炉+中心结果 / 右侧合成按钮 -->
+      <!-- 熔炼台：左侧材料+筛选 / 中间大熔炉+中心结果 / 右侧合成按钮（2026-08-19：清除全部废弃引导文案，交互靠圆盘热区+底抽） -->
       <div class="tab-pane" id="tab-forge">
         <section class="mframe mf-mats">
           <div class="mf-title">材料</div>
-          <div class="mf-sub">点击下方 3 个圆盘槽位放入法宝进行合成</div>
           <div class="mf-body"><div id="forgeFilters"></div><div id="forgeList"></div></div>
         </section>
         <section class="mframe mf-stage">
           <div class="mf-title">熔炉</div>
-          <div class="mf-sub">三槽投料 · 中心红圈显示合成结果</div>
           <div class="mf-body stage-body"><div id="forgeStage"></div></div>
         </section>
         <section class="mframe mf-ops">
           <div class="mf-title">操作</div>
-          <div class="mf-sub">按当前投料执行合成</div>
           <div class="mf-body ops-body">
             <button class="v3btn" id="forgeCraft">合成</button>
             <button class="v3btn" id="forgeClear" style="margin-top:10px;">清空已填入</button>

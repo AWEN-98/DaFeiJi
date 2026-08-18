@@ -28,7 +28,7 @@ const elements = {};
 function makeEl(id) {
   const handlers = {};
   const el = {
-    id, width: 390, height: 844, style: {}, dataset: {},
+    id, width: 390, height: 844, style: { setProperty(k, v) { this[k] = String(v); }, getPropertyValue(k) { return this[k]; }, removeProperty(k) { const v = this[k]; delete this[k]; return v; } }, dataset: {},
     textContent: '', innerHTML: '', value: '', checked: false, disabled: false,
     classList: { _s: new Set(), add(...c){c.forEach(x=>this._s.add(x));}, remove(...c){c.forEach(x=>this._s.delete(x));}, contains(c){return this._s.has(c);}, toggle(c,f){const t=f===undefined?!this._s.has(c):f;t?this._s.add(c):this._s.delete(c);return t;} },
     getContext(){ if(!this._ctx){this._ctx=makeCtx();this._ctx.canvas=this;} return this._ctx; },
@@ -103,8 +103,17 @@ try {
   api.cleanState();
   mtouch('touchstart', [{id:1, x:80, y:600}]);     // 左半屏 → 虚拟摇杆（移动）
   mtouch('touchmove', [{id:1, x:110, y:560}]);
-  const btns = ['ultBtn','dashBtn','consBtn','pauseBtnMobile','phaseBtn','mergeBtn','backpackBtn','pickupBtn'];
+  const btns = ['fireBtn','ultBtn','dashBtn','consBtn','pauseBtnMobile','phaseBtn','mergeBtn','backpackBtn','pickupBtn'];
   btns.forEach(b=>{ touch(b,'touchstart',10,10); touch(b,'touchend',10,10); });
+  // 主开火键按住持续开火（2026-08-19 轮盘重构）：先清场（前面按钮循环可能已弹暂停/背包层），再 touchstart → fireBtnHeld → firedT>0 → touchend 复位
+  if (api.cleanState) api.cleanState();
+  for (let i=0;i<3;i++) tick(16.7);
+  touch('fireBtn','touchstart',10,10);
+  if (api.fireBtnHeldState && api.fireBtnHeldState() !== true) errors.push('fireBtn touchstart 应置 fireBtnHeld=true');
+  for (let i=0;i<10;i++) tick(16.7);
+  if (api.firedT && !(api.firedT() > 0)) errors.push('fireBtn 按住应触发开火（firedT=' + (api.firedT ? api.firedT() : 'n/a') + '）');
+  touch('fireBtn','touchend',10,10);
+  if (api.fireBtnHeldState && api.fireBtnHeldState() !== false) errors.push('fireBtn touchend 应复位 fireBtnHeld=false');
   mtouch('touchend', [{id:1, x:110, y:560}]);
   for (let i=0;i<60;i++) tick(16.7);
   api.renderFrame();

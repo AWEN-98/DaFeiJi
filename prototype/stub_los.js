@@ -35,7 +35,7 @@ const elements = {};
 function makeEl(id) {
   const handlers = {};
   const el = {
-    id, width: 1280, height: 720, style: {}, dataset: {},
+    id, width: 1280, height: 720, style: { setProperty(k, v) { this[k] = String(v); }, getPropertyValue(k) { return this[k]; }, removeProperty(k) { const v = this[k]; delete this[k]; return v; } }, dataset: {},
     textContent: '', innerHTML: '', value: '', checked: false, disabled: false,
     classList: { _s: new Set(), add(...c) { c.forEach(x => this._s.add(x)); }, remove(...c) { c.forEach(x => this._s.delete(x)); }, contains(c) { return this._s.has(c); }, toggle(c, f) { const t = f === undefined ? !this._s.has(c) : f; t ? this._s.add(c) : this._s.delete(c); return t; } },
     getContext() { if (!this._ctx) { this._ctx = makeCtx(); this._ctx.canvas = this; } return this._ctx; },
