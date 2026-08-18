@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>空域撤离 · 全 UI 装配规范 v3（按真实资产）</title>
+<style>
+:root{
+  --paper:#E8DCC4; --paper2:#F4EFE6; --gold:#FFC24B; --gold-d:#C9A24B;
+  --teal:#2BD4C4; --teal-d:#23465B; --ink:#07101F; --ink2:#0C1828;
+  --mut:#8FA0AE; --bad:#D96A7E; --good:#3CFFA0;
+  --line:rgba(43,212,196,.26); --line-g:rgba(255,194,75,.30);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:#060b14;color:var(--paper);font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif;padding:0 0 80px;}
+.wrap{max-width:1200px;margin:0 auto;padding:0 22px;}
+
+header{padding:34px 0 18px;border-bottom:1px solid var(--line);margin-bottom:24px;}
+header h1{margin:0 0 6px;font-size:28px;letter-spacing:2px;}
+header h1 b{color:var(--gold);}
+header p{margin:4px 0;color:var(--mut);font-size:13.5px;line-height:1.7;}
+.tag{display:inline-block;border:1px solid var(--line);border-radius:20px;padding:2px 11px;font-size:11px;color:var(--teal);margin-right:6px;letter-spacing:1px;}
+
+.map{width:100%;border-collapse:collapse;margin:14px 0 6px;font-size:12px;}
+.map th,.map td{border:1px solid var(--line);padding:6px 9px;text-align:left;}
+.map th{background:rgba(43,212,196,.08);color:var(--teal);font-weight:700;}
+.map code{color:var(--gold);font-size:11px;white-space:nowrap;}
+.map .sub{color:var(--mut);font-size:11px;}
+
+.group{margin:32px 0 8px;}
+.group h2{font-size:19px;letter-spacing:1px;color:var(--gold);border-left:4px solid var(--teal);padding-left:12px;margin:0 0 4px;}
+.group .gdesc{color:var(--mut);font-size:12.5px;margin:0 0 14px;padding-left:16px;}
+.screen-wrap{margin:0 0 28px;}
+.screen-wrap h3{font-size:14px;margin:0 0 8px;color:var(--paper);display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.screen-wrap h3 .sz{font-size:11px;color:var(--teal);font-weight:400;}
+.screen-wrap h3 .note{font-size:11px;color:var(--mut);font-weight:400;margin-left:auto;}
+
+/* 屏幕容器：带背景图 + 暗遮罩 */
+.screen{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:0 auto;box-shadow:0 12px 44px rgba(0,0,0,.55);}
+.screen::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,10,20,.55) 0%,rgba(6,10,20,.72) 60%,rgba(6,10,20,.82) 100%);z-index:0;}
+.screen-960{max-width:900px;aspect-ratio:960/540;}
+.screen-512{max-width:560px;aspect-ratio:512/160;}
+.screen-480{max-width:520px;aspect-ratio:480/300;}
+
+.stage{position:absolute;inset:4% 2.8%;z-index:1;display:flex;flex-direction:column;gap:1.4%;min-height:0;}
+
+/* 纯 CSS 大区域面板（玻璃感，不抢背景） */
+.glass{background:rgba(8,14,26,.78);border:1px solid rgba(255,194,75,.18);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;min-height:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 4px 18px rgba(0,0,0,.35);overflow:hidden;}
+.glass > .t{font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;font-weight:700;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid rgba(255,194,75,.16);flex-shrink:0;}
+.glass.teal{border-color:rgba(43,212,196,.22);}
+.glass.teal > .t{color:var(--teal);border-bottom-color:rgba(43,212,196,.16);}
+.glass.bad{border-color:rgba(217,106,126,.35);}
+
+/* ===== 精灵格系统（严格保持格子比例，只露一格不拉伸） ===== */
+.cell{position:relative;background-repeat:no-repeat;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--paper2);font-weight:700;overflow:hidden;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.7);flex-shrink:0;}
+.cell:hover{filter:brightness(1.12);}
+.cell.lock{filter:grayscale(.7) brightness(.65);}
+.cell.picked{filter:brightness(1.15) drop-shadow(0 0 8px rgba(255,194,75,.45));}
+
+.s-tab{background-image:url('assets/v4/ui/tabs/base_tab_sheet.png');background-size:500% 400%;aspect-ratio:338/233;width:100%;}
+.s-btn{background-image:url('assets/v4/ui/buttons/btn_sheet.png');background-size:400% 300%;aspect-ratio:384/342;}
+.s-panel{background-image:url('assets/v4/ui/panels/panel_sheet.png');background-size:400% 300%;aspect-ratio:384/342;}
+.s-slot{background-image:url('assets/v4/ui/slots/equip_slots_sheet.png');background-size:400% 300%;aspect-ratio:314/418;}
+.s-rar{background-image:url('assets/v4/ui/rarity/rarity_trim_sheet.png');background-size:500% 300%;aspect-ratio:251/418;}
+
+/* 小图标（固定 26px 方格，4×4 表） */
+.ic{width:26px;height:26px;flex-shrink:0;background-repeat:no-repeat;background-size:400% 400%;background-image:url('assets/v4/ui/icons/base_icons_sheet.png');}
+
+/* 文字工具 */
+.t-c{display:flex;align-items:center;justify-content:center;text-align:center;}
+.t-l{display:flex;align-items:center;justify-content:flex-start;}
+.t-r{display:flex;align-items:center;justify-content:flex-end;}
+.paper{color:var(--paper);} .paper2{color:var(--paper2);} .gold{color:var(--gold);} .teal{color:var(--teal);} .mut{color:var(--mut);} .bad{color:var(--bad);} .good{color:var(--good);}
+.fw7{font-weight:700;} .fw8{font-weight:800;} .ls1{letter-spacing:1px;} .ls2{letter-spacing:2px;}
+.sh{text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.7);}
+.fs11{font-size:11px;} .fs12{font-size:12px;} .fs13{font-size:13px;} .fs15{font-size:15px;} .fs17{font-size:17px;}
+.kv{display:flex;align-items:center;gap:6px;font-size:12px;margin:3px 0;}
+.kv .k{color:var(--mut);} .kv .v{color:var(--paper);font-weight:700;margin-left:auto;}
+.divline{height:1px;background:rgba(255,255,255,.08);margin:4px 0;}
+.chip{display:inline-flex;align-items:center;gap:5px;border:1px solid rgba(255,194,75,.25);border-radius:16px;padding:2px 9px;font-size:10px;color:var(--paper);background:rgba(255,194,75,.06);}
+.bar{height:7px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;border:1px solid var(--line);}
+.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--gold));}
+
+.footer-note{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);color:var(--mut);font-size:12.5px;line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>空域撤离 · <b>全 UI 装配规范 v3</b></h1>
+  <p>本版按<strong>真实资产图案</strong>重做对齐：tab 自带图标不写大字覆盖；panel 列=形状（长条/大方/中方）而非语义；slot 框自带类型图标不覆盖文字；icons 仅用于 KV 小标签。</p>
+  <p>
+    <span class="tag">真实背景</span>
+    <span class="tag">tab 自带图标</span>
+    <span class="tag">panel 按形状</span>
+    <span class="tag">slot 不写字</span>
+    <span class="tag">零位移</span>
+  </p>
+</header>
+
+<!-- ============ 权威坐标映射（按真实图案） ============ -->
+<h2 style="color:var(--gold);font-size:16px;letter-spacing:1px;margin:24px 0 4px;">① 已验证精灵格坐标映射</h2>
+<table class="map">
+  <tr><th>精灵表</th><th>网格</th><th>列 → 位置</th><th>行 → 位置</th><th>取格示例</th></tr>
+  <tr><td><code>tabs</code></td><td>5×4</td><td>机库/军械/熔炼/研究/图鉴 = 0/25/50/75/100</td><td>normal/hover/selected/disabled = 0/33.3/66.7/100</td><td class="sub">机库选中 = <code>0% 66.7%</code> · 图鉴常态 = <code>100% 0%</code></td></tr>
+  <tr><td><code>panels</code></td><td>4×3</td><td><b>形状</b> 长条A/大方/中方/长条B = 0/33.3/66.7/100</td><td>normal/selected/locked = 0/50/100</td><td class="sub">长条选中 = <code>0% 50%</code> · 大方常态 = <code>33.3% 0%</code> · 锁定 = <code>X% 100%</code></td></tr>
+  <tr><td><code>buttons</code></td><td>4×3</td><td><b>状态</b> normal/hover/active/disabled = 0/33.3/66.7/100</td><td><b>类型</b> primary/secondary/small = 0/50/100</td><td class="sub">主按钮常态 = <code>0% 0%</code> · 小按钮常态 = <code>0% 100%</code></td></tr>
+  <tr><td><code>slots</code></td><td>4×3</td><td>武器/护甲/核心/弹药 = 0/33.3/66.7/100</td><td>normal/hover/equipped = 0/50/100</td><td class="sub">武器已装 = <code>0% 100%</code> · 弹药常态 = <code>100% 0%</code></td></tr>
+  <tr><td><code>icons</code></td><td>4×4</td><td colspan="2">0,0灵玉 0,1仓库 0,2层数 0,3锁定 | 1,0装备 1,1卸下 1,2熔炼 1,3三合一 | 2,0扩散 2,1侦察 2,2攻击 2,3推进 | 3,0防御 3,1弹片 3,2帮助 3,3目标</td><td class="sub">攻击=<code>66.7% 66.7%</code> 防御=<code>0% 100%</code> 弹片=<code>33.3% 100%</code> 帮助=<code>66.7% 100%</code></td></tr>
+  <tr><td><code>rarity</code></td><td>5×3</td><td>白/绿/蓝/紫/橙 = 0/25/50/75/100</td><td>ring/corner/badge = 0/50/100</td><td class="sub">橙角标 = <code>100% 50%</code> · 紫徽章 = <code>75% 100%</code></td></tr>
+</table>
+
+<!-- ============ A. 基地系 ============ -->
+<div class="group">
+  <h2>② 基地系（DOM · 960×540 · 真实背景）</h2>
+  <p class="gdesc">每个 tab 使用对应场景背景；tab 按钮本身带图标，不再覆盖大字；大区域用 glass 面板，交互控件用真实精灵格。</p>
+
+  <!-- 机库 -->
+  <div class="screen-wrap">
+    <h3>基地 · 机库 <span class="sz">960×540</span><span class="note">左=信息/战力/难度 · 中=机体展示 · 右=选择+出击</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage">
+        <!-- Tab 行：5格，只显示 tab 自带图标 -->
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;height:15%;">
+          <div class="cell s-tab" style="background-position:0% 66.7%;"></div>
+          <div class="cell s-tab" style="background-position:25% 0%;"></div>
+          <div class="cell s-tab" style="background-position:50% 0%;"></div>
+          <div class="cell s-tab" style="background-position:75% 0%;"></div>
+          <div class="cell s-tab" style="background-position:100% 0%;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:25% 1fr 26%;gap:1.6%;flex:1;min-height:0;">
+          <!-- 左列 -->
+          <div style="display:flex;flex-direction:column;gap:1.6%;min-height:0;">
+            <div class="glass" style="flex:1.2;">
+              <div class="t">机体信息</div>
+              <div class="gold fw8 ls1 fs15" style="margin-bottom:2px;">玄龟 · 守护</div>
+              <div class="mut fs11" style="margin-bottom:8px;">重型护盾机体</div>
+              <div class="kv"><span class="ic" style="background-position:66.7% 66.7%;"></span><span class="k">攻击</span><span class="v">128</span></div>
+              <div class="kv"><span class="ic" style="background-position:0% 100%;"></span><span class="k">防御</span><span class="v">240</span></div>
+              <div class="kv"><span class="ic" style="background-position:33.3% 100%;"></span><span class="k">射速</span><span class="v">3.2</span></div>
+              <div class="kv"><span class="ic" style="background-position:100% 66.7%;"></span><span class="k">移速</span><span class="v">4.5</span></div>
+            </div>
+            <div class="glass teal" style="flex:.9;">
+              <div class="t">本局战力</div>
+              <div class="kv"><span class="k">HP</span><span class="v">480</span></div>
+              <div class="kv"><span class="k">伤害</span><span class="v">156</span></div>
+              <div class="kv"><span class="k">护盾</span><span class="v">120</span></div>
+              <div class="kv"><span class="k">弹片</span><span class="v">3</span></div>
+            </div>
+            <div class="glass" style="flex:.8;">
+              <div class="t">难度</div>
+              <div style="display:flex;gap:6px;flex:1;min-height:0;">
+                <div class="cell s-panel" style="background-position:0% 50%;flex:1;"><span class="gold fs12">第1层</span></div>
+                <div class="cell s-panel" style="background-position:0% 0%;flex:1;"><span class="fs12">第2层</span></div>
+                <div class="cell s-panel lock" style="background-position:0% 0%;flex:1;"><span class="fs12">第3层</span></div>
+              </div>
+            </div>
+          </div>
+          <!-- 中列 -->
+          <div class="glass t-c" style="align-items:center;justify-content:center;">
+            <div style="width:70%;aspect-ratio:1/1;background:radial-gradient(closest-side,rgba(255,194,75,.14),transparent 70%);border-radius:50%;display:flex;align-items:center;justify-content:center;">
+              <svg viewBox="0 0 100 60" style="width:58%;color:var(--teal);filter:drop-shadow(0 0 16px var(--teal));"><path d="M50 4 L92 54 L50 42 L8 54 Z" fill="currentColor"/></svg>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;justify-content:center;">
+              <span class="chip">弹片 3</span><span class="chip">追踪</span><span class="chip">散射</span>
+            </div>
+          </div>
+          <!-- 右列 -->
+          <div style="display:flex;flex-direction:column;gap:1.6%;min-height:0;">
+            <div class="glass" style="flex:1;overflow:auto;">
+              <div class="t">机体选择</div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <div class="cell s-panel" style="background-position:0% 50%;width:100%;height:46px;"><span class="gold fw7 fs13">玄龟 · 守护</span></div>
+                <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:46px;"><span class="paper fw7 fs13">青隼 · 突进</span></div>
+                <div class="cell s-panel lock" style="background-position:0% 0%;width:100%;height:46px;"><span class="paper fw7 fs13">赤翎 · 爆破</span></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;height:15%;">
+              <div class="cell s-btn" style="background-position:0% 100%;font-size:10px;">帮助</div>
+              <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">出击 ▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 军械库 -->
+  <div class="screen-wrap">
+    <h3>基地 · 军械库 <span class="sz">960×540</span><span class="note">左=装备槽 · 中=仓库 · 右=操作</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_arsenal.jpg') center/cover no-repeat;">
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;height:15%;">
+          <div class="cell s-tab" style="background-position:0% 0%;"></div>
+          <div class="cell s-tab" style="background-position:25% 66.7%;"></div>
+          <div class="cell s-tab" style="background-position:50% 0%;"></div>
+          <div class="cell s-tab" style="background-position:75% 0%;"></div>
+          <div class="cell s-tab" style="background-position:100% 0%;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:22% 1fr 22%;gap:1.6%;flex:1;min-height:0;">
+          <div class="glass" style="min-height:0;">
+            <div class="t">装备槽</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-content:start;">
+              <div class="cell s-slot" style="background-position:0% 100%;"></div>
+              <div class="cell s-slot" style="background-position:33.3% 0%;"></div>
+              <div class="cell s-slot" style="background-position:66.7% 0%;"></div>
+              <div class="cell s-slot" style="background-position:100% 0%;"></div>
+            </div>
+          </div>
+          <div class="glass" style="min-height:0;">
+            <div class="t">仓库</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-content:start;overflow:auto;min-height:0;">
+              <div class="cell s-slot" style="background-position:0% 0%;"></div>
+              <div class="cell s-slot" style="background-position:33.3% 100%;"></div>
+              <div class="cell s-slot" style="background-position:66.7% 0%;"></div>
+              <div class="cell s-slot" style="background-position:100% 0%;"></div>
+              <div class="cell s-slot" style="background-position:0% 0%;"></div>
+              <div class="cell s-slot lock" style="background-position:100% 0%;"></div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:1.6%;min-height:0;">
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">装载</div>
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">卸下</div>
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">回收</div>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;height:18%;margin-top:auto;">
+              <div class="cell s-btn" style="background-position:0% 100%;font-size:10px;">帮助</div>
+              <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">出击 ▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 熔炼台 -->
+  <div class="screen-wrap">
+    <h3>基地 · 熔炼台 <span class="sz">960×540</span><span class="note">左=材料 · 中=熔炉 · 右=操作</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_forge.jpg') center/cover no-repeat;">
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;height:15%;">
+          <div class="cell s-tab" style="background-position:0% 0%;"></div>
+          <div class="cell s-tab" style="background-position:25% 0%;"></div>
+          <div class="cell s-tab" style="background-position:50% 66.7%;"></div>
+          <div class="cell s-tab" style="background-position:75% 0%;"></div>
+          <div class="cell s-tab" style="background-position:100% 0%;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:25% 1fr 26%;gap:1.6%;flex:1;min-height:0;">
+          <div class="glass" style="min-height:0;">
+            <div class="t">材料列表</div>
+            <div style="display:flex;flex-direction:column;gap:6px;overflow:auto;min-height:0;">
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">雷核 ×2</span></div>
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">玉甲 ×1</span></div>
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">灵玉 ×120</span></div>
+            </div>
+          </div>
+          <div class="glass t-c" style="align-items:center;justify-content:center;">
+            <div style="width:60%;aspect-ratio:1/1;background:radial-gradient(closest-side,rgba(201,162,39,.18),transparent 70%);border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(255,194,75,.25);">
+              <div style="text-align:center;">
+                <div class="ic" style="width:48px;height:48px;background-position:33.3% 33.3%;margin:0 auto 8px;"></div>
+                <div class="gold fw7 fs13">放入 2 件同槽位法器</div>
+                <div class="mut fs11" style="margin-top:4px;">合成升阶</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:1.6%;min-height:0;">
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:12px;">2合1升稀</div>
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:12px;">3合1升级</div>
+            <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">回收</div>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;height:18%;margin-top:auto;">
+              <div class="cell s-btn" style="background-position:0% 100%;font-size:10px;">帮助</div>
+              <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">出击 ▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 研究院 -->
+  <div class="screen-wrap">
+    <h3>基地 · 研究院 <span class="sz">960×540 · 两栏</span><span class="note">左=永久强化 · 右=科技树</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_lab.jpg') center/cover no-repeat;">
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;height:15%;">
+          <div class="cell s-tab" style="background-position:0% 0%;"></div>
+          <div class="cell s-tab" style="background-position:25% 0%;"></div>
+          <div class="cell s-tab" style="background-position:50% 0%;"></div>
+          <div class="cell s-tab" style="background-position:75% 66.7%;"></div>
+          <div class="cell s-tab" style="background-position:100% 0%;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:30% 1fr;gap:1.6%;flex:1;min-height:0;">
+          <div class="glass" style="min-height:0;">
+            <div class="t">永久强化</div>
+            <div style="display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:0;">
+              <div class="glass teal" style="padding:8px 10px;">
+                <div class="t-l"><span class="gold fw7 fs13">机身强化</span><span class="mut fs11" style="margin-left:auto;">Lv.6</span></div>
+                <div class="bar" style="margin-top:6px;"><i style="width:60%;"></i></div>
+              </div>
+              <div class="glass" style="padding:8px 10px;">
+                <div class="t-l"><span class="paper fw7 fs13">武器精通</span><span class="mut fs11" style="margin-left:auto;">Lv.3</span></div>
+                <div class="bar" style="margin-top:6px;"><i style="width:30%;"></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="glass" style="min-height:0;">
+            <div class="t">科技树</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start;overflow:auto;min-height:0;">
+              <div class="cell s-panel" style="background-position:33.3% 0%;aspect-ratio:1/1;width:100%;"><span class="fs12">弹道</span></div>
+              <div class="cell s-panel" style="background-position:33.3% 0%;aspect-ratio:1/1;width:100%;"><span class="fs12">护盾</span></div>
+              <div class="cell s-panel" style="background-position:33.3% 0%;aspect-ratio:1/1;width:100%;"><span class="fs12">回能</span></div>
+              <div class="cell s-panel lock" style="background-position:33.3% 100%;aspect-ratio:1/1;width:100%;"><span class="fs12">穿透</span></div>
+              <div class="cell s-panel lock" style="background-position:33.3% 100%;aspect-ratio:1/1;width:100%;"><span class="fs12">暴击</span></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;height:14%;margin-top:auto;">
+              <div class="cell s-btn" style="background-position:0% 100%;font-size:10px;">帮助</div>
+              <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">出击 ▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div class="screen-wrap">
+    <h3>基地 · 图鉴 <span class="sz">960×540 · 两栏</span><span class="note">左=分类 · 右=详情</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_codex.jpg') center/cover no-repeat;">
+      <div class="stage">
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;height:15%;">
+          <div class="cell s-tab" style="background-position:0% 0%;"></div>
+          <div class="cell s-tab" style="background-position:25% 0%;"></div>
+          <div class="cell s-tab" style="background-position:50% 0%;"></div>
+          <div class="cell s-tab" style="background-position:75% 0%;"></div>
+          <div class="cell s-tab" style="background-position:100% 66.7%;"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:22% 1fr;gap:1.6%;flex:1;min-height:0;">
+          <div class="glass" style="min-height:0;">
+            <div class="t">分类</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div class="cell s-panel" style="background-position:0% 50%;width:100%;height:42px;"><span class="gold fs12">敌怪</span></div>
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">战利品</span></div>
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">套装</span></div>
+              <div class="cell s-panel" style="background-position:0% 0%;width:100%;height:42px;"><span class="paper fs12">传说武器</span></div>
+            </div>
+          </div>
+          <div class="glass" style="min-height:0;">
+            <div class="t">详情</div>
+            <div style="flex:1;overflow:auto;color:var(--paper);font-size:12.5px;line-height:1.9;">
+              <p><b style="color:var(--gold);">坠星守卫</b> — 游荡于坠星废墟的青铜机甲，弱点为背后核心。</p>
+              <p style="margin-top:8px;color:var(--mut);">已击杀 12 · 掉落：青铜残片、雷核</p>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;height:14%;margin-top:auto;">
+              <div class="cell s-btn" style="background-position:0% 100%;font-size:10px;">帮助</div>
+              <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">出击 ▶</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ B. 战斗 HUD ============ -->
+<div class="group">
+  <h2>③ 战斗 HUD（Canvas 绘制模板）</h2>
+  <p class="gdesc">HUD 用 Canvas drawImage 裁切精灵格；文字叠加在对应区域。DOM 还原仅作坐标核对。</p>
+
+  <div class="screen-wrap">
+    <h3>战斗 · 血条/状态 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass" style="flex:1;flex-direction:row;align-items:center;gap:12px;">
+          <div class="ic" style="width:34px;height:34px;background-position:0% 100%;"></div>
+          <div style="flex:1;">
+            <div class="kv"><span class="k">HP</span><span class="v">480 / 480</span></div>
+            <div class="bar"><i style="width:100%;"></i></div>
+          </div>
+          <div style="width:90px;">
+            <div class="kv"><span class="k">护盾</span><span class="v">120</span></div>
+            <div class="bar"><i style="width:60%;background:linear-gradient(90deg,var(--teal),#7ef);"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>战斗 · 战利品获得 <span class="sz">480×300</span></h3>
+    <div class="screen screen-480" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:10% 6%;align-items:center;justify-content:center;">
+        <div class="cell s-panel" style="background-position:33.3% 0%;width:48%;max-width:180px;"><span class="gold fw8 fs15">虚空炮</span></div>
+        <div class="s-rar" style="width:44px;height:74px;background-position:100% 0%;margin-top:8px;"></div>
+        <div class="gold fs12" style="margin-top:4px;">传说 · 武器</div>
+        <div class="mut fs11" style="margin-top:4px;">已收入仓库</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>战斗 · 撤离倒计时 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass t-c" style="flex:1;align-items:center;justify-content:center;flex-direction:column;">
+          <div class="teal fw7 ls2 fs12">撤离倒计时</div>
+          <div class="gold fw8 fs17" style="margin-top:2px;">02:47</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>战斗 · 警告 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass bad t-c" style="flex:1;align-items:center;justify-content:center;flex-direction:column;">
+          <div class="bad fw8 ls1 fs15">强敌逼近</div>
+          <div class="mut fs11" style="margin-top:4px;">建议立即撤离</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ C. 卡片系 ============ -->
+<div class="group">
+  <h2>④ 卡片系（物品/装备槽/任务目标）</h2>
+  <p class="gdesc">每张卡用对应精灵格作底；稀有度用 rarity 格叠加角标；slot 框自带类型图标，不覆盖大字。</p>
+
+  <div class="screen-wrap">
+    <h3>物品卡 <span class="sz">384×342</span><span class="note">panels·大方格 + rarity 角标</span></h3>
+    <div class="screen screen-480" style="background:url('assets/v2/base/base_hub_arsenal.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:14% 10%;flex-direction:row;gap:14px;align-items:center;justify-content:center;">
+        <div style="position:relative;width:42%;max-width:180px;">
+          <div class="cell s-panel" style="background-position:33.3% 0%;width:100%;"><span class="gold fw8 fs15">雷核</span></div>
+          <div class="s-rar" style="position:absolute;top:-6px;right:-6px;width:28px;height:46px;background-position:50% 50%;"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div class="teal fs12">蓝色 · 核心</div>
+          <div class="mut fs11">+18 能量回复</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>装备槽卡 <span class="sz">314×418</span><span class="note">slots 格自带武器/护甲/核心/弹药图标</span></h3>
+    <div class="screen screen-480" style="background:url('assets/v2/base/base_hub_arsenal.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:16% 14%;align-items:center;justify-content:center;flex-direction:row;gap:14px;">
+        <div class="cell s-slot" style="background-position:0% 100%;width:32%;max-width:130px;"></div>
+        <div class="cell s-slot" style="background-position:33.3% 0%;width:32%;max-width:130px;"></div>
+        <div class="cell s-slot" style="background-position:66.7% 0%;width:32%;max-width:130px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>任务目标 · 激活 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass gold t-l" style="flex:1;align-items:center;">
+          <div class="ic" style="width:34px;height:34px;background-position:100% 100%;"></div>
+          <div style="margin-left:12px;"><div class="gold fw7 fs13">歼灭精英 · 0/3</div><div class="mut fs11" style="margin-top:2px;">在坠星废墟击杀 3 个精英敌</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>任务目标 · 锁定 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass t-l lock" style="flex:1;align-items:center;">
+          <div class="ic" style="width:34px;height:34px;background-position:100% 0%;"></div>
+          <div style="margin-left:12px;"><div class="paper fw7 fs13">解密符文</div><div class="mut fs11" style="margin-top:2px;">通关第 2 层后解锁</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ D. 流程系 ============ -->
+<div class="group">
+  <h2>⑤ 流程系（部署/撤离门/结算/教程）</h2>
+  <p class="gdesc">大屏用统一暗背景 + 玻璃面板 + 精灵格按钮，文字严格居中。</p>
+
+  <div class="screen-wrap">
+    <h3>部署加载 <span class="sz">960×540</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:0 0;align-items:center;justify-content:center;gap:18px;">
+        <div class="gold fw8 ls2 fs17">坠星废墟 · 加载中</div>
+        <div class="bar" style="width:55%;"><i style="width:72%;"></i></div>
+        <div class="mut fs12">正在生成敌群与战利品…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>撤离门 <span class="sz">960×540</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:0 0;align-items:center;justify-content:center;gap:16px;">
+        <div class="teal fw8 ls1 fs17">撤离门已开启</div>
+        <div class="mut fs12">进入光门即可带出本局战利品（阵亡将损失 85%）</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:44%;margin-top:6px;">
+          <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">撤离 ▶</div>
+          <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">继续搜刮</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>结算 · 胜利 <span class="sz">960×540</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 6%;gap:14px;">
+        <div class="glass t-c" style="flex:.7;align-items:center;justify-content:center;flex-direction:column;border-color:var(--line-g);">
+          <div class="good fw8 ls1 fs17">撤离成功</div>
+          <div class="mut fs12" style="margin-top:4px;">带回 3 件战利品</div>
+        </div>
+        <div class="glass" style="flex:1.3;">
+          <div class="t">本局结算</div>
+          <div class="kv"><span class="ic" style="background-position:100% 100%;"></span><span class="k">击杀</span><span class="v">47</span></div>
+          <div class="kv"><span class="ic" style="background-position:66.7% 66.7%;"></span><span class="k">伤害</span><span class="v">12840</span></div>
+          <div class="kv"><span class="ic" style="background-position:0% 100%;"></span><span class="k">承受</span><span class="v">3960</span></div>
+          <div class="divline"></div>
+          <div class="kv"><span class="k">带回资源</span><span class="v gold">+1240 灵玉</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;height:13%;">
+          <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">再来一局</div>
+          <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">返回基地</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>结算 · 阵亡 <span class="sz">960×540</span></h3>
+    <div class="screen screen-960" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 6%;gap:14px;">
+        <div class="glass bad t-c" style="flex:.7;align-items:center;justify-content:center;flex-direction:column;">
+          <div class="bad fw8 ls1 fs17">机体损毁</div>
+          <div class="mut fs12" style="margin-top:4px;">带入资源损失 85%</div>
+        </div>
+        <div class="glass" style="flex:1.3;">
+          <div class="t">本局结算</div>
+          <div class="kv"><span class="k">击杀</span><span class="v">31</span></div>
+          <div class="kv"><span class="k">坚持</span><span class="v">04:12</span></div>
+          <div class="divline"></div>
+          <div class="kv"><span class="k">损失资源</span><span class="v bad">-860 灵玉</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;height:13%;">
+          <div class="cell s-btn" style="background-position:0% 0%;font-size:13px;">复活出击</div>
+          <div class="cell s-btn" style="background-position:0% 50%;font-size:13px;">返回基地</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen-wrap">
+    <h3>教程气泡 <span class="sz">512×160</span></h3>
+    <div class="screen screen-512" style="background:url('assets/v2/base/base_hub_hangar.jpg') center/cover no-repeat;">
+      <div class="stage" style="inset:8% 4%;">
+        <div class="glass t-l" style="flex:1;align-items:center;">
+          <div class="ic" style="width:34px;height:34px;background-position:66.7% 100%;"></div>
+          <div style="margin-left:12px;"><div class="gold fw7 fs13">操作提示</div><div class="mut fs11" style="margin-top:2px;">移动：WASD · 开火：自动 · 撤离：找到光门</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">
+  本页按真实资产图案重做：tab 自带图标不覆盖大字；panel 列=形状（长条/大方/中方）；slot 框自带类型图标不写字；icons 仅用于 KV 小标签。状态切换仅改 background-position + filter，零位移。<br>
+  落地建议：DOM 屏幕（基地系）直接移植本页结构；Canvas 屏幕按坐标用 drawImage 裁切精灵格绘制。
+</div>
+
+</div>
+</body>
+</html>
