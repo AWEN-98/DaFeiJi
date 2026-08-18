@@ -7165,35 +7165,23 @@
         sparks.className = 'fg-process-sparks';
         stage.appendChild(sparks);
       }
-      // 合成最终结果：顶部「熔炉」牌匾正下方显示道具大图标
+      // 合成最终结果 + 状态文字：合并为单 .forge-result-preview（flex-column 上下两行），消除旧版 fg-output(top:24%)+fg-result(top:36%) 两层 absolute 居中堆叠导致的文字重叠穿插
       var output = document.createElement('div');
-      output.className = 'fg-output' + (forgeResult ? ' show' : '');
       if (forgeResult) {
-        if (forgeResult.kind === 'success' && forgeOutputArt) {
-          output.innerHTML = forgeIconHtml(forgeOutputArt, 'forge-output-icon') +
-            '<div class="fname" style="color:' + forgeResult.color + '">' + forgeOutputArt.name + '</div>';
-        } else if (forgeResult.kind === 'destroy') {
-          output.innerHTML = '<div class="fg-output-icon fg-destroy-icon">✦</div><div class="fname" style="color:' + forgeResult.color + '">湮灭</div>';
-        } else {
-          output.innerHTML = '<div class="fg-output-icon fg-fail-icon">✕</div><div class="fname" style="color:' + forgeResult.color + '">' + forgeResult.title + '</div>';
-        }
-      }
-      stage.appendChild(output);
-      // 状态文字提示（图标下方）
-      var r = document.createElement('div');
-      if (forgeResult) {
-        r.className = 'fg-result show ' + forgeResult.kind;
-        var rHtml = '<div class="fname" style="color:' + forgeResult.color + '">' + forgeResult.title + '</div><div class="fsub">' + forgeResult.sub + '</div>';
-        if (forgeResult.kind === 'success' && forgeOutputArt) rHtml += '<div class="fmods">' + modsText(forgeOutputArt.mods) + '</div>';
-        r.innerHTML = rHtml;
+        output.className = 'forge-result-preview show ' + forgeResult.kind;
+        var oTitle = forgeResult.kind === 'success' && forgeOutputArt ? forgeOutputArt.name : forgeResult.title;
+        var oAttrs = forgeResult.sub;
+        if (forgeResult.kind === 'success' && forgeOutputArt) oAttrs += '\n' + modsText(forgeOutputArt.mods);
+        output.innerHTML = '<div class="forge-result-title">' + oTitle + '</div><div class="forge-result-attrs">' + oAttrs + '</div>';
       } else {
         var pv = forgePreview(arts);
-        r.className = 'fg-result' + (pv.ready ? ' glow' : '');
-        var pvHtml = '<div class="fname"' + (pv.color ? ' style="color:' + pv.color + '"' : '') + '>' + pv.title + '</div><div class="fsub">' + pv.sub + '</div>';
-        if (pv.previewMods) pvHtml += '<div class="fprev">预计产出：' + modsText(pv.previewMods) + '</div>';
-        r.innerHTML = pvHtml;
+        output.className = 'forge-result-preview' + (pv.ready ? ' glow' : '');
+        var pTitle = pv.title;
+        var pAttrs = pv.sub;
+        if (pv.previewMods) pAttrs += '\n预计产出：' + modsText(pv.previewMods);
+        output.innerHTML = '<div class="forge-result-title">' + pTitle + '</div><div class="forge-result-attrs">' + pAttrs + '</div>';
       }
-      stage.appendChild(r);
+      stage.appendChild(output);
     }
     // === 右：合成按钮提示 / 结果 ===
     var hint = document.getElementById('forgeHint');

@@ -1349,6 +1349,31 @@
   .fg-result.success { text-shadow: 0 0 12px rgba(201,162,75,.95), 0 0 28px rgba(201,162,75,.6), 0 2px 4px rgba(0,0,0,.95); }
   .fg-result.destroy { text-shadow: 0 0 12px rgba(201,79,79,.95), 0 0 28px rgba(201,79,79,.6), 0 2px 4px rgba(0,0,0,.95); }
   .fg-result.disallowed, .fg-result.fail { text-shadow: 0 0 12px rgba(200,100,42,.95), 0 0 28px rgba(200,100,42,.6), 0 2px 4px rgba(0,0,0,.95); }
+  /* ============ 熔炉中央结果预览（2026-08-19 硬性修复）：flex-column 上下两行消除 absolute 堆叠重叠 ============ */
+  .forge-result-preview {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+    width: 38%;
+    max-width: 200px;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .forge-result-title { font-size: 13px; font-weight: bold; color: #4da6ff; line-height: 1.25; text-shadow: 0 1px 3px rgba(0,0,0,.95); }
+  .forge-result-attrs { font-size: 11px; color: #ffcc66; white-space: normal; line-height: 1.3; text-shadow: 0 1px 3px rgba(0,0,0,.95); }
+  /* 状态染色：成功/湮灭/失败/不允许覆盖默认蓝色品阶标题 */
+  .forge-result-preview.success .forge-result-title { color: #E0B84A; text-shadow: 0 0 12px rgba(201,162,75,.95), 0 0 28px rgba(201,162,75,.6), 0 2px 4px rgba(0,0,0,.95); }
+  .forge-result-preview.destroy .forge-result-title { color: #C94F4F; text-shadow: 0 0 12px rgba(201,79,79,.95), 0 0 28px rgba(201,79,79,.6), 0 2px 4px rgba(0,0,0,.95); }
+  .forge-result-preview.disallowed .forge-result-title, .forge-result-preview.fail .forge-result-title { color: #E58A4A; text-shadow: 0 0 12px rgba(200,100,42,.95), 0 0 28px rgba(200,100,42,.6), 0 2px 4px rgba(0,0,0,.95); }
+  .forge-result-preview.glow .forge-result-title { text-shadow: 0 0 10px rgba(201,162,75,.9), 0 0 22px rgba(201,162,75,.55), 0 2px 4px rgba(0,0,0,.95); }
+  .forge-result-preview.success.show .forge-result-title, .forge-result-preview.destroy.show .forge-result-title, .forge-result-preview.disallowed.show .forge-result-title, .forge-result-preview.fail.show .forge-result-title { font-size: 18px; letter-spacing: 2px; }
+  .forge-result-preview.show .forge-result-attrs { font-size: 11px; margin-top: 2px; }
   .fg-result .fmods { font-size:10px; line-height:1.4; color:#E8DCC4; margin-top:5px; text-shadow:0 1px 2px rgba(0,0,0,.95); max-width:100%; }
   .fg-result .fprev { font-size:9px; color:#B8A98E; margin-top:4px; line-height:1.35; text-shadow:0 1px 2px rgba(0,0,0,.95); }
 
