@@ -6550,7 +6550,7 @@
         var badgeHtml = eq ? '<span class="rarity-badge rarity-' + eq.rarity + '"></span>' : '';
         slots += '<div class="eq-slot" data-type="' + slot + '" data-state="' + state + '">' +
           '<div class="box"><img class="bg" src="assets/v3/ui/cropped/slot_' + slot + '_' + state + '.png" alt="">' + iconHtml + '</div>' +
-          '<div class="en slot-label">' + badgeHtml + (eq ? eq.name : SLOTNAME[slot]) + '</div>' +
+          '<div class="en hangar-slot-name slot-label">' + badgeHtml + (eq ? eq.name : SLOTNAME[slot]) + '</div>' +
         '</div>';
       });
       he.innerHTML = slots;

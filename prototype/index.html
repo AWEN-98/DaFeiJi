@@ -1510,7 +1510,7 @@
     #tab-hangar .ap-slide.locked img { filter: grayscale(0.7) brightness(0.6); }
     #tab-hangar .ap-lock { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); background: rgba(0,0,0,0.72); color: var(--gold); border: 1px solid rgba(201,162,75,0.5); border-radius: 6px; padding: 2px 8px; font-size: 10px; white-space: nowrap; pointer-events: none; }
     #tab-hangar .launch.locked { opacity: 0.45; filter: grayscale(0.7); pointer-events: none; }
-    #tab-hangar .slot-label { max-width: 60px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.2; }
+    #tab-hangar .slot-label { display:block; width:100%; max-width:60px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:1.2; text-align:center; margin:0 auto; color:var(--paper); }
     /* 横屏精修：资源条轻量 + 强化横排小图标 + 法宝 52 + 难度胶囊 + 出击 44 */
     .hall-brand .res-item { padding: 3px 10px; gap: 5px; }
     .hall-brand .res-item b { font-size: 14px; }
@@ -1664,7 +1664,9 @@
     #tab-forge .fg-slot { min-width: 56px; min-height: 56px; }
     #tab-lab.on > .lab-panel, #tab-codex.on > .codex-panel { flex: 1 1 auto; min-height: 0; }
     /* 竖屏：法宝名称防重叠 + 强化卡 44px 横滑 + 锁定标注/出击灰显 */
-    #tab-hangar .slot-label { max-width: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; line-height: 1.2; }
+    #tab-hangar .slot-label { display:block; width:100%; max-width:58px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:1.2; text-align:center; margin:0 auto; color:var(--paper); }
+    /* 机库槽位名（2026-08-19 Boss 指定）：窄列里中文+稀有度徽章不再横向溢出 */
+    .hangar-slot-name { width:100%; max-width:58px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; margin:0 auto; }
     #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding-bottom: 2px; }
     #tab-hangar .shop-area .shop-card { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     #tab-hangar .shop-area .shop-card .box { aspect-ratio: 1 / 1; }
