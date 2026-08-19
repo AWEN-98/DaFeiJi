@@ -520,28 +520,48 @@
   .btn-small:active { background-image: url('assets/v3/ui/cropped/btn_utility_pressed.png'); }
   .btn-small:disabled { background-image: url('assets/v3/ui/cropped/btn_utility_disabled.png'); }
 
-  /* ===== Bug1 修复 · 弹窗金属按钮统一「图文合一居中 + 背景铺满」模型 =====
-     排查结论：本原型弹窗按钮实际类名是 .btn-sprite+.btn-primary/.btn-secondary/.btn-small
-     （暂停/储物舱/结算等）与 .v3btn（熔炼台），并非 .modal-btn/.pause-menu 等命名类；
-     且未发现用 <img> 当底图再叠文字的「脱节」写法（底图均为 background-image）。
-     错位真因：① .btn-primary/.btn-secondary/.btn-small 用单张 v3 切图，却继承了 .btn-sprite
-     精灵表的 background-size:400% 300%，单图被错缩放为暗角→视觉「空黑条」；
-           ② .v3btn 为 display:block 且未 flex 居中→文字悬浮在上方。
-     下方 A) 按主理人给定基准 CSS 直接应用到命名类（契约/未来就绪）；
-           B) 对真实在用的弹窗按钮类做最小修正：铺满 + flex 居中 + 文字色 #ffeedd。 */
+  /* ===== Bug1 根治 · 弹窗金属按钮「单图铺满 + 图文居中」 =====
+     根因（已精确定位）：L505 `.btn.btn-sprite`(特异性 0,0,2) 把精灵表 btn_sheet.png
+     强加为 background-image，压过 .btn-primary/.secondary/.small(0,0,1) 的单图；
+     而自定义类(如 .btn-bp-*) 根本没有单图规则，只能继承 L505 的 400% 300% → 瓷砖平铺。
+     修复：A) 对全部变体类用 !important 锁定 v3 单图（顺带同步 hover/active/pressed，
+           从根源压过 L505 精灵表残留，标题页/机库按钮一并受益，无回退）；
+           B) 仅对 .overlay 内按钮强制 44px 高度 + flex 居中（不波及标题页/机库常驻按钮）。 */
 
-  /* A) 主理人给定基准 CSS（直接应用） */
-  .modal-btn, .pause-menu button, .cargo-modal button, .forge-btn {
+  /* A) 变体类背景图根修复：永远用 v3 单图，解锁/按下同步，杜绝精灵表 bleed */
+  .btn-primary   { background-image: url('assets/v3/ui/cropped/btn_primary_normal.png')   !important; }
+  .btn-secondary { background-image: url('assets/v3/ui/cropped/btn_secondary_normal.png') !important; }
+  .btn-small     { background-image: url('assets/v3/ui/cropped/btn_utility_normal.png')    !important; }
+  .btn-bp-equip  { background-image: url('assets/v3/ui/cropped/btn_primary_normal.png')   !important; }
+  .btn-bp-jade   { background-image: url('assets/v3/ui/cropped/btn_secondary_normal.png') !important; }
+  .btn-bp-armor  { background-image: url('assets/v3/ui/cropped/btn_secondary_normal.png') !important; }
+  .btn-bp-drop   { background-image: url('assets/v3/ui/cropped/btn_utility_normal.png')    !important; }
+  .btn-bp-back   { background-image: url('assets/v3/ui/cropped/btn_utility_normal.png')    !important; }
+  .btn-primary:hover    { background-image: url('assets/v3/ui/cropped/btn_primary_hover.png')   !important; }
+  .btn-primary:active   { background-image: url('assets/v3/ui/cropped/btn_primary_pressed.png') !important; }
+  .btn-secondary:hover  { background-image: url('assets/v3/ui/cropped/btn_secondary_hover.png') !important; }
+  .btn-secondary:active { background-image: url('assets/v3/ui/cropped/btn_secondary_pressed.png') !important; }
+  .btn-small:hover      { background-image: url('assets/v3/ui/cropped/btn_utility_hover.png')    !important; }
+  .btn-small:active     { background-image: url('assets/v3/ui/cropped/btn_utility_pressed.png')  !important; }
+
+  /* B) 弹窗内按钮：底图 100% 铺满 + 文字垂直水平居中 + 固定 44px（仅 .overlay 作用域） */
+  .overlay .btn-sprite,
+  .pause-menu button,
+  .cargo-modal button,
+  .modal-btn,
+  .btn-metal,
+  button.action-btn {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     position: relative !important;
-    width: 100% !important;
-    max-width: 280px !important;
-    height: 44px !important;
+    box-sizing: border-box !important;
+    width: auto !important;
+    min-width: 110px !important;
     min-height: 44px !important;
+    height: 44px !important;
     aspect-ratio: auto !important;
-    margin: 8px auto !important;
+    margin: 8px 6px !important;
     padding: 0 16px !important;
     background-size: 100% 100% !important;
     background-repeat: no-repeat !important;
@@ -550,51 +570,18 @@
     font-weight: bold !important;
     color: #ffeedd !important;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9) !important;
+    line-height: 1 !important;
     border: none !important;
     outline: none !important;
     cursor: pointer !important;
-    box-sizing: border-box !important;
   }
-
-  /* B) 真实在用的弹窗金属按钮：底图 100% 铺满 + 文字居中 + 高度防塌陷
-        （.v3btn 熔炼台按钮属机库常驻 UI，已由 L1128 正确铺满，此处不再覆盖以免改动正常界面） */
-  .btn-primary, .btn-secondary, .btn-small,
-  .chest-btn, .result-btn {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background-size: 100% 100% !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    color: #ffeedd !important;
-    min-height: 44px !important;
-    height: auto !important;
-    aspect-ratio: auto !important;
+  /* 单列操作区（储物舱详情 / 结算返回）按钮铺满整行，更贴合 Boss 给定规范 */
+  .bp-detail .btn-sprite,
+  .result-panel .actions-right .btn-sprite {
+    width: 100% !important;
+    max-width: 320px !important;
+    margin: 8px auto !important;
   }
-
-  /* C) 更高特异性：.btn-sprite.btn-* 直接压过 L505 .btn-sprite 的 background-size:400% 300%，
-       强制底图铺满 + 文字居中 + 固定 44px（仅作用于弹窗内按钮） */
-  .btn-sprite.btn-primary,
-  .btn-sprite.btn-secondary,
-  .btn-sprite.btn-small {
-    background-size: 100% 100% !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: #ffeedd !important;
-    min-height: 44px !important;
-    height: 44px !important;
-    aspect-ratio: auto !important;
-  }
-
-  /* === 保护常驻按钮：标题页 .title-btns / 机库底栏 .hall-bottom 按钮保持原比例与配色 ===
-     热修仅作用于弹窗内 .btn-sprite.btn-*；以下还原常驻按钮的原有高度与文字色，避免外观回退。 */
-  .title-btns .btn-primary   { aspect-ratio: 347 / 154 !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
-  .title-btns .btn-secondary { aspect-ratio: 325 / 137 !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
-  .title-btns .btn-small     { aspect-ratio: 283 / 84  !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
-  .hall-bottom .btn-small    { aspect-ratio: 283 / 84  !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
 
   /* ============ 非基地 Overlay 样式 ============ */
   /* 标题页 */
