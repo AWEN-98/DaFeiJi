@@ -368,6 +368,31 @@ try {
   if (Math.abs(_d120 - 120) > 1e-6) errors.push('v12.7: 12e EDMG_HEAVY(120) 掉血=' + _d120 + ' 应为120');
   if (Math.abs(_d72 - 72) <= 1e-6 && Math.abs(_d120 - 120) <= 1e-6) console.log('[12e] 精英/重击阈值 OK：72→掉' + _d72 + ' / 120→掉' + _d120);
 
+  // ============================================================
+  // 13) v13 屏幕自适应 · DPR 高清化 + 逻辑坐标 + 丹药槽底部居中 + Safe Area
+  // ============================================================
+  console.log('---- v13 屏幕自适应专项 ----');
+  // 13a resize 后 W/H = CSS 像素（逻辑坐标），canvas.width = CSS × DPR（物理像素）
+  var _cssW = api.canvasCssW(), _cssH = api.canvasCssH();
+  var _logW = api.logicalW(), _logH = api.logicalH();
+  if (Math.abs(_logW - _cssW) > 1) errors.push('v13: 13a W 应=CSS像素, W=' + _logW + ' cssW=' + _cssW);
+  if (Math.abs(_logH - _cssH) > 1) errors.push('v13: 13a H 应=CSS像素, H=' + _logH + ' cssH=' + _cssH);
+  else console.log('[13a] 逻辑坐标=CSS像素 OK：W=' + _logW + ' H=' + _logH);
+  // 13b canvas.width = floor(CSS × DPR)，DPR 封顶 3
+  var _expectedCW = Math.floor(_cssW * api.dpr());
+  if (api.canvasW() !== _expectedCW) errors.push('v13: 13b canvas.width 应=floor(cssW×DPR), cw=' + api.canvasW() + ' expected=' + _expectedCW + ' dpr=' + api.dpr());
+  else console.log('[13b] canvas物理分辨率 OK：cw=' + api.canvasW() + ' = floor(' + _cssW + '×' + api.dpr() + ') DPR=' + api.dpr());
+  if (api.dpr() > 3) errors.push('v13: 13b DPR 应封顶3, dpr=' + api.dpr());
+  // 13c 丹药槽水平居中：bx = (W - totalW) / 2
+  var _cc = api.consumablesCenter();
+  var _expectedBx = (api.logicalW() - _cc.totalW) / 2;
+  if (Math.abs(_cc.bx - _expectedBx) > 0.5) errors.push('v13: 13c 丹药槽 bx 应居中, bx=' + _cc.bx + ' expected=' + _expectedBx);
+  else console.log('[13c] 丹药槽水平居中 OK：bx=' + _cc.bx.toFixed(1) + ' (W=' + api.logicalW() + ' totalW=' + _cc.totalW + ')');
+  // 13d 丹药槽底部避开 Safe Area：by = H - size - (isMobile ? 24+SA.b : 16)
+  var _sa = api.safeArea();
+  if (_cc.by > api.logicalH() - _cc.size - _sa.b) errors.push('v13: 13d 丹药槽 by 应避开底部SA, by=' + _cc.by + ' H=' + api.logicalH() + ' size=' + _cc.size + ' SA.b=' + _sa.b);
+  else console.log('[13d] 丹药槽避底SA OK：by=' + _cc.by + ' (H-size-SA.b=' + (api.logicalH() - _cc.size - _sa.b) + ')');
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {

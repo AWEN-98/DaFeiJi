@@ -295,6 +295,29 @@ try {
   if (!(_takenM >= 30 - 1e-6)) errors.push('v12.7[移动] 12c 减伤封顶70%(至少受30), taken=' + _takenM);
   else console.log('[12c-移动] 护甲70%上限 OK：实受=' + _takenM.toFixed(1));
 
+  // ============================================================
+  // 13) v13 屏幕自适应 · 移动端轻量回归（竖屏 W=390，DPR/逻辑坐标/丹药槽居中）
+  // ============================================================
+  console.log('---- v13 屏幕自适应[移动] ----');
+  // 13a W/H = CSS 像素
+  var _mw = api.canvasCssW(), _mh = api.canvasCssH();
+  if (Math.abs(api.logicalW() - _mw) > 1) errors.push('v13[移动] 13a W 应=CSS像素, W=' + api.logicalW() + ' cssW=' + _mw);
+  else console.log('[13a-移动] 逻辑坐标=CSS像素 OK：W=' + api.logicalW() + ' H=' + api.logicalH());
+  // 13b canvas.width = floor(CSS × DPR)，DPR 封顶 3
+  var _expCWm = Math.floor(_mw * api.dpr());
+  if (api.canvasW() !== _expCWm) errors.push('v13[移动] 13b canvas.width 应=floor(cssW×DPR), cw=' + api.canvasW() + ' expected=' + _expCWm);
+  else console.log('[13b-移动] canvas物理分辨率 OK：cw=' + api.canvasW() + ' DPR=' + api.dpr());
+  if (api.dpr() > 3) errors.push('v13[移动] 13b DPR 应封顶3, dpr=' + api.dpr());
+  // 13c 丹药槽水平居中
+  var _ccm = api.consumablesCenter();
+  var _expBxm = (api.logicalW() - _ccm.totalW) / 2;
+  if (Math.abs(_ccm.bx - _expBxm) > 0.5) errors.push('v13[移动] 13c 丹药槽 bx 应居中, bx=' + _ccm.bx + ' expected=' + _expBxm);
+  else console.log('[13c-移动] 丹药槽水平居中 OK：bx=' + _ccm.bx.toFixed(1));
+  // 13d 丹药槽底部避开 Safe Area
+  var _sam = api.safeArea();
+  if (_ccm.by > api.logicalH() - _ccm.size - _sam.b) errors.push('v13[移动] 13d 丹药槽 by 应避开底部SA, by=' + _ccm.by);
+  else console.log('[13d-移动] 丹药槽避底SA OK：by=' + _ccm.by);
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();

@@ -14,7 +14,7 @@
 <title>空域撤离 · MVP</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0E0B08; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #E8E4D8; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0E0B08; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #E8E4D8; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
   #game { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; }
   .overlay { position: absolute; inset: 0; display: none; align-items: center; justify-content: flex-start; flex-direction: column;
     background: rgba(8,14,28,0.86); backdrop-filter: blur(3px); z-index: 10; padding: 24px 20px; overflow-y: auto; }
@@ -638,7 +638,13 @@
   @keyframes enterPulse { 0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(201,162,75,0.2); } 50% { transform: scale(1.05); box-shadow: 0 0 36px rgba(201,162,75,0.5); } }
   #enterOverlay .enter-hint { font-size: 13px; color: #8B95A0; margin-top: 20px; line-height: 1.6; }
 
-  /* ============ 移动端虚拟操控（人体工学重构 v2） ============ */
+  /* ============ 移动端虚拟操控（人体工学重构 v2 · 5锚点屏幕自适应 v13） ============
+     【左上角·机体状态区】暂停按钮 + 血条面板 + 相位倒计时（内嵌 Safe Area 左/上）
+     【右上角·情报雷达区】小地图 + 顶部资源简报（紧贴 Safe Area 右/上）
+     【左下角·机动走位区】纯净开阔，仅用于移动摇杆触摸感应
+     【右下角·战斗操作区】双摇杆开火/拾取主键 + 冲刺/翻相/绝技/背包战术技能扇面
+     【底部居中·战术道具区】3 道具/丹药卡槽水平居中浮动（避开底部系统小白条）
+     所有触控按钮定位统一 calc(px + env(safe-area-inset))，异形屏不被遮 */
   #mobileControls { position: absolute; inset: 0; z-index: 5; pointer-events: none; display: none; }
   #mobileControls.on { display: block; }
   /* 战斗控件严格场景隔离：仅当 body[data-scene="mission"] 时才允许触屏保底显示，

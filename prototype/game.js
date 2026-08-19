@@ -8,22 +8,29 @@
 (function () {
   var canvas = document.getElementById('game');
   var ctx = canvas.getContext('2d');
-  var W = 0, H = 0;
+  var W = 0, H = 0;             // 逻辑坐标（CSS 像素），所有绘制/碰撞/相机运算统一用此
+  var DPR = 1;                  // devicePixelRatio 高清放大倍率（resize 时重算，封顶 3 防过载）
   var WORLD_W = 3200, WORLD_H = 2200; // 世界尺寸（比屏幕大，靠相机滚动浏览）
   var cam = { x: 0, y: 0 };           // 相机左上角（世界坐标）
   function resize() {
     // 优先使用 visualViewport（更准确地反映实际可见区域，排除浏览器栏）
     var vv = window.visualViewport;
+    var cssW, cssH;
     if (vv) {
-      W = canvas.width = Math.max(320, Math.floor(vv.width));
-      H = canvas.height = Math.max(240, Math.floor(vv.height));
+      cssW = Math.max(320, Math.floor(vv.width));
+      cssH = Math.max(240, Math.floor(vv.height));
     } else {
-      W = canvas.width = Math.max(320, window.innerWidth);
-      H = canvas.height = Math.max(240, window.innerHeight);
+      cssW = Math.max(320, window.innerWidth);
+      cssH = Math.max(240, window.innerHeight);
     }
-    // canvas CSS 尺寸也同步，确保不出现拉伸
-    canvas.style.width = W + 'px';
-    canvas.style.height = H + 'px';
+    // devicePixelRatio 高清化：canvas 物理分辨率 = CSS 像素 × DPR，文字/粒子不发糊
+    DPR = Math.min(window.devicePixelRatio || 1, 3); // 封顶 3 防极端设备（如 iPad 3x+）绘制负担过重
+    canvas.width = Math.floor(cssW * DPR);
+    canvas.height = Math.floor(cssH * DPR);
+    canvas.style.width = cssW + 'px';   // CSS 显示尺寸保持 CSS 像素（不拉伸）
+    canvas.style.height = cssH + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // 逻辑坐标→物理像素映射：所有 draw 调用以 CSS 像素为基准，DPR 自动放大
+    W = cssW; H = cssH;              // 全局逻辑坐标用 CSS 像素（视野扩展式：宽屏看到更多世界，不拉伸）
     updateSafeArea();
   }
   // 2026-08-18：resize 时重算 isMobile（很多设备初次检测时视口还没稳定）
@@ -6580,10 +6587,9 @@
   }
   function drawConsumables() {
     var n = 3, size = isMobile ? 30 : 38, gap = isMobile ? 6 : 10, totalW = n * size + (n - 1) * gap;
-    // 红line：左下角彻底清空（留给虚拟摇杆）；丹药槽迁至右下，紧贴开火摇杆左侧，与 consBtn 同簇
-    var bx, by;
-    if (isMobile) { bx = W - totalW - 194 - SA.r; by = H - size - 30 - SA.b; }
-    else { bx = W - totalW - 16 - SA.r; by = H - size - 14; }
+    // 5锚点之「底部居中·战术道具区」：水平居中浮动，避开底部系统小白条/手势条
+    var bx = (W - totalW) / 2;                              // 水平居中
+    var by = H - size - (isMobile ? 24 + SA.b : 16);        // 避开底部安全区
     for (var i = 0; i < n; i++) {
       var x = bx + i * (size + gap);
       var key = player.consumables[i];
@@ -6863,6 +6869,12 @@
     }
   }
   function drawHUD() {
+    // ===== 5 锚点分区（屏幕自适应 v13）=====
+    // 【左上角·机体状态区】暂停按钮 + 血条面板 + 相位倒计时（内嵌 Safe Area Inset 左/上）
+    // 【右上角·情报雷达区】小地图 + 顶部资源简报（紧贴 Safe Area 右/上）
+    // 【左下角·机动走位区】纯净开阔，仅用于移动摇杆触摸感应
+    // 【右下角·战斗操作区】双摇杆开火/拾取主键 + 冲刺/翻相/绝技/背包战术技能扇面
+    // 【底部居中·战术道具区】3 道具/丹药卡槽水平居中浮动（避开底部系统小白条）
     function hp(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke(); }
     // 竖屏（窄长屏）适配：收窄右上信息列各卡片，避免占满窄屏宽度
     var P = isMobile && window.innerHeight > window.innerWidth;
@@ -7197,6 +7209,7 @@
     }
   }
   function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // 每帧重置 DPR 基准（防上帧 save/restore 残留丢失高清）
     if (scene !== 'mission') { drawGrid(); return; }
     var k = shake.t > 0 ? Math.min(shake.mag * Math.exp(-(shake.dur - shake.t) / shake.tau), 6) : 0;
     ctx.save();
@@ -8476,6 +8489,20 @@
         var beforeHp = b.hp;
         for (var i = 0; i < 10; i++) { b.x = player.x + 90; b.y = player.y; b.vx = 0; b.vy = 0; update(1 / 60); }
         return { reflected: bl.from === 'enemy', bastionTookDamage: b.hp < beforeHp - 0.5, phase: player.phase };
+      },
+      // === v13 屏幕自适应 · 测试桩钩子（DPR 高清化 / 逻辑坐标 / 丹药槽底部居中 / Safe Area）===
+      dpr: function () { return DPR; },
+      logicalW: function () { return W; },
+      logicalH: function () { return H; },
+      canvasW: function () { return canvas.width; },
+      canvasH: function () { return canvas.height; },
+      canvasCssW: function () { return parseInt(canvas.style.width) || 0; },
+      canvasCssH: function () { return parseInt(canvas.style.height) || 0; },
+      safeArea: function () { return { t: SA.t, r: SA.r, b: SA.b, l: SA.l }; },
+      // 计算丹药槽期望居中位置（供桩断言：drawConsumables 内部 bx = (W-totalW)/2）
+      consumablesCenter: function () {
+        var n = 3, size = isMobile ? 30 : 38, gap = isMobile ? 6 : 10, totalW = n * size + (n - 1) * gap;
+        return { bx: (W - totalW) / 2, by: H - size - (isMobile ? 24 + SA.b : 16), totalW: totalW, size: size };
       }
     };
   }
