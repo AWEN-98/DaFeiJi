@@ -6574,7 +6574,9 @@
     if (isMobile) return; // 移动端减负：战利品数量已在右上状态面板显示，背包详情由 🎒 按钮浮层查看
     // 桌面：4×2 竖排于右侧（红line：背包移至右侧，解放左上与左下空间）
     var cols = isMobile ? 8 : 4, s = isMobile ? 22 : 26, g = isMobile ? 3 : 5;
-    var bx = W - cols * (s + g) - 14 - SA.r, by = 300 + SA.t;
+    // 紧跟小地图底部：小地图顶(78+SA.t)+高(mh,镜像drawMinimap)+8px间隙
+    var _mmw = 150, _mmh = Math.round(_mmw * WORLD_H / WORLD_W);
+    var bx = W - cols * (s + g) - 14 - SA.r, by = (78 + SA.t) + _mmh + 8;
     ctx.fillStyle = '#C9A24B'; ctx.font = 'bold ' + (isMobile ? 10 : 12) + 'px sans-serif'; ctx.textAlign = 'left';
     ctx.fillText('背包 ' + run.loot.length + '/' + invMax, bx, by - 5);
     for (var i = 0; i < invMax; i++) {
@@ -6595,7 +6597,7 @@
     }
   }
   function drawMinimap() {
-    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r, my = isMobile ? (78 + SA.t) : 140; // v3：移动端小地图上移至极简相位条下方
+    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r, my = 78 + SA.t; // 紧跟战利品面板底部(10+SA.t+60)+8px间隙；移动端同位（v3上移至极简相位条下方）
     // 暗金圆角容器（与左侧血条/相位面板同风格：圆角 + 暗金描边 + 外投影 + 内辉光）
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
@@ -7229,8 +7231,10 @@
     }
     // UX：有可合成组合时提示（移动端改由合成键呼吸光效提示，纯图标无键盘文案）
     if (hasMergeable() && !isMobile) {
+      // 提示挪到背包标题行下方：y = 背包顶(by)+14，避开小地图下半区；by 镜像 drawBackpack
+      var _bpTop = (78 + SA.t) + Math.round(150 * WORLD_H / WORLD_W) + 8;
       ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText('💡 按 M 可合成', W - 22, 156); ctx.textAlign = 'left';
+      ctx.fillText('💡 按 M 可合成', W - 22, _bpTop + 14); ctx.textAlign = 'left';
     }
   }
   // 动态悬赏 HUD（左上面板下方，小地图对侧）
@@ -7238,7 +7242,9 @@
     if (!bounty) return;
     var bw = isMobile ? 168 : 200, bh = 44;
     var bx = 16 + SA.l;
-    var by = (isMobile ? 46 : 16) + SA.t + (isMobile ? 96 : 100) + 6; // 紧贴左上面板下方
+    // 桌面：紧跟相位仪卡片底部 = lpY(16+SA.t)+机体面板高(92)+间隙(6)+相位卡高(58)+间隙(6)=178+SA.t
+    // 移动端：相位条在顶部居中不参与左上堆叠，保持原偏移(96+6)
+    var by = (isMobile ? 46 : 16) + SA.t + (isMobile ? (96 + 6) : (92 + 6 + 58 + 6));
     ctx.fillStyle = 'rgba(16,13,9,0.78)';
     ctx.strokeStyle = bounty.completed ? COL.extract : 'rgba(201,162,75,0.5)';
     ctx.lineWidth = 1;
