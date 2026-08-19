@@ -80,6 +80,14 @@ function tick(dtMs){ VCLK += (dtMs||16.7); const q = rafQueue.splice(0); q.forEa
 function touch(id,type,x,y){ if(!elements[id]) elements[id]=makeEl(id); elements[id].dispatchEvent(type,{type,changedTouches:[{identifier:7,clientX:x,clientY:y,pageX:x,pageY:y}],touches:[],preventDefault(){},stopPropagation(){}}); }
 // 多点触控（真实双摇杆）：pts = [{id, x, y}, ...]，以真实 canvas id 'game' 派发，changedTouches/touches 同步
 function mtouch(type, pts){ if(!elements['game']) elements['game']=makeEl('game'); const ct = pts.map(p=>({identifier:p.id, clientX:p.x, clientY:p.y, pageX:p.x, pageY:p.y})); elements['game'].dispatchEvent(type,{type,changedTouches:ct,touches:ct,preventDefault(){},stopPropagation(){}}); }
+// 右摇杆（瞄准+开火一体）：派发到右下角静态 #right-stick-container 元素（坐标相对摇杆中心 330,784）
+function mtouchStick(type, pts){
+  if(!elements['right-stick-container']) elements['right-stick-container']=makeEl('right-stick-container');
+  const el = elements['right-stick-container'];
+  if(!el._rsRect){ el.getBoundingClientRect = () => ({ left:270, top:724, width:120, height:120, right:390, bottom:844 }); el._rsRect = true; }
+  const ct = pts.map(p=>({identifier:p.id, clientX:p.x, clientY:p.y, pageX:p.x, pageY:p.y}));
+  el.dispatchEvent(type,{type,changedTouches:ct,touches:ct,preventDefault(){},stopPropagation(){}});
+}
 
 const api = global.__stub.api;
 if (!api || !api.isMobile) { errors.push('STUB api 未就绪（移动端路径未建立）'); }
@@ -103,17 +111,17 @@ try {
   api.cleanState();
   mtouch('touchstart', [{id:1, x:80, y:600}]);     // 左半屏 → 虚拟摇杆（移动）
   mtouch('touchmove', [{id:1, x:110, y:560}]);
-  const btns = ['fireBtn','ultBtn','dashBtn','consBtn','pauseBtnMobile','phaseBtn','mergeBtn','backpackBtn','pickupBtn'];
+  const btns = ['ultBtn','dashBtn','consBtn','pauseBtnMobile','phaseBtn','mergeBtn','backpackBtn','pickupBtn'];
   btns.forEach(b=>{ touch(b,'touchstart',10,10); touch(b,'touchend',10,10); });
-  // 主开火键按住持续开火（2026-08-19 轮盘重构）：先清场（前面按钮循环可能已弹暂停/背包层），再 touchstart → fireBtnHeld → firedT>0 → touchend 复位
+  // 右摇杆（双摇杆·瞄准+开火一体）按住持续开火：touchstart 激活 → 持续开火 → touchend 复位
   if (api.cleanState) api.cleanState();
   for (let i=0;i<3;i++) tick(16.7);
-  touch('fireBtn','touchstart',10,10);
-  if (api.fireBtnHeldState && api.fireBtnHeldState() !== true) errors.push('fireBtn touchstart 应置 fireBtnHeld=true');
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
+  if (api.rightStickActiveState && api.rightStickActiveState() !== true) errors.push('右摇杆 touchstart 应置 aimJoy.active=true');
   for (let i=0;i<10;i++) tick(16.7);
-  if (api.firedT && !(api.firedT() > 0)) errors.push('fireBtn 按住应触发开火（firedT=' + (api.firedT ? api.firedT() : 'n/a') + '）');
-  touch('fireBtn','touchend',10,10);
-  if (api.fireBtnHeldState && api.fireBtnHeldState() !== false) errors.push('fireBtn touchend 应复位 fireBtnHeld=false');
+  if (api.firedT && !(api.firedT() > 0)) errors.push('右摇杆按住应触发开火（firedT=' + (api.firedT ? api.firedT() : 'n/a') + '）');
+  mtouchStick('touchend', [{id:2, x:330, y:784}]);
+  if (api.rightStickActiveState && api.rightStickActiveState() !== false) errors.push('右摇杆 touchend 应复位 active=false');
   mtouch('touchend', [{id:1, x:110, y:560}]);
   for (let i=0;i<60;i++) tick(16.7);
   api.renderFrame();
@@ -130,14 +138,15 @@ try {
   api.cleanState();
   api.enemies().length = 0;            // 确定性：移除敌人，排除辅助瞄准干扰
   api.player().ang = 0;                // 已知朝向（朝右）
-  mtouch('touchstart', [{id:1, x:80, y:600}, {id:2, x:320, y:600}]);
+  mtouch('touchstart', [{id:1, x:80, y:600}]);
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
   let js = api.joyState(), as = api.aimJoyState();
   if (!js.active) errors.push('双摇杆：左摇杆未激活（touchId 1）');
   if (!as.active) errors.push('双摇杆：右摇杆未激活（touchId 2）');
   if (js.active && as.active) console.log('双指同按：左摇杆 active 右摇杆 active → 多点触控并行、无死锁');
 
   // (b) 右摇杆拖动越过死区(>0.2) → 持续开火（firedT>0）+ 瞄准线
-  mtouch('touchmove', [{id:2, x:320+45, y:600}]);   // mag = 45/60 = 0.75 > 0.2
+  mtouchStick('touchmove', [{id:2, x:330+45, y:784}]);   // dx=45, maxR=45 → mag=1.0 > 0.2
   as = api.aimJoyState();
   if (as.mag <= 0.2) errors.push('右摇杆拖拽后 mag 应 > 死区0.2，实际 ' + as.mag);
   tick(16.7);
@@ -145,38 +154,43 @@ try {
   console.log('右摇杆越死区：mag=' + as.mag.toFixed(3) + ' firedT=' + api.firedT().toFixed(3) + ' → 瞄准+开火一体 OK');
 
   // (c) 死区判定：右摇杆轻拨（mag<=0.2）→ 不触发“本轮 NEW 开火”（firedT 仅随旧窗口衰减，此处只校验 mag 口径）
-  mtouch('touchmove', [{id:2, x:320+8, y:600}]);     // mag = 8/60 ≈ 0.133 < 0.2
+  mtouchStick('touchmove', [{id:2, x:330+8, y:784}]);     // dx=8, maxR=45 → mag ≈ 0.178 < 0.2
   as = api.aimJoyState();
   if (as.mag > 0.2) errors.push('死区用例 mag 计算异常，应 <=0.2，实际 ' + as.mag);
   console.log('死区轻拨：mag=' + as.mag.toFixed(3) + '（<=0.2 不触发持续开火）');
 
   // (d) 点按保底（盲射）：落指右摇杆后极短拖拽/未拖过死区即松手（tapT<0.22 且 mag<=deadzone）→ aimTapFire 触发
   api.enemies().length = 0;
-  mtouch('touchend', [{id:2, x:320+8, y:600}]);      // 结束上一段右摇杆（已越死区，非 tap）
-  mtouch('touchstart', [{id:2, x:300, y:650}]);      // 重新落指
-  mtouch('touchend', [{id:2, x:300, y:650}]);        // 立即松手（未拖过死区、tapT≈0）→ tap-fire
+  mtouchStick('touchend', [{id:2, x:330+8, y:784}]);      // 结束上一段右摇杆（已越死区，非 tap）
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);      // 重新落指
+  mtouchStick('touchend', [{id:2, x:330, y:784}]);        // 立即松手（未拖过死区、tapT≈0）→ tap-fire
   const tap = api.aimTapFireState();
   tick(16.7);
   if (!tap) errors.push('点按保底：轻点右摇杆应产生 aimTapFire，实际 false');
   if (api.firedT() <= 0) errors.push('点按保底：盲射应产生开火（firedT>0），实际 ' + api.firedT());
   console.log('点按盲射：aimTapFire=' + tap + ' firedT=' + api.firedT().toFixed(3) + ' → 盲射保底 OK');
 
-  // (e) 松手保持朝向（推即朝向 / 松即定角）：右摇杆拖出后松手，facing 不变
+  // (e) 松手定角（推即朝向 / 松即定角）：拖出瞄准方向后松手，facing 锁定在松手瞬间的角度、不再继续转动
   api.cleanState(); api.enemies().length = 0; api.player().ang = 1.234;
-  mtouch('touchstart', [{id:2, x:320, y:600}]);
-  mtouch('touchmove', [{id:2, x:320+45, y:600}]);
-  mtouch('touchend', [{id:2, x:320+45, y:600}]);     // 释放右摇杆 → 保持最后朝向
-  mtouch('touchend', [{id:1, x:80, y:600}]);         // 兜底释放左摇杆（若存在）
-  tick(16.7);
-  if (Math.abs(api.playerAng() - 1.234) > 1e-6) errors.push('松手应保持最后朝向，实际 ' + api.playerAng());
-  console.log('松手定角：release 后 ang=' + api.playerAng().toFixed(4) + '（保持 1.234）→ 推即朝向/松即定角 OK');
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
+  mtouchStick('touchmove', [{id:2, x:330+45, y:784+45}]);   // dx=dy → 目标角 ≈ 0.785（右下）
+  for (let i = 0; i < 80; i++) tick(16.7);                  // 阻尼收敛到目标角
+  const angRelease = api.playerAng();                       // 松手前已逼近目标角
+  if (Math.abs(angRelease - 0.785) > 0.15) errors.push('拖拽应使机头转向拖动方向(≈0.785)，实际 ' + angRelease.toFixed(4));
+  mtouchStick('touchend', [{id:2, x:330+45, y:784+45}]);
+  mtouch('touchend', [{id:1, x:80, y:600}]);                // 兜底释放左摇杆（若存在）
+  for (let i = 0; i < 30; i++) tick(16.7);                  // 松手后多帧
+  if (Math.abs(api.playerAng() - angRelease) > 1e-3) errors.push('松手后 facing 应锁定不变（松即定角），实际 ' + api.playerAng().toFixed(4) + '（松手时 ' + angRelease.toFixed(4) + '）');
+  console.log('松手定角：release 后 ang=' + api.playerAng().toFixed(4) + ' 锁定稳定（松手时 ' + angRelease.toFixed(4) + '）→ 推即朝向/松即定角 OK');
 
   // (f) 多点触控收尾：双指按下 → 各自拖动 → 依次松手 → touchcancel 健壮性复位 → 无死锁/无 NaN
   api.cleanState();
-  mtouch('touchstart', [{id:1, x:80, y:600}, {id:2, x:320, y:600}]);
-  mtouch('touchmove', [{id:1, x:80+30, y:600}, {id:2, x:320+45, y:600}]);
+  mtouch('touchstart', [{id:1, x:80, y:600}]);
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
+  mtouch('touchmove', [{id:1, x:80+30, y:600}]);
+  mtouchStick('touchmove', [{id:2, x:330+45, y:784}]);
   mtouch('touchend', [{id:1, x:80+30, y:600}]);
-  mtouch('touchend', [{id:2, x:320+45, y:600}]);
+  mtouchStick('touchend', [{id:2, x:330+45, y:784}]);
   mtouch('touchcancel', []);                          // 健壮性：cancel 应安全复位，不抛错
   tick(16.7);
   const p = api.player();
@@ -192,20 +206,26 @@ try {
   api.obstacles().length = 0; api.enemies().length = 0;
   api.player().x = 800; api.player().y = 550; api.player().ang = 0; api.player().vx = 0; api.player().vy = 0;
   // 前向：右摇杆朝右(瞄准=0) + 左摇杆朝右(同向移动) → facingDot=+1 全速
-  mtouch('touchstart', [{id:1, x:80, y:600}, {id:2, x:320, y:600}]);
-  mtouch('touchmove', [{id:1, x:140, y:600}, {id:2, x:380, y:600}]);
+  mtouch('touchstart', [{id:1, x:80, y:600}]);
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
+  mtouch('touchmove', [{id:1, x:140, y:600}]);
+  mtouchStick('touchmove', [{id:2, x:380, y:784}]);
   for (let i=0;i<60;i++){ api.obstacles().length=0; api.enemies().length=0; api.tick(1); }
   const fwd = Math.hypot(api.player().vx, api.player().vy);
-  mtouch('touchend', [{id:1, x:140, y:600}, {id:2, x:380, y:600}]);
+  mtouch('touchend', [{id:1, x:140, y:600}]);
+  mtouchStick('touchend', [{id:2, x:380, y:784}]);
   // 后向：右摇杆朝右(瞄准=0) + 左摇杆朝左(反向移动) → facingDot=-1 触发 ×0.6
   api.cleanState();
   api.obstacles().length = 0; api.enemies().length = 0;
   api.player().x = 800; api.player().y = 550; api.player().ang = 0; api.player().vx = 0; api.player().vy = 0;
-  mtouch('touchstart', [{id:1, x:80, y:600}, {id:2, x:320, y:600}]);
-  mtouch('touchmove', [{id:1, x:20, y:600}, {id:2, x:380, y:600}]);
+  mtouch('touchstart', [{id:1, x:80, y:600}]);
+  mtouchStick('touchstart', [{id:2, x:330, y:784}]);
+  mtouch('touchmove', [{id:1, x:20, y:600}]);
+  mtouchStick('touchmove', [{id:2, x:380, y:784}]);
   for (let i=0;i<60;i++){ api.obstacles().length=0; api.enemies().length=0; api.tick(1); }
   const rev = Math.hypot(api.player().vx, api.player().vy);
-  mtouch('touchend', [{id:1, x:20, y:600}, {id:2, x:380, y:600}]);
+  mtouch('touchend', [{id:1, x:20, y:600}]);
+  mtouchStick('touchend', [{id:2, x:380, y:784}]);
   if (!(fwd > 30)) errors.push('倒退减速用例：前向速度应>30，实际 ' + fwd.toFixed(1));
   if (fwd > 0 && !(rev < fwd * 0.8)) errors.push('倒退减速失效：瞄准前向却反向移动应≈前向×0.6，实际 fwd=' + fwd.toFixed(1) + ' rev=' + rev.toFixed(1) + ' 比值=' + (rev/fwd).toFixed(2));
   console.log('倒退减速(双摇杆)：前向=' + fwd.toFixed(1) + ' 瞄准前向+反向移动=' + rev.toFixed(1) + ' 比值=' + (fwd>0?(rev/fwd).toFixed(2):'NaN') + '（应≈0.60）→ 减速机制已恢复');

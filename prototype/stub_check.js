@@ -196,18 +196,18 @@ try {
   for (let i = 0; i < 30; i++) tick(16.7);
 
   // 6) 移动端按钮触控（touchstart/touchend 全按钮扫一遍）
-  ['fireBtn', 'dashBtn', 'consBtn', 'ultBtn', 'pauseBtnMobile', 'phaseBtn', 'mergeBtn', 'pickupBtn', 'backpackBtn'].forEach(id => {
+  ['dashBtn', 'consBtn', 'ultBtn', 'pauseBtnMobile', 'phaseBtn', 'mergeBtn', 'pickupBtn', 'backpackBtn'].forEach(id => {
     touch(id, 'touchstart', 60, 60); touch(id, 'touchend', 60, 60);
     for (let i = 0; i < 3; i++) tick(16.7);
   });
 
-  // 6b) 主开火键接线（桌面桩 isMobile=false，仅验证 touchstart/touchend 对 fireBtnHeld 的置位/复位；开火链路由 stub_mobile 断言）
+  // 6b) 右摇杆「瞄准+开火一体」接线（桌面桩 isMobile=false，仍验证 touchstart/touchend 对 aimJoy.active 的置位/复位；持续开火链路由 stub_mobile 断言）
   if (api.cleanState) api.cleanState();
-  touch('fireBtn', 'touchstart', 60, 60);
-  if (api.fireBtnHeldState() !== true) errors.push('fireBtn touchstart should set fireBtnHeld=true');
-  touch('fireBtn', 'touchend', 60, 60);
-  if (api.fireBtnHeldState() !== false) errors.push('fireBtn touchend should reset fireBtnHeld=false');
-  console.log('fireBtn wiring OK (held toggle true→false)');
+  touch('right-stick-container', 'touchstart', 60, 60);
+  if (api.rightStickActiveState() !== true) errors.push('right-stick touchstart should set aimJoy.active=true');
+  touch('right-stick-container', 'touchend', 60, 60);
+  if (api.rightStickActiveState() !== false) errors.push('right-stick touchend should reset aimJoy.active=false');
+  console.log('right-stick wiring OK (active toggle true→false)');
 
   // 6c) 熔炼台底抽链路（2026-08-19）：点圆盘热区 → 底抽弹开 → 投料 2 件激活合成钮 / 1 件禁用
   try { api.openForgeDrawer(0); } catch (e) { errors.push('openForgeDrawer: ' + (e.stack || e)); }

@@ -1316,8 +1316,8 @@
   var mcEl = document.getElementById('mobileControls');
   var joyBaseEl = document.getElementById('joyBase');
   var joyKnobEl = document.getElementById('joyKnob');
-  var aimJoyBaseEl = document.getElementById('aimJoyBase');
-  var aimJoyKnobEl = document.getElementById('aimJoyKnob');
+  var aimJoyBaseEl = document.getElementById('right-stick-container');
+  var aimJoyKnobEl = document.getElementById('right-stick-knob');
   var dashBtnEl = document.getElementById('dashBtn');
   var consBtnEl = document.getElementById('consBtn');
 
@@ -1343,13 +1343,11 @@
     if (!joyKnobEl) return;
     joyKnobEl.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
   }
-  function showAimJoystick(x, y) {
+  function showAimJoystick() {
     if (!aimJoyBaseEl) return;
-    aimJoyBaseEl.style.left = (x - 65) + 'px';
-    aimJoyBaseEl.style.top = (y - 65) + 'px';
-    aimJoyBaseEl.className = 'aim-joy-base on';
+    aimJoyBaseEl.classList.add('on');
   }
-  function hideAimJoystick() { if (aimJoyBaseEl) aimJoyBaseEl.className = 'aim-joy-base'; }
+  function hideAimJoystick() { if (aimJoyBaseEl) aimJoyBaseEl.classList.remove('on'); }
   function updateAimJoystickKnob(dx, dy) {
     if (!aimJoyKnobEl) return;
     aimJoyKnobEl.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
@@ -1405,12 +1403,7 @@
         joy.baseX = x; joy.baseY = y;
         joy.dx = 0; joy.dy = 0; joy.mag = 0;
         showJoystick(x, y);
-      } else if (x >= W * 0.45 && !aimJoy.active) {
-        aimJoy.active = true; aimJoy.touchId = t.identifier;
-        aimJoy.baseX = x; aimJoy.baseY = y;
-        aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
-        showAimJoystick(x, y);
-      }
+      } // 右摇杆改为右下角静态 #right-stick-container 独立接收触摸，画布右半屏不再生成浮动瞄准摇杆
     }
   }, { passive: true });
   canvas.addEventListener('touchmove', function (e) {
@@ -1426,14 +1419,7 @@
         if (dist > maxR) { dx = dx / dist * maxR; dy = dy / dist * maxR; dist = maxR; }
         joy.dx = dx / maxR; joy.dy = dy / maxR; joy.mag = dist / maxR;
         updateJoystickKnob(dx, dy);
-      } else if (t.identifier === aimJoy.touchId) {
-        var adx = x - aimJoy.baseX, ady = y - aimJoy.baseY;
-        var adist = Math.hypot(adx, ady);
-        var amaxR = 60;
-        if (adist > amaxR) { adx = adx / adist * amaxR; ady = ady / adist * amaxR; adist = amaxR; }
-        aimJoy.dx = adx / amaxR; aimJoy.dy = ady / amaxR; aimJoy.mag = adist / amaxR;
-        updateAimJoystickKnob(adx, ady);
-      }
+      } // 右摇杆移动由 #right-stick-container 自身 touchmove 处理
     }
     e.preventDefault();
   }, { passive: false });
@@ -1445,27 +1431,13 @@
         joy.active = false; joy.touchId = null;
         joy.dx = 0; joy.dy = 0; joy.mag = 0;
         hideJoystick();
-      } else if (_id === aimJoy.touchId) {
-        // 点按保底：短时间内且未拖过死区 → 朝当前正前/最近敌人发射一轮（盲射）
-        if (aimJoy.tapT < 0.22 && aimJoy.mag <= AIM_DEADZONE) {
-          var _ne = null, _nd = 1e9;
-          for (var _k = 0; _k < enemies.length; _k++) { var _d2 = dist2(enemies[_k].x, enemies[_k].y, player.x, player.y); if (_d2 < _nd) { _nd = _d2; _ne = enemies[_k]; } }
-          if (boss) { var _db = dist2(boss.x, boss.y, player.x, player.y); if (_db < _nd) { _nd = _db; _ne = boss; } }
-          if (_ne && _nd < AIM_ASSIST_RANGE * AIM_ASSIST_RANGE) { player.ang = Math.atan2(_ne.y - player.y, _ne.x - player.x); }
-          aimTapFire = true;
-        }
-        aimJoy.active = false; aimJoy.touchId = null;
-        aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
-        hideAimJoystick();
-      }
+      } // 右摇杆松手/复位由 #right-stick-container 自身 touchend/touchcancel 处理（含点按盲射保底）
     }
   }, { passive: true });
   canvas.addEventListener('touchcancel', function () {
     if (!isMobile) return;
     joy.active = false; joy.touchId = null;
     joy.dx = 0; joy.dy = 0; joy.mag = 0; hideJoystick();
-    aimJoy.active = false; aimJoy.touchId = null;
-    aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0; hideAimJoystick();
   }, { passive: true });
 
   // 火力已并入右摇杆（瞄准+开火一体）：不再有独立开火按钮（右键半屏 aimJoy 触控逻辑）
@@ -1505,16 +1477,55 @@
     ultBtnEl.addEventListener('touchend', function (e) { e.preventDefault(); e.stopPropagation(); this.classList.remove('on'); }, { passive: false });
     ultBtnEl.addEventListener('click', function () { if (scene === 'mission' && !paused && !overlaysOpen()) castUlt(); });
   }
-  // 主开火键（移动端，2026-08-19 轮盘重构）：固定右下 72px，按住持续开火（朝当前朝向/辅助瞄准）
-  var fireBtnEl = document.getElementById('fireBtn');
-  var fireBtnHeld = false;
-  if (fireBtnEl) {
-    fireBtnEl.addEventListener('touchstart', function (e) { e.preventDefault(); e.stopPropagation(); if (scene === 'mission' && !paused && !overlaysOpen() && !pickupOpen) { fireBtnHeld = true; this.classList.add('on'); } }, { passive: false });
-    fireBtnEl.addEventListener('touchend', function (e) { e.preventDefault(); e.stopPropagation(); fireBtnHeld = false; this.classList.remove('on'); }, { passive: false });
-    fireBtnEl.addEventListener('touchcancel', function (e) { e.preventDefault(); e.stopPropagation(); fireBtnHeld = false; this.classList.remove('on'); }, { passive: false });
-    fireBtnEl.addEventListener('mousedown', function () { if (scene === 'mission' && !paused && !overlaysOpen() && !pickupOpen) { fireBtnHeld = true; this.classList.add('on'); } });
-    fireBtnEl.addEventListener('mouseup', function () { fireBtnHeld = false; this.classList.remove('on'); });
-    window.addEventListener('mouseup', function () { fireBtnHeld = false; if (fireBtnEl) fireBtnEl.classList.remove('on'); });
+  // 右侧「双摇杆·瞄准开火一体」静态摇杆：拖拽即瞄准+持续开火；点按/未拖拽吸附最近敌机或保持朝向开火；松手停火+滑块弹回中心
+  var rsEl = document.getElementById('right-stick-container');
+  var rsKnobEl = document.getElementById('right-stick-knob');
+  function rsCenter() {
+    if (!rsEl) return { x: 0, y: 0 };
+    var _r = rsEl.getBoundingClientRect();
+    return { x: _r.left + _r.width / 2, y: _r.top + _r.height / 2 };
+  }
+  if (rsEl) {
+    rsEl.addEventListener('touchstart', function (e) {
+      e.preventDefault(); e.stopPropagation();
+      if (scene !== 'mission' || paused || overlaysOpen() || pickupOpen) return;
+      var t = e.changedTouches[0]; if (!t) return;
+      aimJoy.active = true; aimJoy.touchId = t.identifier;
+      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
+      rsEl.classList.add('on');
+      updateAimJoystickKnob(0, 0);
+    }, { passive: false });
+    rsEl.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      if (!aimJoy.active) return;
+      var t = null;
+      for (var i = 0; i < e.changedTouches.length; i++) { if (e.changedTouches[i].identifier === aimJoy.touchId) { t = e.changedTouches[i]; break; } }
+      if (!t) return;
+      var c = rsCenter();
+      var dx = t.clientX - c.x, dy = t.clientY - c.y;
+      var dist = Math.hypot(dx, dy);
+      var maxR = 45;
+      if (dist > maxR) { dx = dx / dist * maxR; dy = dy / dist * maxR; dist = maxR; }
+      aimJoy.dx = dx / maxR; aimJoy.dy = dy / maxR; aimJoy.mag = dist / maxR;
+      updateAimJoystickKnob(dx, dy);
+    }, { passive: false });
+    var rsEnd = function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (aimJoy.active && aimJoy.mag <= AIM_DEADZONE && aimJoy.tapT < 0.22) {
+        // 点按/未拖过死区保底盲射：吸附最近敌机，否则沿用当前朝向
+        var _ne = null, _nd = AIM_ASSIST_RANGE * AIM_ASSIST_RANGE;
+        for (var _k = 0; _k < enemies.length; _k++) { var _d = dist2(enemies[_k].x, enemies[_k].y, player.x, player.y); if (_d < _nd) { _nd = _d; _ne = enemies[_k]; } }
+        if (boss && dist2(boss.x, boss.y, player.x, player.y) < AIM_ASSIST_RANGE * AIM_ASSIST_RANGE) { var _db = dist2(boss.x, boss.y, player.x, player.y); if (_db < _nd) { _nd = _db; _ne = boss; } }
+        if (_ne) player.ang = Math.atan2(_ne.y - player.y, _ne.x - player.x);
+        aimTapFire = true;
+      }
+      aimJoy.active = false; aimJoy.touchId = null;
+      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
+      rsEl.classList.remove('on');
+      updateAimJoystickKnob(0, 0);
+    };
+    rsEl.addEventListener('touchend', rsEnd, { passive: false });
+    rsEl.addEventListener('touchcancel', rsEnd, { passive: false });
   }
   // #197 拾取筛选按钮（移动端）
   var pickupFilterBtnEl = document.getElementById('pickupFilterBtn');
@@ -4045,8 +4056,16 @@
     var aimSourceAng;
     if (isMobile) {
       // 废除硬性自动锁敌：朝向绝对由玩家右摇杆矢量主导；无右摇杆时跟随移动方向兜底，否则保持最后朝向
-      if (aimJoy.active && (aimJoy.dx !== 0 || aimJoy.dy !== 0)) {
-        aimSourceAng = Math.atan2(aimJoy.dy, aimJoy.dx);
+      if (aimJoy.active) {
+        if (aimJoy.mag > AIM_DEADZONE) {
+          aimSourceAng = Math.atan2(aimJoy.dy, aimJoy.dx);
+        } else {
+          // 未拖过死区（点按/按住未拖拽）：吸附最近敌机方向，否则保持当前朝向
+          var _ne = null, _nd = AIM_ASSIST_RANGE * AIM_ASSIST_RANGE;
+          for (var _ae2 = 0; _ae2 < enemies.length; _ae2++) { var _d2 = dist2(enemies[_ae2].x, enemies[_ae2].y, player.x, player.y); if (_d2 < _nd) { _nd = _d2; _ne = enemies[_ae2]; } }
+          if (boss && dist2(boss.x, boss.y, player.x, player.y) < AIM_ASSIST_RANGE * AIM_ASSIST_RANGE) { var _db2 = dist2(boss.x, boss.y, player.x, player.y); if (_db2 < _nd) { _nd = _db2; _ne = boss; } }
+          aimSourceAng = _ne ? Math.atan2(_ne.y - player.y, _ne.x - player.x) : player.ang;
+        }
       } else if (mag > 0.1) {
         aimSourceAng = Math.atan2(diry, dirx);
       } else {
@@ -4078,8 +4097,8 @@
     player.ang += _diff * (1 - Math.exp(-dt / TURN_TAU));
     player.fireCd -= dt;
     if (player.firedT > 0) player.firedT -= dt;
-    // 开火条件（移动端）：主开火键按住 / 右摇杆拉过死区持续开火 / 点按保底发射 / 可选 autoFire；PC 端保持鼠标左键或空格
-    var firing = isMobile ? (((fireBtnHeld || (aimJoy.active && aimJoy.mag > AIM_DEADZONE) || aimTapFire || autoFire) && !pickupOpen && !paused && !overlaysOpen())) : (mouse.down || keys[' ']);
+    // 开火条件（移动端）：右摇杆按住持续开火 / 点按保底发射 / 可选 autoFire；PC 端保持鼠标左键或空格
+    var firing = isMobile ? (((aimJoy.active || aimTapFire || autoFire) && !pickupOpen && !paused && !overlaysOpen())) : (mouse.down || keys[' ']);
     if (firing) { player.firedT = 0.35; player.aimLineT = 0.22; }   // 开火窗口 + 瞄准激光显示计时
     var craft = run.aircraft || 'a';
     var isQing = craft === 'a';
@@ -7961,8 +7980,8 @@
       playerAng: function () { return player.ang; },
       aimTapFireState: function () { return aimTapFire; },
       firedT: function () { return player.firedT || 0; },
-      // 主开火键 / 熔炼台底抽（2026-08-19 轮盘重构）：供桩断言按住开火与底抽选料链路
-      fireBtnHeldState: function () { return fireBtnHeld; },
+      // 右摇杆（瞄准+开火一体）状态：供桩断言按住开火链路
+      rightStickActiveState: function () { return aimJoy.active; },
       openForgeDrawer: openForgeDrawer,
       fillForgeSlot: fillForgeSlot,
       closeForgeDrawer: closeForgeDrawer,
