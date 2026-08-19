@@ -238,6 +238,10 @@
       bossRoar: function () { tone(70, 1.1, 'sawtooth', 0.16, { slideTo: 35, lp: 200 }); noise(0.7, 0.12, 320); tone(45, 1.1, 'sine', 0.12, { slideTo: 26 }); },
       bossPhase: function () { tone(200, 0.45, 'sine', 0.13, { slideTo: 65 }); noise(0.3, 0.1, 420); },
       bossDie: function () { tone(100, 1.2, 'sine', 0.24, { slideTo: 26 }); noise(1.0, 0.2, 400); tone(55, 1.1, 'triangle', 0.1, { slideTo: 25, lp: 280 }); },
+      alarm: function () { // v12.6：光柱警报——双音交错急促警报
+        tone(880, 0.18, 'square', 0.1, { slideTo: 660 }); noise(0.12, 0.1, 1600);
+        tone(660, 0.18, 'square', 0.1, { slideTo: 880, when: 0.2 }); noise(0.12, 0.1, 1600, 0.2);
+      },
       playerHit: function () { tone(200, 0.16, 'square', 0.1, { slideTo: 85, lp: 1200 }); noise(0.08, 0.08, 1100); },
       playerDie: function () { tone(300, 0.8, 'sawtooth', 0.12, { slideTo: 45, lp: 600 }); noise(0.55, 0.13, 460); },
       dash: function () {
@@ -1675,6 +1679,7 @@
   var aggroT = 0, aggroRadius = 0, aggroX = 0, aggroY = 0, aggroFollow = false;  // Boss 仇恨集中
   var phaseMix = 0;                                          // 全图调色 lerp（0 金 / 1 余烬）
   var phasePillars = [], gravityRifts = [], secretVault = null;
+  var weaverRifts = [];            // v12.6：引力编织者微型奇点球（临时拖拽，独立数组，不影响主线引力裂缝语义）
   var devourBorrowUsed = false;
   function enterPhase(p) {
     phase = p; phaseTransT = PHASE_TRANS;
@@ -1760,7 +1765,7 @@
   }
   // 相位柱 / 引力裂隙 / 磁锁秘库 布点（随 tier 微调位置密度）
   function spawnPhaseObjects() {
-    phasePillars = []; gravityRifts = []; secretVault = null;
+    phasePillars = []; gravityRifts = []; secretVault = null; weaverRifts = [];
     var pAnchors = [
       { x: WORLD_W * 0.30, y: WORLD_H * 0.36 },
       { x: WORLD_W * 0.70, y: WORLD_H * 0.30 },
@@ -2189,7 +2194,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]) };
+    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2351,7 +2356,16 @@
     var shielder = tier >= 2 ? (0.04 + tier * 0.02) : 0;
     // 蜂群：成群出现，制造弹幕压力
     var swarm = 0.05 + tier * 0.015;
-    var sum = ram + shoot + turret + heal + gunship + split + looter + sniper + shielder + swarm; r *= sum;
+    // v12.6 机制型怪：识破前摇、翻相躲致命招
+    // 自爆突进蜂：低层起出现，逼迫冲刺/引力裂隙借力甩尾
+    var kamikaze = 0.055 + tier * 0.012;
+    // 相位狙击手：高层更多，1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
+    var phaseSniper = tier >= 2 ? (0.03 + tier * 0.022) : 0;
+    // 引力编织者：中高层，发微型引力奇点球 + 8 向螺旋余烬飞刃（中距风筝）
+    var weaver = tier >= 2 ? (0.03 + tier * 0.018) : 0;
+    // 鎏金重盾巨舰（精英）：高层稀有，正面 120° 无敌金盾 + 波浪扩散弹幕（绕后/余烬相破盾）
+    var bastion = tier >= 3 ? (0.02 + tier * 0.012) : 0;
+    var sum = ram + shoot + turret + heal + gunship + split + looter + sniper + shielder + swarm + kamikaze + phaseSniper + weaver + bastion; r *= sum;
     if (r < ram) return 'ram'; r -= ram;
     if (r < shoot) return 'shoot'; r -= shoot;
     if (r < turret) return 'turret'; r -= turret;
@@ -2361,6 +2375,11 @@
     if (r < looter) return 'looter'; r -= looter;
     if (r < sniper) return 'sniper'; r -= sniper;
     if (r < shielder) return 'shielder'; r -= shielder;
+    if (r < swarm) return 'swarm'; r -= swarm;
+    if (r < kamikaze) return 'kamikaze'; r -= kamikaze;
+    if (r < phaseSniper) return 'phaseSniper'; r -= phaseSniper;
+    if (r < weaver) return 'weaver'; r -= weaver;
+    if (r < bastion) return 'bastion'; r -= bastion;
     return 'swarm';
   }
   // #B5/#M3 修复：opts = { arche: 'split' | 强制原型（免随机副作用）, elite: true | 统一走精英分支（3×血+精英掉落+修饰词） }
@@ -2383,15 +2402,17 @@
     if (!opts.allowClose) { var _sp = safeSpawnPos(ex, ey); ex = _sp[0]; ey = _sp[1]; }
     etier = etier || clamp(1 + Math.floor(gameTime / 28), 1, 4);
     var arche = opts.arche || pickArchetype(etier);
-    var elite = opts.elite || (!x && Math.random() < 0.08);
+    var elite = opts.elite || arche === 'bastion' || (!x && Math.random() < 0.08);
     var baseHp = (16 + etier * 9) * tierMul();
     if (arche === 'turret') baseHp *= 2.2; else if (arche === 'heal') baseHp *= 1.25; else if (arche === 'split') baseHp *= 0.9; else if (arche === 'gunship') baseHp *= 3.4; else if (arche === 'looter') baseHp *= 1.15;
     else if (arche === 'sniper') baseHp *= 0.8; else if (arche === 'shielder') baseHp *= 1.8; else if (arche === 'swarm') baseHp *= 0.35;
-    if (elite) baseHp *= 3;
-    var RAD = { turret: 22, gunship: 30, split: 22, heal: 20, looter: 17, ram: 15, sniper: 18, shielder: 22, swarm: 10 };
+    if (elite && arche !== 'bastion') baseHp *= 3;
+    var RAD = { turret: 22, gunship: 30, split: 22, heal: 20, looter: 17, ram: 15, sniper: 18, shielder: 22, swarm: 10, kamikaze: 16, phaseSniper: 18, weaver: 24, bastion: 46 };
     var r = RAD[arche] || 17;
-    var ecol = arche === 'heal' ? COL.extract : (arche === 'split' ? RARCOL.purple : (arche === 'looter' ? '#E0B84A' : (arche === 'sniper' ? '#E8A050' : (arche === 'shielder' ? '#5B9FD0' : (arche === 'swarm' ? '#A8C84E' : COL.enemy)))));
-    var eedge = arche === 'heal' ? COL.ink : (arche === 'split' ? '#2a0a2a' : (arche === 'looter' ? '#8a5f1a' : (arche === 'sniper' ? '#6a4520' : (arche === 'shielder' ? '#1a4a70' : (arche === 'swarm' ? '#4a6020' : COL.enemyEdge)))));
+    var _ecolMap = { heal: COL.extract, split: RARCOL.purple, looter: '#E0B84A', sniper: '#E8A050', shielder: '#5B9FD0', swarm: '#A8C84E', kamikaze: '#E0623A', phaseSniper: '#E84A6A', weaver: '#B06FD0', bastion: '#E0B84A' };
+    var _eedgeMap = { heal: COL.ink, split: '#2a0a2a', looter: '#8a5f1a', sniper: '#6a4520', shielder: '#1a4a70', swarm: '#4a6020', kamikaze: '#5a1e10', phaseSniper: '#5a1024', weaver: '#3a1a4a', bastion: '#8a5f1a' };
+    var ecol = _ecolMap[arche] || COL.enemy;
+    var eedge = _eedgeMap[arche] || COL.enemyEdge;
     var e = {
       x: ex, y: ey, vx: 0, vy: 0, hp: baseHp, maxhp: baseHp, r: r,
       fireCd: rand(1.6, 3.0), tier: etier, arche: arche, ram: arche === 'ram' || arche === 'split' || arche === 'swarm',
@@ -2410,6 +2431,12 @@
       sniperCharge: 0, sniperAim: 0,     // 狙击手：充能计时 + 瞄准角度
       shieldRadius: 120, shieldPulse: 0, // 护盾兵：护盾范围 + 脉冲动画
       swarmId: 0,                         // 蜂群：群体编号
+      // —— v12.6 机制型怪字段 ——
+      kamikaze: arche === 'kamikaze', kamikazeDashes: 0, kamikazeMax: 3, kamikazeWind: 0.5, detonate: 0, // 自爆突进蜂：0.5s 蓄力红光 → 多段直冲 → 撞击/击毁爆炸
+      phaseSniper: arche === 'phaseSniper', // 相位狙击手：1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
+      sniperBeamFlash: 0, // 狙击光束开火前 0.2s 闪烁预警
+      weaver: arche === 'weaver', weaverCd: rand(2.4, 3.4), weaverSpin: 0, // 引力编织者：发微型引力奇点球 + 8 向螺旋余烬飞刃
+      bastion: arche === 'bastion', shieldArc: 2.094, shieldReflect: arche === 'bastion', // 鎏金重盾巨舰：正面 120° 无敌金盾（反射直射弹）
       // —— 精英修饰词 ——
       eliteMod: elite ? pickEliteMod() : null,  // 'volatile' / 'adaptive' / 'frenzied'
       phase: Math.random() < 0.45 ? 'gold' : 'ember',   // 敌机相位亲和（金/余烬）：异相克制 + 头顶标注
@@ -2444,6 +2471,10 @@
     if (arche === 'looter' && !run.looterWarned) { run.looterWarned = true; setBanner('⚠ 劫掠者出现！它会偷走你已捡的战利品，快击落它夺回！', 3.2); AudioSys.sfx.stolen(); }
     if (arche === 'sniper' && !run.sniperWarned) { run.sniperWarned = true; setBanner('⚠ 狙击手出现！注意躲避红色激光瞄准线！', 2.8); }
     if (arche === 'shielder' && !run.shielderWarned) { run.shielderWarned = true; setBanner('⚠ 护盾兵出现！优先击破它以解除友军护盾！', 2.8); }
+    if (arche === 'kamikaze' && !run.kamikazeWarned) { run.kamikazeWarned = true; setBanner('⚠ 自爆突进蜂出现！见红光前摇立即冲刺/翻相甩尾，别硬接冲撞！', 3.0); }
+    if (arche === 'phaseSniper' && !run.phaseSniperWarned) { run.phaseSniperWarned = true; setBanner('⚠ 相位狙击手！细激光跟踪瞄准后闪 0.2s 即贯穿全屏——冲刺或翻相 0.35s 无敌帧反打！', 3.4); }
+    if (arche === 'weaver' && !run.weaverWarned) { run.weaverWarned = true; setBanner('⚠ 引力编织者！微型引力奇点球会拖拽你，注意 8 向螺旋余烬飞刃', 3.2); }
+    if (arche === 'bastion' && !run.bastionWarned) { run.bastionWarned = true; setBanner('⚠ 鎏金重盾巨舰！正面 120° 金盾无敌，绕后或切余烬相破盾！', 3.4); }
     if (huntActive) { e.dmgMul *= HUNT_DMG; e.maxhp = Math.round(e.maxhp * HUNT_HP); e.hp = e.maxhp; e.hunt = true; }
     enemies.push(e); return e;
   }
@@ -2488,7 +2519,7 @@
   // e.alert 仍用于移动 AI / 进攻性，但不再是唯一开火开关。狙击手保留激光预警 + LOS 逻辑（躲入大楼背侧即断线重索）。
   function updateEnemyShooting(e, dt) {
     if (e.dead || e.freezeT > 0) return;
-    if (e.arche !== 'shoot' && e.arche !== 'turret' && e.arche !== 'gunship' && e.arche !== 'sniper') return;
+    if (e.arche !== 'shoot' && e.arche !== 'turret' && e.arche !== 'gunship' && e.arche !== 'sniper' && e.arche !== 'phaseSniper' && e.arche !== 'weaver' && e.arche !== 'bastion') return;
     // 防御：fireCd 污染（NaN/非数）→ 复位，杜绝因计时器损坏而永不冷却
     if (typeof e.fireCd !== 'number' || isNaN(e.fireCd)) e.fireCd = (e.baseCd || 2.0);
     e.fireCd -= dt;
@@ -2504,12 +2535,67 @@
       if (e.fireCd <= 0 && d < 560 && onScreen) { for (var tb = -1; tb <= 1; tb++) fireBullet(e.x, e.y, Math.atan2(dy, dx) + tb * 0.12, 'enemy', (8 + e.tier * 2) * e.dmgMul, 180); e.fireCd = rand(2.0, 3.0); }
     } else if (e.arche === 'gunship') {
       if (e.fireCd <= 0 && d < 640 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', (10 + e.tier * 3) * e.dmgMul, 130, { big: true }); e.fireCd = rand(2.4, 3.6); }
-    } else if (e.arche === 'sniper') {
-      var _losS = checkLineOfSight(e.x, e.y, player.x, player.y); // 狙击手保留 LOS 逻辑：视线被建筑墙体阻断则断线重索
-      if (_losS) {
+    } else if (e.arche === 'weaver') {
+      // 引力编织者：发微型引力奇点球(拖拽) + 8 向螺旋余烬飞刃（中距风筝）
+      e.weaverCd -= dt;
+      if (e.weaverCd <= 0 && d < 560 && onScreen) {
+        var _wx = clamp(player.x + rand(-50, 50), 40, WORLD_W - 40), _wy = clamp(player.y + rand(-50, 50), 40, WORLD_H - 40);
+        weaverRifts.push({ x: _wx, y: _wy, r: 14, pull: 140, core: 22, life: 3.6, spin: rand(0, 6.28), pulse: 0 });
+        burst(_wx, _wy, '#B06FD0', 10, { ring: true, ringR: 26 });
+        e.weaverSpin = (e.weaverSpin || 0) + 0.4; // 每次出刃旋转，形成螺旋观感
+        for (var _wb = 0; _wb < 8; _wb++) {
+          var _wa = e.weaverSpin + _wb * (6.283 / 8);
+          fireBullet(e.x, e.y, _wa, 'enemy', (9 + e.tier * 2) * e.dmgMul, 165, { elem: 'ember', blade: true });
+        }
+        addShake(1.2, 90, 40); AudioSys.sfx.hit();
+        e.weaverCd = rand(2.6, 3.6);
+      }
+    } else if (e.arche === 'bastion') {
+      // 鎏金重盾巨舰：周期波浪扩散弹幕（正面金盾已在命中结算反弹）
+      e.fireCd -= dt;
+      if (e.fireCd <= 0 && d < 720 && onScreen) {
+        var _ba0 = Math.atan2(dy, dx);
+        var _waves = 3, _per = 7;
+        for (var _wv = 0; _wv < _waves; _wv++) {
+          for (var _wi = 0; _wi < _per; _wi++) {
+            var _ang = _ba0 - 0.6 + (_wi / (_per - 1)) * 1.2 + _wv * 0.18;
+            fireBullet(e.x, e.y, _ang, 'enemy', (8 + e.tier * 2) * e.dmgMul, 150 + _wv * 30);
+          }
+        }
+        burst(e.x, e.y, '#E0B84A', 8, { smin: 60, smax: 180 }); addShake(1.5, 120, 50); AudioSys.sfx.hit();
+        e.fireCd = rand(2.4, 3.4);
+      }
+    } else if (e.arche === 'sniper' || e.arche === 'phaseSniper') {
+      var _losS = checkLineOfSight(e.x, e.y, player.x, player.y); // 视线被建筑墙体阻断则断线重索
+      if (!_losS) { e.sniperCharge = 0; e.sniperBeamFlash = 0; e.sniperAim = Math.atan2(dy, dx); }
+      else if (e.arche === 'phaseSniper') {
+        // 相位狙击手：1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
+        if (e.sniperBeamFlash > 0) {
+          e.sniperBeamFlash -= dt;
+          if (e.sniperBeamFlash <= 0) {
+            var _ba = e.sniperAim;
+            // 视觉：贯穿全屏红金光束
+            addVfxLine(e.x, e.y, e.x + Math.cos(_ba) * 1500, e.y + Math.sin(_ba) * 1500, '#E84A6A', 0.28);
+            addVfxLine(e.x, e.y, e.x + Math.cos(_ba) * 1500, e.y + Math.sin(_ba) * 1500, '#FFD24A', 0.14);
+            burst(e.x, e.y, '#E84A6A', 8, { smin: 120, smax: 320 }); addShake(2.5, 160, 70); AudioSys.sfx.crit();
+            // hitscan：开火瞬间判定玩家是否在光束线上（未被翻相无敌帧覆盖才命中）
+            if (player.iframe <= 0) {
+              var _px = player.x - e.x, _py = player.y - e.y;
+              var _proj = _px * Math.cos(_ba) + _py * Math.sin(_ba);
+              if (_proj > 0) {
+                var _perp = Math.abs(-_px * Math.sin(_ba) + _py * Math.cos(_ba));
+                if (_perp < (PHB + 16)) { damagePlayer((24 + e.tier * 5) * e.dmgMul); floatText(player.x, player.y - 22, '贯穿光束!', '#E84A6A', 'crit'); }
+              }
+            }
+            e.sniperCharge = 0; e.fireCd = rand(2.6, 4.2);
+          }
+        } else if (e.sniperCharge < 1.2) { e.sniperCharge += dt; e.sniperAim = Math.atan2(dy, dx); }
+        else { e.sniperBeamFlash = 0.2; } // 充能满 → 0.2s 闪光预警（翻相窗口）
+      } else {
+        // 普通狙击手：原逻辑
         if (e.sniperCharge < 1.2) { e.sniperCharge += dt; e.sniperAim = Math.atan2(dy, dx); }
         else if (onScreen && d < 700) { fireBullet(e.x, e.y, e.sniperAim, 'enemy', (18 + e.tier * 4) * e.dmgMul, 420, { big: true }); burst(e.x, e.y, '#E8A050', 6, { smin: 80, smax: 200 }); addShake(1.5, 100, 40); e.sniperCharge = 0; e.fireCd = rand(2.5, 4.0); }
-      } else { e.sniperCharge = 0; e.sniperAim = Math.atan2(dy, dx); }
+      }
     }
   }
   function nearestEnemy(x, y) {
@@ -3194,7 +3280,8 @@
     warnDur: 5,    // 开放前预兆（闪烁信号）时长
     openDur: 30,   // 单次开放窗口（秒）
     guardCd: 3.2,  // 开放期围堵刷新间隔
-    gapMin: 25, gapMax: 45 // 关闭后到下一轮预兆的间隔
+    gapMin: 25, gapMax: 45, // 关闭后到下一轮预兆的间隔
+    beaconDur: 45  // v12.6：击破领主后金色光柱（beacon）自毁倒计时时长
   };
   // ===== 敌机行为与撤离惊动（规则圣经 v1 参数）=====
   var ALERT = {
@@ -3281,8 +3368,8 @@
       extractPoints.push({
         x: ap.x - 80, y: ap.y - 80, w: 160, h: 160,
         label: String.fromCharCode(65 + i), // A / B / C
-        state: 'closed',
-        timer: 35 + i * 18 + rand(0, 8), // 首轮错开，避免所有点同时开
+        state: 'sealed', // v12.6：初始封锁态——须击破关卡领主才解锁（不再计时循环自开放）
+        timer: 0, beacon: false, beaconTimer: 0,
         prog: 0, guardCd: EXTRACT.guardCd, cd: 0
       });
       // 预置围堵兵（遭遇制，不再凭空刷）——用标志位 extractGuard 关联，唤醒时遍历 enemies 按 idx 匹配
@@ -3334,8 +3421,24 @@
     setBanner('撤离中断！被惊动敌机撤退，撤离点冷却 ' + Math.ceil(EXFIL2.abortCd) + 's', 2.8);
   }
   function updateExtractPoints(dt) {
+    // v12.6：全局战场自毁倒计时（领主击破、beacon 激活后启动）
+    if (run && run.selfDestruct > 0) {
+      run.selfDestruct -= dt;
+      if (run.selfDestruct <= 0) { run.selfDestruct = 0; collapseEvac(); }
+    }
+    if (!extractPoints) return;
     for (var i = 0; i < extractPoints.length; i++) {
       var z = extractPoints[i];
+      if (z.state === 'sealed') {
+        // 封锁态：无计时、无循环开放——须击破领主由 activateEvacBeacon() 解锁
+        continue;
+      }
+      if (z.beacon) {
+        // 光柱态：beaconTimer 递减，归零则光柱坍塌（collapsed）
+        z.beaconTimer -= dt;
+        if (z.beaconTimer <= 0) { z.beacon = false; z.state = 'collapsed'; z.prog = 0; }
+        continue;
+      }
       z.timer -= dt;
       if (z.state === 'closed') {
         if (z.timer <= 0) { z.state = 'warning'; z.timer = EXTRACT.warnDur; }
@@ -3352,6 +3455,38 @@
         if (z.cd <= 0) { z.state = 'closed'; z.timer = rand(EXTRACT.gapMin, EXTRACT.gapMax); z.prog = 0; setBanner('撤离点 ' + z.label + ' 冷却结束（已关闭）', 2.0); }
       }
     }
+  }
+  // v12.6：领主击破 → 全部撤离点爆发金色光柱 beacon + 启动 45s 战场自毁 + 刷狂暴余烬杂兵围堵
+  function activateEvacBeacon() {
+    if (!extractPoints || !extractPoints.length) return;
+    var any = false;
+    for (var i = 0; i < extractPoints.length; i++) {
+      var z = extractPoints[i];
+      if (z.state === 'sealed' || z.state === 'collapsed') { z.state = 'open'; z.beacon = true; z.beaconTimer = EXTRACT.beaconDur; z.prog = 0; any = true; }
+    }
+    if (!any) { // 全部坍塌（极端情况）：强制重新点亮全部，保底可撤离
+      for (var j = 0; j < extractPoints.length; j++) { extractPoints[j].state = 'open'; extractPoints[j].beacon = true; extractPoints[j].beaconTimer = EXTRACT.beaconDur; extractPoints[j].prog = 0; }
+    }
+    run.selfDestruct = EXTRACT.beaconDur; run.evacBeacon = true;
+    addShake(8, 600, 200, true); addTint('#FFE9A8', 0.3); screenFlash = { color: '#FFE9A8', a: 0.3 };
+    AudioSys.sfx.alarm();
+    setBanner('★ 领主已殒！金色光柱冲霄——战场将在 ' + EXTRACT.beaconDur + 's 后自毁，冲入光柱撤离！', 3.8);
+    // 刷狂暴余烬杂兵围堵（出现即锁定、全速死追）
+    for (var s = 0; s < 6; s++) {
+      var ang = rand(0, 6.28), rr = rand(420, 640);
+      var sx = clamp(player.x + Math.cos(ang) * rr, 40, WORLD_W - 40), sy = clamp(player.y + Math.sin(ang) * rr, 40, WORLD_H - 40);
+      var se = spawnEnemy(sx, sy, run.tier, { arche: Math.random() < 0.5 ? 'kamikaze' : 'swarm', allowClose: true });
+      se.wake = 0; se.alert = 2; se.alarmIgnored = true; se.dmgMul *= 1.3; se.hunt = true;
+      if (se.arche === 'kamikaze') { se.hp = Math.round(se.hp * 1.4); se.maxhp = se.hp; }
+    }
+  }
+  // v12.6：战场自毁坍塌（45s 内未撤离 → 强制结算失败）
+  function collapseEvac() {
+    if (scene !== 'mission') return;
+    setBanner('⚠ 战场自毁！撤离失败！', 3);
+    addShake(9, 700, 240, true); addTint('#B03A3A', 0.4); screenFlash = { color: '#B03A3A', a: 0.4 };
+    AudioSys.sfx.bossDie();
+    finishRun('death');
   }
 
   // ---------- 暂停 ----------
@@ -3406,7 +3541,8 @@
       hundun: '⚠ 混沌·终焉虚空 来袭！（螺旋弹幕+旋转甲胄）'
     };
     boss = { kind: kind, x: WORLD_W / 2, y: -60, hp: hp, maxhp: hp, r: radius[kind], phase: 1, atkCd: 2.6, burstCd: 4.0, devourCd: 5, flash: 0, wake: 1.2, ang: 0,
-      summonCd: 6, dashCd: 4, dashing: 0, dashWarn: 0, summonWarn: 0, invuln: 0, hitT: 0, hitMag: 0 };
+      summonCd: 6, dashCd: 4, dashing: 0, dashWarn: 0, summonWarn: 0, invuln: 0, hitT: 0, hitMag: 0,
+      dimTear: null, dimTearT: 0, dimTearDone: false, dimRot: 0 };
     setBanner(tips[kind], 2.4);
     // 出场反馈：暗角收拢 + 煞红闪 + 重抖
     addShake(6, 480, 160, true); addTint('#B03A3A', 0.25); bossVig = 1.2; screenFlash = { color: '#B03A3A', a: 0.25 };
@@ -3423,6 +3559,39 @@
     if (b.electroT > 0) { b.electroT -= dt; b.electroCd -= dt; if (b.electroCd <= 0) { b.electroCd = 0.42; for (var ez2 = 0; ez2 < enemies.length; ez2++) { var eo = enemies[ez2]; if (eo.wake <= 0 && dist2(eo.x, eo.y, b.x, b.y) < 220 * 220) { eo.hp -= b.electroDmg; eo.flash = 0.06; addVfxLine(b.x, b.y, eo.x, eo.y, '#6FC0FF', 0.22); } } b.hp -= b.electroDmg * 0.4; } }
     if (b.drownT > 0) { b.drownT -= dt; b.hp -= b.drownDps * dt; }
     if (b.hp <= 0) { killBoss(); return; }
+    // v12.6：半血维度撕裂大招（叠加在 4 种 Boss 现有弹幕之上）
+    if (b.dimTear || (!b.dimTearDone && b.hp <= b.maxhp * 0.5)) {
+      if (!b.dimTear) { b.dimTear = 'charge'; b.dimTearT = 1.4; setBanner('⚠ 维度撕裂蓄能！领主正在撕开相位壁——准备按颜色翻相！', 2.6); addShake(4, 240, 120, true); }
+      b.dimTearT -= dt;
+      if (b.dimTear === 'charge') {
+        b.x += (WORLD_W / 2 - b.x) * Math.min(1, dt * 2.2);
+        b.y += (WORLD_H * 0.32 - b.y) * Math.min(1, dt * 2.2);
+        b.dimRot += dt * 1.4;
+        if (b.dimTearT <= 0) {
+          b.dimTear = 'active'; b.dimTearT = 4.5;
+          // 随机引爆 2 处引力裂缝（拖拽施压，复用 weaverRifts 牵引语义）
+          for (var _dtf = 0; _dtf < 2; _dtf++) {
+            var _dra = rand(0, 6.28), _drr = rand(260, 480);
+            var _drx = clamp(player.x + Math.cos(_dra) * _drr, 60, WORLD_W - 60), _dry = clamp(player.y + Math.sin(_dra) * _drr, 60, WORLD_H - 60);
+            weaverRifts.push({ x: _drx, y: _dry, r: 18, pull: 170, core: 26, life: 5.0, spin: rand(0, 6.28), pulse: 0, torn: true });
+            burst(_drx, _dry, '#B06FD0', 14, { ring: true, ringR: 36 });
+          }
+          addShake(6, 360, 150, true); addTint('#B06FD0', 0.3); AudioSys.sfx.bossRoar();
+          setBanner('⚠ 维度撕裂！红束致命于鎏金相 / 金束致命于余烬相——按光阵颜色即时翻相规避！', 3.4);
+        }
+      } else if (b.dimTear === 'active') {
+        b.dimRot += dt * 1.6;
+        // 双色旋转死亡光阵：红束（致命于鎏金相）+ 金束（致命于余烬相）；翻到对应安全相即可免伤
+        if (player.iframe <= 0) {
+          var _bra = b.dimRot, _bga = b.dimRot + Math.PI;
+          var _tpx = player.x - b.x, _tpy = player.y - b.y;
+          var _chk = function (ang) { var pr = _tpx * Math.cos(ang) + _tpy * Math.sin(ang); if (pr < 0 || pr > 1200) return false; var pe = Math.abs(-_tpx * Math.sin(ang) + _tpy * Math.cos(ang)); return pe < (PHB + 18); };
+          if (player.phase === PHASE.GOLD && _chk(_bra)) { damagePlayer((20 + run.tier * 4) * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#C94F4F', 'crit'); }
+          if (player.phase === PHASE.EMBER && _chk(_bga)) { damagePlayer((20 + run.tier * 4) * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#E0B84A', 'crit'); }
+        }
+        if (b.dimTearT <= 0) { b.dimTear = null; b.dimTearDone = true; setBanner('维度撕裂平息——追击破局！', 2.2); }
+      }
+    }
     var dx = player.x - b.x, dy = player.y - b.y, d = Math.hypot(dx, dy) || 1;
     if (b.kind === 'qiongqi') updateQiongqi(b, dt, dx, dy, d);
     else if (b.kind === 'hundun') updateHundun(b, dt, dx, dy, d);
@@ -3578,9 +3747,10 @@
     burst(boss.x, boss.y, '#E0B84A', 18, { ring: true, ringR: 50 });
     spawnRing(boss.x, boss.y, '#E0B84A', 80);
     floatText(boss.x, boss.y - 50, '★ ' + relic.name, '#FFE9A8', 'crit');
-    // 设计（§2 合）：破阶段后强制进入余烬开窗，呼应全关主题；并延长窗口给足撤离时间
+    // v12.6：击破领主 → 引爆金色光柱 beacon（解锁撤离点 + 45s 自毁 + 狂暴杂兵围堵）
+    activateEvacBeacon();
+    // （旧逻辑保留：破阶段后强制进入余烬开窗，呼应全关主题；撤离触发已改为 beacon，不再依赖相位窗）
     doFlip(PHASE.EMBER, { active: false, source: 'kill', openWindow: EMBER_OPEN_WIN });
-    setBanner('★ BOSS 击破！获得遗物「' + relic.name + '」 · 余烬相撤离窗口已开启，立即撤离带出战利品', 3.6); // #M2 修复：合并为一条 banner，不再互相覆盖
     for (var bei = 0; bei < enemies.length; bei++) { if (enemies[bei].extractGuard !== undefined) { enemies[bei].wake = 0; enemies[bei].alert = 1; } }
     boss = null;
   }
@@ -3670,6 +3840,19 @@
   function onEnemyDeath(e, fromExpl) {
     if (!e || e.dead) return;
     e.dead = true;
+    // v12.6：自爆突进蜂 —— 死亡即小范围爆炸（撞击/击毁/引信耗尽均触发，统一走此处）
+    if (e.kamikaze && !e._exploded) {
+      e._exploded = true;
+      var kR = 58;
+      burst(e.x, e.y, '#E0623A', 18, { ring: true, ringR: kR });
+      burst(e.x, e.y, '#FFE9A8', 10, { smin: 50, smax: 180 });
+      spawnVfx('vfx_explosion_sheet', e.x, e.y, 84, 0.6, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 });
+      addShake(3.5, 180, 70); AudioSys.sfx.explode();
+      if (player.iframe <= 0 && dist2(e.x, e.y, player.x, player.y) < (kR + PHB) * (kR + PHB)) {
+        var kd = Math.round(14 * e.dmgMul);
+        damagePlayer(kd); floatText(player.x, player.y - 22, '爆炸 -' + kd, '#E0623A', 'crit');
+      }
+    }
     // ★ 山海猎兽人：击杀被标记敌人时，标记跳转到最近敌人
     if (e.marked && player.setMarkCrit) {
       var nearestUnmarked = null, nd = Infinity;
@@ -4033,6 +4216,19 @@
         _grr.pulse = Math.min(1, _grr.pulse + dt * 2);
       }
     }
+    // v12.6：引力编织者微型奇点球拖拽（独立数组，弱于主线裂缝，冲刺可挣脱）
+    for (var _wri = weaverRifts.length - 1; _wri >= 0; _wri--) {
+      var _wr = weaverRifts[_wri];
+      _wr.life -= dt; _wr.pulse = Math.min(1, _wr.pulse + dt * 2);
+      if (_wr.life <= 0) { weaverRifts.splice(_wri, 1); continue; }
+      var _wdx = _wr.x - player.x, _wdy = _wr.y - player.y, _wd = Math.hypot(_wdx, _wdy) || 1;
+      if (player.dashT > 0) continue; // 冲刺挣脱
+      if (_wd < _wr.pull) {
+        var _wf = Math.min(26000 / (_wd + 24), 520);
+        player.vx += (_wdx / _wd) * _wf * dt;
+        player.vy += (_wdy / _wd) * _wf * dt;
+      }
+    }
     player.x = clamp(player.x + player.vx * dt, 16, WORLD_W - 16);
     player.y = clamp(player.y + player.vy * dt, 16, WORLD_H - 16);
     resolveObstacles(player, player.r);
@@ -4330,9 +4526,8 @@
     if (extractPoints && extractPoints.length) {
       for (var ei2 = 0; ei2 < extractPoints.length; ei2++) {
         var ez = extractPoints[ei2];
-        // 设计：撤离点仅在余烬相开放窗口（前 8s）可发起读条
-        var phaseUsable = (phase === PHASE.EMBER && emberOpenWindow > 0);
-        if (ez.state !== 'open' || !phaseUsable) continue;
+        // v12.6：撤离点仅在击破领主后的光柱（beacon, state==='open'）可发起读条；不再依赖相位窗
+        if (ez.state !== 'open') continue;
         var inside = player.x > ez.x && player.x < ez.x + ez.w && player.y > ez.y && player.y < ez.y + ez.h;
         if (inside) {
           exfil = true;
@@ -4343,7 +4538,7 @@
             setBanner('撤离读条中…留在光柱内！', 1.8);
             phaseObjectFeedback('extract', ez.x + ez.w / 2, ez.y + ez.h / 2);
           }
-          var castTime = 2.8;
+          var castTime = 3.0; // v12.6：3s 无干扰读条（beacon 态）
           // 机动型核心：读条加速15%
           if (player.dashCdReduce > 0) castTime *= 0.85;
           ez.prog = Math.min(1, ez.prog + dt / castTime);
@@ -4501,23 +4696,28 @@
           mvx = ux * radial + tang.x * 1.0 + Math.cos(e.zig) * 0.2;
           mvy = uy * radial + tang.y * 1.0 + Math.sin(e.zig) * 0.2;
           spd *= 0.95;
-        } else if (e.arche === 'ram' || e.arche === 'split') {
-          // 冲撞者：蓄力(红色预警) → 直冲固定距离 → 力竭停顿（可被破）
-          var RUSH = 1.9;
+        } else if (e.arche === 'ram' || e.arche === 'split' || e.kamikaze) {
+          // 冲撞者 / 自爆突进蜂：蓄力(红色预警) → 直冲固定距离 → 力竭停顿（可被破）
+          var RUSH = e.kamikaze ? 3.0 : 1.9;                       // 自爆蜂极速直冲
+          var KW = e.kamikaze ? e.kamikazeWind : CHARGE_TELE;     // 自爆蜂 0.5s 前摇
+          var KCR = e.kamikaze ? CHARGE_RANGE * 1.15 : CHARGE_RANGE;
           if (e.chargeState === 0) {
-            mvx = ux; mvy = uy; spd *= 0.85;
-            if (e.alert === 2 && d < CHARGE_RANGE && chargingNow < CHARGE_MAX) { e.chargeState = 1; e.chargeT = 0; chargingNow++; }
+            mvx = ux; mvy = uy; spd *= e.kamikaze ? 1.0 : 0.85;
+            if (e.alert === 2 && d < KCR && chargingNow < CHARGE_MAX) { e.chargeState = 1; e.chargeT = 0; chargingNow++; }
           } else if (e.chargeState === 1) {
             e.chargeT += dt; e.chargeDir = Math.atan2(dy, dx);
             mvx = 0; mvy = 0; spd = 0;
-            if (e.chargeT >= CHARGE_TELE) { e.chargeState = 2; e.chargeT = 0; e.chargeDist = CHARGE_DIST; e.chargeDir = Math.atan2(dy, dx); }
+            if (e.chargeT >= KW) { e.chargeState = 2; e.chargeT = 0; e.chargeDist = CHARGE_DIST; e.chargeDir = Math.atan2(dy, dx); }
           } else if (e.chargeState === 2) {
             e.chargeT += dt; mvx = Math.cos(e.chargeDir); mvy = Math.sin(e.chargeDir); spd *= RUSH;
             e.chargeDist -= spd * dt;
             if (e.chargeDist <= 0) { e.chargeState = 3; e.chargeT = 0; }
           } else {
             e.chargeT += dt; mvx = 0; mvy = 0; spd = 0;
-            if (e.chargeT >= CHARGE_FATIGUE) { e.chargeState = 0; e.chargeT = 0; }
+            if (e.chargeT >= CHARGE_FATIGUE) {
+              e.chargeState = 0; e.chargeT = 0;
+              if (e.kamikaze) { e.kamikazeDashes++; if (e.kamikazeDashes >= e.kamikazeMax) e.detonate = 0.5; } // 多段冲撞耗尽 → 引信自爆
+            }
           }
         } else if (e.arche === 'shoot' || e.arche === 'turret' || e.arche === 'gunship') {
           // 远程：保持距离带 + 横移风筝
@@ -4529,11 +4729,23 @@
           else if (d > bHi) { mvx = ux; mvy = uy; spd *= 0.8; }
           else { var ts = (Math.floor(e.patrolAng / 6.283) % 2 === 0) ? 1 : -1; mvx = -uy * ts; mvy = ux * ts; spd *= (e.arche === 'turret' ? 0.18 : 0.7); }
           e.zig += dt * 3; mvx += Math.cos(e.zig) * 0.12; mvy += Math.sin(e.zig) * 0.12;
-        } else if (e.arche === 'sniper') {
-          // 狙击手：保持距离（移动 AI）；充能/开火已迁至 updateEnemyShooting（自治，不再依赖 alert===2，仅保留 LOS）
+        } else if (e.arche === 'weaver') {
+          // 引力编织者：中距风筝，绕玩家缓慢游走（不直冲），便于持续吐奇点球 + 飞刃
+          if (d < 360) { mvx = -ux; mvy = -uy; spd *= 0.9; }
+          else if (d > 520) { mvx = ux; mvy = uy; spd *= 0.6; }
+          else { var wts = (Math.floor(e.patrolAng / 6.283) % 2 === 0) ? 1 : -1; mvx = -uy * wts; mvy = ux * wts; spd *= 0.5; }
+          e.zig += dt * 2.5; mvx += Math.cos(e.zig) * 0.15; mvy += Math.sin(e.zig) * 0.15;
+        } else if (e.arche === 'sniper' || e.arche === 'phaseSniper') {
+          // 狙击手/相位狙击手：保持距离（移动 AI）；充能/开火已迁至 updateEnemyShooting（自治，仅保留 LOS）
           if (d < 480) { mvx = -ux; mvy = -uy; spd *= 0.85; }
           else if (d > 700) { mvx = ux; mvy = uy; spd *= 0.5; }
           else { mvx = 0; mvy = 0; spd = 0; }
+        } else if (e.arche === 'bastion') {
+          // 鎏金重盾巨舰：缓慢逼近并保持中距，正面 120° 金盾始终朝向玩家（绕后 / 余烬破盾）
+          if (d > 320) { mvx = ux; mvy = uy; spd *= 0.5; }
+          else if (d < 220) { mvx = -ux; mvy = -uy; spd *= 0.4; }
+          else { var bts = (Math.floor(e.patrolAng / 6.283) % 2 === 0) ? 1 : -1; mvx = -uy * bts; mvy = ux * bts; spd *= 0.22; }
+          e.zig += dt * 1.5; mvx += Math.cos(e.zig) * 0.1; mvy += Math.sin(e.zig) * 0.1;
         } else if (e.arche === 'shielder') {
           // 护盾兵：跟随最近友军 + 投射护盾
           e.shieldPulse += dt * 3;
@@ -4561,6 +4773,8 @@
       if (e.hp <= 0 && !e.dead) { onEnemyDeath(e, true); continue; }
       if (e.flash > 0) e.flash -= dt;
       if (e.hitT > 0) e.hitT -= dt;
+      // v12.6：自爆突进蜂引信耗尽 → 自爆（统一走 onEnemyDeath 爆炸逻辑）
+      if (e.detonate > 0) { e.detonate -= dt; if (e.detonate <= 0) { onEnemyDeath(e); continue; } }
       // 开火（自治例程：冷却就绪 + 玩家在战斗半径内 + 屏内即射；不再依赖 e.alert===2 硬门）
       updateEnemyShooting(e, dt);
       if (e.arche === 'heal') {
@@ -4603,6 +4817,28 @@
         }
       }
       if (bl.from === 'player') {
+        // v12.6：鎏金重盾巨舰 —— 正面 120° 金盾反弹直射弹（绕后 / 余烬相或余烬弹破盾）
+        var _refl = false;
+        if (phase !== PHASE.EMBER) {
+          for (var _bs = 0; _bs < enemies.length; _bs++) {
+            var _bn = enemies[_bs];
+            if (!_bn.bastion) continue;
+            if (dist2(bl.x, bl.y, _bn.x, _bn.y) < (_bn.r + bl.r + 6) * (_bn.r + bl.r + 6)) {
+              var _bf = Math.atan2(player.y - _bn.y, player.x - _bn.x); // 盾朝向玩家
+              var _bi = Math.atan2(bl.y - _bn.y, bl.x - _bn.x);          // 子弹相对巨舰方位
+              if (Math.abs(angDiff(_bi, _bf)) < _bn.shieldArc / 2) {
+                if (bl.elem === 'ember') { /* 余烬弹破盾：不反弹，正常结算伤害 */ }
+                else {
+                  bl.from = 'enemy'; bl.vx = -bl.vx; bl.vy = -bl.vy; bl.dmg = Math.max(6, bl.dmg * 0.5); bl.elem = null; bl.pierce = 0; bl.homing = false;
+                  burst(bl.x, bl.y, '#E0B84A', 6, { smin: 60, smax: 160 }); spawnVfx('vfx_hit_star_sheet', bl.x, bl.y, 44, 0.3, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 22 }); AudioSys.sfx.hit();
+                  floatText(_bn.x, _bn.y - _bn.r - 10, '金盾反弹!', '#E0B84A', 'normal');
+                  _refl = true; break;
+                }
+              }
+            }
+          }
+        }
+        if (_refl) { continue; } // 反弹后本帧作为敌弹处理（下帧命中玩家），跳过玩家弹结算
         if (bl.homing) {
           var tgt = nearestEnemy(bl.x, bl.y);
           if (tgt) { var desired = Math.atan2(tgt.y - bl.y, tgt.x - bl.x); var cur = Math.atan2(bl.vy, bl.vx); var turnRate = bl.homingTurnRate || (bl.chilan ? 6 : 4); var nd2 = cur + clamp(angDiff(desired, cur), -turnRate * dt, turnRate * dt); var sp = Math.hypot(bl.vx, bl.vy); bl.vx = Math.cos(nd2) * sp; bl.vy = Math.sin(nd2) * sp; }
@@ -5577,25 +5813,38 @@
       }
       if (e.elite) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, e.r + 4, 0, 7); ctx.stroke(); }
       ctx.restore(); ctx.shadowBlur = 0;
-      // 冲撞者·蓄力预警：红色瞄准线 + 闪烁（可预判走位闪避）
-      if ((e.arche === 'ram' || e.arche === 'split') && e.chargeState === 1) {
+      // 冲撞者/自爆蜂·蓄力预警：红色瞄准线 + 闪烁（可预判走位闪避）
+      if ((e.arche === 'ram' || e.arche === 'split' || e.kamikaze) && e.chargeState === 1) {
         ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.chargeDir);
         ctx.strokeStyle = 'rgba(201,79,79,' + (0.5 + 0.4 * Math.sin(gameTime * 30)) + ')';
         ctx.lineWidth = 3; ctx.setLineDash([10, 6]); ctx.lineDashOffset = gameTime * 60;
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(320, 0); ctx.stroke(); ctx.setLineDash([]);
         ctx.restore();
       }
-      // 狙击手激光瞄准线（充能时显示）
-      if (e.arche === 'sniper' && e.sniperCharge > 0) {
+      // 自爆突进蜂·冲刺中：橙红拖尾（极速直冲）
+      if (e.kamikaze && e.chargeState === 2) {
+        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.chargeDir);
+        ctx.strokeStyle = 'rgba(224,98,58,0.5)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-46, 0); ctx.stroke();
+        ctx.restore();
+      }
+      // 狙击手/相位狙击手激光瞄准线（充能时显示）
+      if ((e.arche === 'sniper' || e.arche === 'phaseSniper') && e.sniperCharge > 0) {
         var laserA = e.sniperAim || 0;
+        var _isPS = e.arche === 'phaseSniper';
+        var _lcol = _isPS ? '232,74,106' : '232,160,80';
         var laserAlpha = Math.min(0.8, e.sniperCharge / 1.2 * 0.8);
         var laserW = 1 + e.sniperCharge * 2;
-        ctx.save(); ctx.strokeStyle = 'rgba(232,160,80,' + laserAlpha + ')'; ctx.lineWidth = laserW;
+        ctx.save(); ctx.strokeStyle = 'rgba(' + _lcol + ',' + laserAlpha + ')'; ctx.lineWidth = laserW;
         ctx.setLineDash([8, 6]); ctx.lineDashOffset = -gameTime * 30;
         ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(laserA) * 800, e.y + Math.sin(laserA) * 800); ctx.stroke();
         ctx.setLineDash([]);
         // 充能满时变实线+加粗
         if (e.sniperCharge >= 1.0) { ctx.strokeStyle = 'rgba(255,80,40,' + (0.6 + 0.4 * Math.sin(gameTime * 30)) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(laserA) * 800, e.y + Math.sin(laserA) * 800); ctx.stroke(); }
+        // 相位狙击手：0.2s 闪光预警（翻相窗口）——整条亮白粉闪
+        if (_isPS && e.sniperBeamFlash > 0) {
+          ctx.strokeStyle = 'rgba(255,235,245,' + (0.5 + 0.5 * Math.sin(gameTime * 50)) + ')'; ctx.lineWidth = 5;
+          ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + Math.cos(laserA) * 900, e.y + Math.sin(laserA) * 900); ctx.stroke();
+        }
         ctx.restore();
       }
       // 护盾兵护盾泡泡（覆盖附近友军）
@@ -5606,6 +5855,18 @@
         ctx.beginPath(); ctx.arc(e.x, e.y, e.shieldRadius || 120, 0, 7); ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
+      }
+      // 鎏金重盾巨舰：正面 120° 金盾弧（朝向玩家；余烬相下变暗提示可破盾）
+      if (e.bastion && e.wake <= 0) {
+        var _bf = Math.atan2(player.y - e.y, player.x - e.x);
+        var _sa = e.shieldArc / 2;
+        var _scol = phase === PHASE.EMBER ? 'rgba(224,184,74,0.28)' : 'rgba(224,184,74,0.85)';
+        ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(_bf);
+        ctx.strokeStyle = _scol; ctx.lineWidth = 5; ctx.shadowColor = '#E0B84A'; ctx.shadowBlur = glowOn ? 12 : 0;
+        ctx.beginPath(); ctx.arc(0, 0, e.r + 14, -_sa, _sa); ctx.stroke();
+        ctx.globalAlpha = phase === PHASE.EMBER ? 0.06 : 0.16; ctx.fillStyle = '#E0B84A';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, e.r + 14, -_sa, _sa); ctx.closePath(); ctx.fill();
+        ctx.restore(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
       }
       // 精英修饰词标识
       if (e.eliteMod) {
@@ -5642,6 +5903,20 @@
         ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(4, 3); ctx.lineTo(-4, 3); ctx.closePath(); ctx.fill();
         ctx.restore(); ctx.shadowBlur = 0;
       }
+    }
+  }
+  function drawWeaverRifts() {
+    for (var i = 0; i < weaverRifts.length; i++) {
+      var w = weaverRifts[i], a = clamp(w.life / 1.2, 0, 1);
+      ctx.save(); ctx.translate(w.x, w.y);
+      ctx.globalAlpha = 0.16 * a; ctx.strokeStyle = '#B06FD0'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, w.pull, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 0.9; ctx.rotate(gameTime * 3 + (w.spin || 0));
+      var g = ctx.createRadialGradient(0, 0, 0, 0, 0, w.r + 8);
+      g.addColorStop(0, 'rgba(176,111,208,' + (0.85 * a) + ')'); g.addColorStop(1, 'rgba(176,111,208,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, w.r + 8, 0, 7); ctx.fill();
+      for (var k = 0; k < 3; k++) { ctx.strokeStyle = 'rgba(224,200,240,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, w.r * (0.4 + k * 0.25), k, k + 2.2); ctx.stroke(); }
+      ctx.restore(); ctx.globalAlpha = 1;
     }
   }
   function drawBoss() {
@@ -5706,6 +5981,29 @@
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
     ctx.restore(); ctx.shadowBlur = 0;
+    // v12.6：维度撕裂·双色旋转死亡光阵（红束致命于鎏金相 / 金束致命于余烬相）
+    if (b.dimTear) {
+      var _rot = b.dimRot || 0;
+      ctx.save(); ctx.translate(b.x, b.y);
+      if (b.dimTear === 'charge') {
+        var _ca = clamp(1 - b.dimTearT / 1.4, 0, 1);
+        ctx.globalAlpha = 0.4 + 0.4 * Math.sin(gameTime * 20);
+        ctx.strokeStyle = '#C94F4F'; ctx.lineWidth = 6; ctx.rotate(_rot);
+        ctx.beginPath(); ctx.arc(0, 0, 60 + _ca * 240, 0, 7); ctx.stroke();
+        ctx.strokeStyle = '#E0B84A'; ctx.rotate(Math.PI);
+        ctx.beginPath(); ctx.arc(0, 0, 60 + _ca * 240, 0, 7); ctx.stroke();
+      } else if (b.dimTear === 'active') {
+        ctx.rotate(_rot);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(201,79,79,0.9)'; ctx.lineWidth = 14; ctx.shadowColor = '#C94F4F'; ctx.shadowBlur = 16;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1200, 0); ctx.stroke();
+        ctx.rotate(Math.PI);
+        ctx.strokeStyle = 'rgba(224,184,74,0.9)'; ctx.shadowColor = '#E0B84A';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(1200, 0); ctx.stroke();
+        ctx.globalCompositeOperation = 'source-over'; ctx.shadowBlur = 0;
+      }
+      ctx.restore(); ctx.globalAlpha = 1;
+    }
     // 元素附着光环
     if (boss.aura) { var bac = ELEMCOL[boss.aura]; ctx.save(); ctx.strokeStyle = bac; ctx.shadowColor = bac; ctx.shadowBlur = glowOn ? 14 : 0; ctx.globalAlpha = 0.7 + 0.2 * Math.sin(gameTime * 8); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(boss.x, boss.y, boss.r + 10, 0, 7); ctx.stroke(); ctx.restore(); ctx.globalAlpha = 1; ctx.shadowBlur = 0; }
     // 突进预警红线（与 Boss 弹幕预警同源信号）
@@ -6037,31 +6335,69 @@
     }
     for (var pi = 0; pi < extractPoints.length; pi++) {
       var z = extractPoints[pi], cx = z.x + z.w / 2, cy = z.y + z.h / 2;
-      if (z.state === 'open') {
-        // 法阵贴图（青）作为撤离点主体；整圈发光晕替代原光柱；站住越久越亮（替代原读条方框）
+      if (z.state === 'open' && z.beacon) {
+        // v12.6：金色光柱 beacon + 战场自毁倒计时（领主击破后）
         var prog = z.prog || 0;
+        var secs = Math.ceil(run ? run.selfDestruct : (z.beaconTimer || 0));
+        var pulse = 0.5 + 0.5 * Math.abs(Math.sin(gameTime * 4));
+        var px0 = cx, pillarW = z.w * 0.5;
+        // 冲天光柱（叠加亮色）
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        var grd = ctx.createLinearGradient(px0, z.y + z.h, px0, z.y - 380);
+        grd.addColorStop(0, 'rgba(255,233,168,' + (0.55 * pulse) + ')');
+        grd.addColorStop(1, 'rgba(255,233,168,0)');
+        ctx.fillStyle = grd; ctx.fillRect(px0 - pillarW / 2, z.y - 380, pillarW, z.h + 380);
+        ctx.restore();
+        // 地面金色法阵
+        var gs = ctx.createRadialGradient(cx, cy, 0, cx, cy, 104);
+        gs.addColorStop(0, 'rgba(255,233,168,' + (0.4 + 0.4 * prog) + ')');
+        gs.addColorStop(0.6, 'rgba(201,162,75,0.3)');
+        gs.addColorStop(1, 'rgba(201,162,75,0)');
+        ctx.fillStyle = gs; ctx.beginPath(); ctx.arc(cx, cy, 104, 0, 7); ctx.fill();
+        // 程序化金色符文环（避免依赖贴图）
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate(gameTime * 0.4);
+        ctx.globalAlpha = clamp(0.5 + 0.5 * prog, 0, 1); ctx.strokeStyle = '#FFE9A8'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, 78, 0, 7); ctx.stroke();
+        for (var _rs = 0; _rs < 12; _rs++) { var _ra2 = _rs / 12 * 6.283; ctx.beginPath(); ctx.moveTo(Math.cos(_ra2) * 70, Math.sin(_ra2) * 70); ctx.lineTo(Math.cos(_ra2) * 88, Math.sin(_ra2) * 88); ctx.stroke(); }
+        ctx.restore(); ctx.globalAlpha = 1;
+        ctx.fillStyle = '#FFE9A8'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('撤离点' + z.label + ' ' + Math.floor(prog * 100) + '%', cx, z.y - 14);
+        ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = secs <= 10 ? '#FF6A2A' : '#E0B84A';
+        ctx.fillText('战场自毁 ' + secs + 's · 冲入光柱！', cx, z.y + z.h + 18); ctx.textAlign = 'left';
+        if (z.near) drawInteractLabel(cx, z.y - 32, '金色光柱 · 站定 3s 撤离', '#FFE9A8');
+      } else if (z.state === 'open') {
+        // 法阵贴图（青）作为撤离点主体（兼容旧计时开放逻辑）
+        var prog2 = z.prog || 0;
         var sealSz = 176;
-        var glowA = 0.28 + 0.4 * prog + Math.sin(gameTime * 3) * 0.08;
-        // 整圈发光晕
+        var glowA = 0.28 + 0.4 * prog2 + Math.sin(gameTime * 3) * 0.08;
         var g = ctx.createRadialGradient(cx, cy, 0, cx, cy, sealSz * 0.62);
         g.addColorStop(0, 'rgba(127,176,105,' + (glowA * 0.9) + ')');
         g.addColorStop(0.55, 'rgba(127,176,105,' + (glowA * 0.4) + ')');
         g.addColorStop(1, 'rgba(127,176,105,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, sealSz * 0.62, 0, 7); ctx.fill();
-        // 法阵主体
-        ctx.globalAlpha = clamp(0.45 + 0.45 * prog + Math.sin(gameTime * 3) * 0.1, 0, 1);
+        ctx.globalAlpha = clamp(0.45 + 0.45 * prog2 + Math.sin(gameTime * 3) * 0.1, 0, 1);
         blit('seal_circle_teal', cx, cy, sealSz, sealSz, gameTime * 0.35);
         ctx.globalAlpha = 1;
         ctx.fillStyle = COL.extract; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('撤离点' + z.label + ' ' + Math.floor(prog * 100) + '%', cx, z.y - 12);
+        ctx.fillText('撤离点' + z.label + ' ' + Math.floor(prog2 * 100) + '%', cx, z.y - 12);
         ctx.font = '11px sans-serif'; ctx.fillText('开放 ' + Math.ceil(z.timer) + 's', cx, z.y + z.h + 16); ctx.textAlign = 'left';
-        // 相位撤离倒计时环（余烬橙）：8s→0 可视，逼玩家读秒赶窗（§7.11-4）
-        if (phase === PHASE.EMBER && emberOpenWindow > 0) {
-          var _ef = clamp(emberOpenWindow / EMBER_OPEN_WIN, 0, 1);
-          ctx.save(); ctx.strokeStyle = '#FF8C3A'; ctx.lineWidth = 5; ctx.shadowColor = '#FF8C3A'; ctx.shadowBlur = glowOn ? 12 : 0;
-          ctx.beginPath(); ctx.arc(cx, cy, 92, -Math.PI / 2, -Math.PI / 2 + _ef * Math.PI * 2); ctx.stroke(); ctx.restore(); ctx.shadowBlur = 0;
-        }
         if (z.near) drawInteractLabel(cx, z.y - 30, '撤离点 · 站定读条撤离', '#7FB069');
+      } else if (z.state === 'sealed') {
+        // v12.6：封锁态——暗淡锁闭光圈 + 锁头，须击败领主才解锁
+        ctx.save();
+        ctx.globalAlpha = 0.5 + 0.2 * Math.sin(gameTime * 2);
+        ctx.strokeStyle = 'rgba(120,120,140,0.55)'; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+        ctx.beginPath(); ctx.arc(cx, cy, 70, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(150,150,170,0.85)'; ctx.fillRect(cx - 14, cy - 6, 28, 24);
+        ctx.strokeStyle = 'rgba(150,150,170,0.85)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(cx, cy - 6, 12, Math.PI, 0); ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = 'rgba(175,180,195,0.95)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('相位封锁', cx, z.y - 8);
+        ctx.fillText('击败关卡领主以激活撤离通道', cx, z.y + z.h + 16); ctx.textAlign = 'left';
+      } else if (z.state === 'collapsed') {
+        ctx.fillStyle = 'rgba(176,58,58,0.6)'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('撤离通道已坍塌', cx, cy); ctx.textAlign = 'left';
       } else if (z.state === 'warning') {
         // 预兆：青色法阵极淡浮现 + 柔和光晕，逆时针微转（无虚线方框、无光柱）
         var sealSz2 = 176;
@@ -6178,7 +6514,12 @@
     if (extractPoints) for (var mpi = 0; mpi < extractPoints.length; mpi++) {
       var mz = extractPoints[mpi];
       var pulse = 1.4 + Math.sin(gameTime * 5) * 0.9; // 呼吸脉冲，撤离点更醒目
-      var mc = mz.state === 'open' ? COL.extract : (mz.state === 'warning' ? '#E0B84A' : 'rgba(120,130,140,0.85)');
+      var mc;
+      if (mz.state === 'sealed') mc = 'rgba(120,120,140,0.6)';
+      else if (mz.beacon) mc = (Math.sin(gameTime * 7) > 0 ? '#FFE9A8' : '#E0B84A'); // v12.6：beacon 金色闪烁
+      else if (mz.state === 'open') mc = COL.extract;
+      else if (mz.state === 'warning') mc = '#E0B84A';
+      else mc = 'rgba(120,130,140,0.85)';
       ctx.fillStyle = mc;
       ctx.fillRect(mx + mz.x * sx - pulse * 0.5, my + mz.y * sy - pulse * 0.5, mz.w * sx + pulse, mz.h * sy + pulse);
     }
@@ -6492,7 +6833,7 @@
     if (_extY >= 0) {
       var openZ = _extOpen, warnZ = _extWarn;
       if (openZ.length) {
-        var ot = openZ.map(function (q) { return '撤离点' + q.label + ' 开放 ' + Math.ceil(q.timer) + 's'; }).join('   ·   ');
+        var ot = openZ.map(function (q) { var t = q.beacon ? Math.ceil(run.selfDestruct) : Math.ceil(q.timer); return (q.beacon ? '⚠ 战场自毁 ' + t + 's · 冲入光柱撤离' : '撤离点' + q.label + ' 开放 ' + t + 's'); }).join('   ·   ');
         ctx.font = 'bold 12px sans-serif'; var ow = ctx.measureText(ot).width;
         ctx.fillStyle = 'rgba(16,13,9,0.72)'; ctx.strokeStyle = 'rgba(127,176,105,0.55)'; ctx.lineWidth = 1;
         hp(W / 2 - ow / 2 - 12, _extY, ow + 24, 22, 11);
@@ -6811,7 +7152,7 @@
     ctx.save();
     if (k > 0) ctx.translate(rand(-k, k), rand(-k, k)); // 随机短促偏移：一瞬轻晃，不持续不飘（移动跟手）
     ctx.translate(-cam.x, -cam.y); // 相机：把世界坐标平移到屏幕
-    drawGrid(); drawObstacles(); drawVeins(); drawNodes(); drawVaults(); drawTotems(); drawLoot(); drawRift(); drawExtract(); drawPhaseObjects(); drawEnemies(); if (boss) drawBoss(); drawVfxLines(); drawBulletTrails(); drawBullets(); drawParticles(); drawVfxSprites(); drawPlayer();
+    drawGrid(); drawObstacles(); drawVeins(); drawNodes(); drawVaults(); drawTotems(); drawLoot(); drawRift(); drawWeaverRifts(); drawExtract(); drawPhaseObjects(); drawEnemies(); if (boss) drawBoss(); drawVfxLines(); drawBulletTrails(); drawBullets(); drawParticles(); drawVfxSprites(); drawPlayer();
     ctx.restore();
     drawPhaseTint(); // 全图调色 shift（金暖 ↔ 余烬橙暗，性能优先单覆盖层）
     drawHUD();
@@ -8004,6 +8345,62 @@
         aimJoy.active = false; aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0; hideAimJoystick();
         aimTapFire = false;
         showMobileControls();
+      },
+      // === v12.6 深度玩法重构 · 测试桩钩子（撤离锁死/beacon/自毁/维度撕裂/翻相免伤/金盾反弹/自爆）===
+      extractPoints: function () { return extractPoints; },
+      spawnBoss: spawnBoss,
+      killBoss: killBoss,
+      activateEvacBeacon: activateEvacBeacon,
+      selfDestruct: function () { return run ? run.selfDestruct : 0; },
+      evacBeacon: function () { return run ? !!run.evacBeacon : false; },
+      spawnArche: function (arche, x, y) { return spawnEnemy((x == null ? player.x + 300 : x), (y == null ? player.y : y), run.tier || 1, { arche: arche }); },
+      PHASE_GOLD: function () { return PHASE.GOLD; },
+      PHASE_EMBER: function () { return PHASE.EMBER; },
+      phase: function () { return player.phase; },
+      flip: function (target) { doFlip(target == null ? PHASE.GOLD : target, { active: false, source: 'pillar' }); },
+      iframe: function () { return player.iframe || 0; },
+      FLIP_IFRAME: function () { return FLIP_IFRAME; },
+      weaverRifts: function () { return weaverRifts; },
+      bossDimTear: function () { return boss ? boss.dimTear : null; },
+      bossDimTearDone: function () { return boss ? !!boss.dimTearDone : false; },
+      setBossHp: function (frac) { if (boss) boss.hp = boss.maxhp * (frac == null ? 0.5 : frac); },
+      clearBullets: function () { bullets.length = 0; },
+      setPlayerHp: function (v) { player.hp = v; if (player.maxhp < v) player.maxhp = v; },
+      setIframe: function (v) { player.iframe = v; },
+      // 翻相免伤门（相位狙击手 / 维度撕裂 共用 player.iframe<=0 闸门）：翻相后 0.35s 内 lethal 命中应被免疫
+      hitscanGate: function (dmg) {
+        var before = player.hp;
+        if (player.iframe <= 0) damagePlayer(dmg);
+        return { applied: player.hp < before, iframe: player.iframe || 0 };
+      },
+      // 相位狙击手·翻相 0.35s 免伤：玩家位于狙击手正左方同 y，刚翻相(iframe=0.35)时贯穿光束应被免疫；清掉无敌帧后应被命中掉血
+      testSniperFlipImmunity: function () {
+        enemies.length = 0; obstacles.length = 0; weaverRifts.length = 0; gravityRifts.length = 0; bullets.length = 0;
+        var sx = player.x + 300, sy = player.y;
+        var e = spawnEnemy(sx, sy, run.tier || 1, { arche: 'phaseSniper' });
+        e.wake = 0; e.alert = 2; e.vx = 0; e.vy = 0; e.sniperCharge = 1.2; e.sniperBeamFlash = 0; e.fireCd = 0;
+        phase = PHASE.GOLD; player.phase = PHASE.GOLD;
+        player.iframe = FLIP_IFRAME; // 模拟刚翻相
+        var hp0 = player.hp;
+        for (var i = 0; i < 20; i++) { e.x = sx; e.y = sy; e.vx = 0; e.vy = 0; e.sniperCharge = 1.2; e.sniperAim = Math.atan2(player.y - e.y, player.x - e.x); update(1 / 60); }
+        var immune = (player.hp === hp0);
+        player.iframe = 0; e.sniperCharge = 1.2; e.sniperBeamFlash = 0; e.fireCd = 0;
+        var hp1 = player.hp;
+        for (var j = 0; j < 20; j++) { e.x = sx; e.y = sy; e.vx = 0; e.vy = 0; e.sniperCharge = 1.2; e.sniperAim = Math.atan2(player.y - e.y, player.x - e.x); update(1 / 60); }
+        var hit = (player.hp < hp1);
+        return { immuneWithFlip: immune, hitWithoutFlip: hit, iframe0: FLIP_IFRAME };
+      },
+      // 鎏金重盾巨舰·正面 120° 金盾反弹：玩家在鎏金相朝巨舰正面发射直射弹，应被反弹(from→enemy)且巨舰不掉血
+      testBastionReflect: function () {
+        enemies.length = 0; bullets.length = 0; weaverRifts.length = 0; gravityRifts.length = 0;
+        var b = spawnEnemy(player.x + 90, player.y, run.tier || 1, { arche: 'bastion' });
+        b.wake = 0; b.alert = 0; b.vx = 0; b.vy = 0; b.hp = b.maxhp;
+        phase = PHASE.GOLD; player.phase = PHASE.GOLD;
+        var bl = { x: player.x + 20, y: player.y, vx: 600, vy: 0, r: 6, from: 'player', dmg: 20, elem: null, pierce: 0, homing: false, life: 1, crit: false };
+        bullets.push(bl);
+        var beforeHp = b.hp;
+        for (var i = 0; i < 10; i++) { b.x = player.x + 90; b.y = player.y; b.vx = 0; b.vy = 0; update(1 / 60); }
+        return { reflected: bl.from === 'enemy', bastionTookDamage: b.hp < beforeHp - 0.5, phase: player.phase };
       }
     };
   }

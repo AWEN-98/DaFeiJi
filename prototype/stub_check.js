@@ -241,6 +241,98 @@ try {
   key('keyup', 'd'); key('keyup', 'w');
   for (let i = 0; i < 30; i++) tick(16.7);
 
+  // ============================================================
+  // 11) v12.6 深度玩法重构专项（撤离锁死 / beacon+45s自毁 / 翻相0.35s免伤 / 狙击免伤 / 重盾反弹 / 自爆蜂 / 维度撕裂）
+  // ============================================================
+  console.log('---- v12.6 深度玩法重构专项 ----');
+  try { api.startMission(); } catch (e) { errors.push('startMission(v12.6): ' + (e.stack || e)); }
+  for (let i = 0; i < 10; i++) tick(16.7);
+  api.cleanState();
+
+  // 11a) 撤离锁死：初始全 sealed，且 200 帧内不自动开放（须击破领主才解锁）
+  let eps = api.extractPoints();
+  if (!eps || !eps.length) errors.push('v12.6: extractPoints 未初始化');
+  else {
+    const allSealed0 = eps.every(z => z.state === 'sealed');
+    if (!allSealed0) errors.push('v12.6: 撤离点初始应全 sealed（锁死），实际 ' + eps.map(z => z.state).join(','));
+    for (let i = 0; i < 200; i++) tick(16.7);
+    const stillSealed = eps.every(z => z.state === 'sealed');
+    if (!stillSealed) errors.push('v12.6: 撤离点不应自动开放（须击破领主），200帧后 ' + eps.map(z => z.state).join(','));
+    console.log('[11a] 撤离锁死 OK：初始全 sealed，200帧后仍 sealed（无自动开放）');
+  }
+
+  // 11b) beacon + 45s 自毁倒计时：击破领主 → 全部撤离点 beacon/open + run.selfDestruct=45 + 倒计时递减
+  api.cleanState();
+  api.spawnBoss();
+  api.killBoss();
+  const eps2 = api.extractPoints();
+  const allBeacon = eps2.every(z => (z.state === 'open' && z.beacon === true));
+  if (!allBeacon) errors.push('v12.6: 击破领主后撤离点应全部 beacon+open，实际 ' + eps2.map(z => z.state + ':' + (z.beacon ? 'B' : '-')).join(','));
+  if (!api.evacBeacon()) errors.push('v12.6: run.evacBeacon 应为 true');
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('v12.6: 自毁倒计时应为 45s，实际 ' + api.selfDestruct());
+  api.setPlayerHp(99999); // 防被围堵杂兵击杀 → scene 切换 → 倒计时停摆
+  for (let i = 0; i < 120; i++) { api.clearBullets(); tick(16.7); } // 2s
+  const sdAfter = api.selfDestruct();
+  if (!(sdAfter < 45 && sdAfter > 42)) errors.push('v12.6: 自毁倒计时应递减（2s后约43s），实际 ' + sdAfter.toFixed(2));
+  console.log('[11b] beacon+自毁 OK：全部 beacon/open，selfDestruct=' + sdAfter.toFixed(2) + 's（起始45）');
+
+  // 11c) 翻相 0.35s 免伤（狙击/维度撕裂共用 player.iframe<=0 闸门）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.flip(api.PHASE_GOLD());
+  const ifr = api.iframe();
+  if (!(ifr > 0.3 && ifr <= api.FLIP_IFRAME())) errors.push('v12.6: 翻相应置 iframe≈0.35，实际 ' + ifr);
+  const g1 = api.hitscanGate(50);
+  if (g1.applied) errors.push('v12.6: 翻相无敌帧内致命命中应被免疫（未掉血），实际 applied=' + g1.applied);
+  api.setIframe(0);
+  const g2 = api.hitscanGate(50);
+  if (!g2.applied) errors.push('v12.6: iframe 归零后致命命中应生效（掉血），实际 applied=' + g2.applied);
+  console.log('[11c] 翻相免伤 OK：iframe=' + ifr.toFixed(2) + ' 时免疫；归零后命中');
+
+  // 11d) 相位狙击手·翻相 0.35s 免伤（真实 hitscan 贯穿光束路径）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  const sn = api.testSniperFlipImmunity();
+  if (!sn.immuneWithFlip) errors.push('v12.6: 狙击手贯穿光束在翻相无敌帧内应被免疫，实际 immuneWithFlip=' + sn.immuneWithFlip);
+  if (!sn.hitWithoutFlip) errors.push('v12.6: 狙击手贯穿光束在无敌帧外应命中掉血，实际 hitWithoutFlip=' + sn.hitWithoutFlip);
+  console.log('[11d] 狙击翻相免伤 OK：iframe=' + sn.iframe0 + ' 时贯穿光束被免疫；清 iframe 后被命中');
+
+  // 11e) 鎏金重盾巨舰·正面 120° 金盾反弹
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  const br = api.testBastionReflect();
+  if (!br.reflected) errors.push('v12.6: 鎏金重盾正面直射弹应被反弹(from→enemy)，实际 reflected=' + br.reflected);
+  if (br.bastionTookDamage) errors.push('v12.6: 金盾反弹时巨舰不应掉血，实际 bastionTookDamage=' + br.bastionTookDamage);
+  console.log('[11e] 重盾金盾反弹 OK：反射=' + br.reflected + ' 巨舰掉血=' + br.bastionTookDamage);
+
+  // 11f) 自爆突进蜂·死亡爆炸（贴身 + 非无敌帧 → 应炸伤玩家）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  const kz = api.spawnArche('kamikaze', api.player().x + 20, api.player().y);
+  kz.wake = 0;
+  api.setIframe(0);
+  kz.x = api.player().x + 20; kz.y = api.player().y;
+  const hpK0 = api.player().hp;
+  api.killEnemy(api.enemies().indexOf(kz));
+  const hpK1 = api.player().hp;
+  if (!(hpK1 < hpK0)) errors.push('v12.6: 自爆蜂贴身死亡应炸伤玩家（iframe=0时），实际 hpK0=' + hpK0 + ' hpK1=' + hpK1);
+  console.log('[11f] 自爆蜂 OK：贴身死亡爆炸伤玩家 hp ' + hpK0.toFixed(0) + '→' + hpK1.toFixed(0));
+
+  // 11g) Boss 半血维度撕裂：半血触发 charge→active，窗口结束 dimTearDone=true（翻相规避共用 iframe 闸门）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.spawnBoss();
+  for (let i = 0; i < 90; i++) { api.tick(1); api.clearBullets(); } // 过出场 wake(1.2s)
+  api.setBossHp(0.49); // 半血
+  let sawDimTear = false;
+  for (let i = 0; i < 60; i++) { api.tick(1); api.clearBullets(); if (api.bossDimTear()) sawDimTear = true; }
+  if (!sawDimTear) errors.push('v12.6: Boss 半血应触发维度撕裂(dimTear=charge/active)，实际 ' + api.bossDimTear());
+  for (let i = 0; i < 400; i++) { api.tick(1); api.clearBullets(); } // 过 charge(1.4)+active(4.5)
+  if (!api.bossDimTearDone()) errors.push('v12.6: 维度撕裂 active 窗口后应收敛(dimTearDone=true)，实际 dimTear=' + api.bossDimTear() + ' done=' + api.bossDimTearDone());
+  console.log('[11g] 维度撕裂 OK：半血触发 dimTear，窗口结束收敛 dimTearDone=' + api.bossDimTearDone());
+
+  // 11h) 引力编织者·weaverRifts 拖拽机制（桌面大视口天然 onScreen）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999); api.weaverRifts().length = 0;
+  var wvr = api.spawnArche('weaver', api.player().x + 260, api.player().y); wvr.wake = 0;
+  for (let i = 0; i < 20; i++) { wvr.weaverCd = 0; wvr.fireCd = 0; wvr.x = api.player().x + 260; wvr.y = api.player().y; api.tick(1); api.clearBullets(); }
+  if (api.weaverRifts().length === 0) errors.push('v12.6: weaver 应生成 weaverRifts（拖拽机制），实际 0');
+  else console.log('[11h] 引力编织者 OK：生成 weaverRifts=' + api.weaverRifts().length);
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {

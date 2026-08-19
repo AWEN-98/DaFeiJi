@@ -230,6 +230,51 @@ try {
   if (fwd > 0 && !(rev < fwd * 0.8)) errors.push('倒退减速失效：瞄准前向却反向移动应≈前向×0.6，实际 fwd=' + fwd.toFixed(1) + ' rev=' + rev.toFixed(1) + ' 比值=' + (rev/fwd).toFixed(2));
   console.log('倒退减速(双摇杆)：前向=' + fwd.toFixed(1) + ' 瞄准前向+反向移动=' + rev.toFixed(1) + ' 比值=' + (fwd>0?(rev/fwd).toFixed(2):'NaN') + '（应≈0.60）→ 减速机制已恢复');
 
+  // ============================================================
+  // v12.6 深度玩法重构 · 移动端轻量回归（双摇杆环境下不崩溃、核心机制可用）
+  // ============================================================
+  console.log('---- v12.6 移动端轻量回归 ----');
+  function mvFinite(v) { return typeof v === 'number' && isFinite(v); }
+  // (a) 四类新怪分型：生成 + 存活 + 击杀无崩溃/NaN
+  ['kamikaze', 'phaseSniper', 'weaver', 'bastion'].forEach(function (arche) {
+    api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+    var e = api.spawnArche(arche, api.player().x + 400, api.player().y); e.wake = 0;
+    for (var i = 0; i < 60; i++) { api.tick(1); api.clearBullets(); }
+    ['x', 'y', 'vx', 'vy', 'hp', 'maxhp'].forEach(function (k) { if (!mvFinite(e[k])) errors.push('v12.6[移动] ' + arche + ' NaN ' + k + '=' + e[k]); });
+    api.killEnemy(api.enemies().indexOf(e));
+    for (var j = 0; j < 10; j++) { api.tick(1); api.clearBullets(); }
+    console.log('v12.6[移动] ' + arche + ' 生成+存活+击杀 OK');
+  });
+  // (b) weaver 应生成 weaverRifts（引力编织者拖拽机制）；移动端竖屏 W=390，须固定贴近玩家保证 onScreen
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999); api.weaverRifts().length = 0;
+  var wv = api.spawnArche('weaver', api.player().x + 120, api.player().y); wv.wake = 0;
+  for (var i = 0; i < 30; i++) { wv.weaverCd = 0; wv.fireCd = 0; wv.x = api.player().x + 120; wv.y = api.player().y; api.tick(1); api.clearBullets(); }
+  if (api.weaverRifts().length === 0) errors.push('v12.6[移动] weaver 应生成 weaverRifts，实际 0');
+  else console.log('v12.6[移动] weaver 生成 weaverRifts=' + api.weaverRifts().length + ' OK');
+  // (c) 撤离锁死 + 击破领主 beacon + 45s 自毁
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  var meps = api.extractPoints();
+  if (!meps.every(function (z) { return z.state === 'sealed'; })) errors.push('v12.6[移动] 撤离点初始应 sealed，实际 ' + meps.map(function (z) { return z.state; }).join(','));
+  api.spawnBoss(); api.killBoss();
+  if (!api.extractPoints().every(function (z) { return z.state === 'open' && z.beacon; })) errors.push('v12.6[移动] 击破领主后撤离点应全部 beacon/open');
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('v12.6[移动] 自毁倒计时应=45，实际 ' + api.selfDestruct());
+  console.log('v12.6[移动] 撤离锁死+beacon OK，selfDestruct=' + api.selfDestruct());
+  // (d) 翻相 0.35s 免伤 + 维度撕裂半血触发
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.flip(api.PHASE_GOLD());
+  var flipIframe = api.iframe();
+  if (!(flipIframe > 0.3)) errors.push('v12.6[移动] 翻相应置 iframe>0.3，实际 ' + flipIframe);
+  api.spawnBoss();
+  for (var i = 0; i < 90; i++) { api.tick(1); api.clearBullets(); }
+  api.setBossHp(0.49);
+  var saw = false;
+  for (var i = 0; i < 60; i++) { api.tick(1); api.clearBullets(); if (api.bossDimTear()) saw = true; }
+  if (!saw) errors.push('v12.6[移动] 半血应触发维度撕裂');
+  console.log('v12.6[移动] 翻相免伤 iframe=' + flipIframe.toFixed(2) + ' + 维度撕裂触发 OK');
+  // (e) 玩家数值有限
+  var pM = api.player();
+  ['x', 'y', 'vx', 'vy', 'hp', 'maxhp', 'iframe'].forEach(function (k) { if (!mvFinite(pM[k])) errors.push('v12.6[移动] 玩家 NaN ' + k + '=' + pM[k]); });
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();
