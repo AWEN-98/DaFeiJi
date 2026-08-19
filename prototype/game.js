@@ -1919,9 +1919,11 @@
     }
   }
   // 撤离点：整图翻相位时统一开关（窗长与相位窗口对齐）
+  // v15.1 修复：v12.6 撤离锁死下，sealed 撤离点**不得**被相位开窗拉进计时循环（open→closed→warning 循环
+  // 会使 activateEvacBeacon 的解锁条件永不匹配 → 杀 Boss 后 beacon 无法激活）。仅对已非 sealed 的点兼容旧行为。
   function openExtractPoints() {
     if (!extractPoints) return;
-    for (var _oi = 0; _oi < extractPoints.length; _oi++) { var _z = extractPoints[_oi]; _z.state = 'open'; _z.timer = emberOpenWindow > 0 ? emberOpenWindow : EXTRACT.openDur; _z.prog = 0; }
+    for (var _oi = 0; _oi < extractPoints.length; _oi++) { var _z = extractPoints[_oi]; if (_z.state === 'sealed') continue; _z.state = 'open'; _z.timer = emberOpenWindow > 0 ? emberOpenWindow : EXTRACT.openDur; _z.prog = 0; }
   }
   function closeExtractPoints() {
     if (!extractPoints) return;
@@ -3708,12 +3710,31 @@
     }
   }
   // v12.6：领主击破 → 全部撤离点爆发金色光柱 beacon + 启动 45s 战场自毁 + 刷狂暴余烬杂兵围堵
+  // v15.1 修复：解锁条件从「仅 sealed/collapsed」放宽为「所有非 beacon 撤离点」——
+  // 旧版相位开窗（openExtractPoints）可能把撤离点拉进计时循环（open/closed/warning），
+  // 导致杀 Boss 时不在 sealed 态 → beacon 永不激活 → 杀死 Boss 也无法撤离（Boss 实测反馈）
   function activateEvacBeacon() {
     if (!extractPoints || !extractPoints.length) return;
+    // v15.1 终局清场（Boss 指令）：领主已殒，余下杂兵尽数湮灭。
+    // 确定性实现：dead 标记 + 死亡视觉 + 悬赏计数 + splice 移除（不依赖 onEnemyDeath 的掉落/自爆链路，
+    // 避免复杂路径抛错吞掉清场；倒序遍历 + splice 当前索引为经典安全模式）
+    for (var _ci = enemies.length - 1; _ci >= 0; _ci--) {
+      var _ce = enemies[_ci];
+      if (!_ce || _ce.dead) continue;
+      _ce.dead = true;
+      run.kills++;
+      try {
+        burst(_ce.x, _ce.y, '#E8DCC4', 8, { smin: 30, smax: 80 });
+        spawnVfx('vfx_explosion_sheet', _ce.x, _ce.y, 40, 0.5, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 });
+        if (_ce.elite) bountyProgress('eliteKill', 1);
+        if (player.phase === PHASE.EMBER) bountyProgress('emberKill', 1);
+      } catch (err) {}
+      enemies.splice(_ci, 1);
+    }
     var any = false;
     for (var i = 0; i < extractPoints.length; i++) {
       var z = extractPoints[i];
-      if (z.state === 'sealed' || z.state === 'collapsed') { z.state = 'open'; z.beacon = true; z.beaconTimer = EXTRACT.beaconDur; z.prog = 0; any = true; }
+      if (!z.beacon) { z.state = 'open'; z.beacon = true; z.beaconTimer = EXTRACT.beaconDur; z.prog = 0; any = true; }
     }
     if (!any) { // 全部坍塌（极端情况）：强制重新点亮全部，保底可撤离
       for (var j = 0; j < extractPoints.length; j++) { extractPoints[j].state = 'open'; extractPoints[j].beacon = true; extractPoints[j].beaconTimer = EXTRACT.beaconDur; extractPoints[j].prog = 0; }
