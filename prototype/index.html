@@ -599,9 +599,9 @@
   .stat-card { display: flex; justify-content: space-between; align-items: center; background: rgba(10,7,4,0.65); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 14px; margin: 6px 0; font-size: 14px; }
   .stat-card.big { padding: 12px 16px; font-size: 16px; }
   .stat-card.ok { border-color: rgba(232,220,196,0.35); } .stat-card.bad { border-color: rgba(201,79,79,0.35); }
-  .center-panel { text-align: center; max-width: 460px; }
-  .pause-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 16px; }
-  .pause-actions .btn-sprite { min-height: 44px; min-width: 110px; flex: 1 1 calc(50% - 8px); max-width: 210px; }
+  .center-panel { text-align: center; max-width: 460px; padding: 16px 20px; }
+  .pause-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px !important; margin-top: 12px !important; }
+  .pause-actions .btn-sprite { min-height: 38px !important; height: 38px !important; min-width: 96px; flex: 1 1 calc(50% - 8px); max-width: 200px; margin: 0 6px !important; }
   .buff-panel { max-width: 620px; }
   .merge-panel { max-width: 620px; }
   .result-panel { max-width: 540px; }
@@ -709,6 +709,12 @@
     .merge-panel .actions, .panel .actions { flex-wrap: wrap; gap: 10px; }
     .merge-panel .actions .btn, .panel .actions .btn { flex: 1 1 auto; min-height: 44px; }
     .pause-actions .btn-sprite { flex: 1 1 100%; max-width: none; min-height: 46px; }
+  }
+  /* 横屏/矮视口：暂停菜单强制紧凑双列 + 高度上限，杜绝第4按钮垂直溢出裁切（覆盖上方窄屏单列规则） */
+  @media (max-height: 520px) {
+    .center-panel { padding: 14px 18px !important; max-height: calc(100vh - 24px); overflow-y: auto; }
+    .pause-actions { gap: 8px !important; margin-top: 12px !important; }
+    .pause-actions .btn-sprite { flex: 1 1 calc(50% - 8px) !important; max-width: 220px !important; min-height: 38px !important; height: 38px !important; margin: 0 6px !important; }
   }
   /* #197 拾取筛选浮层 */
   .pf-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
