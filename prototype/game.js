@@ -5016,28 +5016,47 @@
     }
     if (riftRoom.done && riftExit && dist2(riftExit.x, riftExit.y, player.x, player.y) < (riftExit.r + player.pickR * 0.5) * (riftExit.r + player.pickR * 0.5)) exitRift();
   }
+  function riftRandomExitPos() {
+    // v12.5.2：裂隙离场后传送到主图随机安全点（避开墙体/裂隙危险区），原裂缝随后由离场逻辑移除
+    for (var _t = 0; _t < 40; _t++) {
+      var _rx = rand(240, WORLD_W - 240), _ry = rand(240, WORLD_H - 240), _ok = true;
+      for (var _o = 0; _o < obstacles.length; _o++) {
+        var _ob = obstacles[_o];
+        if (_ob.hw != null && _ob.hh != null) {
+          if (Math.abs(_rx - _ob.x) < _ob.hw + (player.r || 16) + 8 && Math.abs(_ry - _ob.y) < _ob.hh + (player.r || 16) + 8) { _ok = false; break; }
+        } else if (_ob.r != null) {
+          if (dist2(_rx, _ry, _ob.x, _ob.y) < (_ob.r + (player.r || 16) + 8) * (_ob.r + (player.r || 16) + 8)) { _ok = false; break; }
+        }
+      }
+      if (_ok) return { x: _rx, y: _ry };
+    }
+    return { x: WORLD_W / 2, y: WORLD_H / 2 };
+  }
   function exitRift() {
     var ret = riftReturn;
     restoreWorld(riftSnapshot);
     inRift = false; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null;
-    player.x = ret.x; player.y = ret.y; player.vx = 0; player.vy = 0;
+    var ep = riftRandomExitPos();
+    player.x = ep.x; player.y = ep.y; player.vx = 0; player.vy = 0; player.iframe = Math.max(player.iframe || 0, 1.0);
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
-    for (var i = 0; i < riftLoot.length; i++) pushToLoot(run.loot, riftLoot[i], ret.x, ret.y); // #C2 修复：并包走上限，满则弃最低，防超载
-    for (var k = 0; k < rifts.length; k++) { if (dist2(rifts[k].x, rifts[k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(k, 1); break; } }
+    for (var i = 0; i < riftLoot.length; i++) pushToLoot(run.loot, riftLoot[i], ep.x, ep.y); // 收益落在随机落点
+    for (var k = 0; k < rifts.length; k++) { if (dist2(rifts[k].x, rifts[k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(k, 1); break; } } // 原裂隙消失
     riftLoot = [];
-    setBanner('裂隙收益已并入战利品（阵亡保底 50%）', 2.6);
+    setBanner('裂隙收益已并入战利品 · 已随机传送至主图（原裂隙关闭）', 2.6);
     var _rlb1 = document.getElementById('riftLeaveBtn'); if (_rlb1) _rlb1.style.display = 'none';
   }
   function dieInRift() {
     var ret = riftReturn;
     restoreWorld(riftSnapshot);
-    inRift = false; player.x = ret.x; player.y = ret.y; player.vx = 0; player.vy = 0;
+    inRift = false;
+    var ep = riftRandomExitPos();
+    player.x = ep.x; player.y = ep.y; player.vx = 0; player.vy = 0;
     player.hp = Math.round(player.maxhp * 0.3); player.shield = 0; player.iframe = 2;
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
-    for (var i = 0; i < riftLoot.length; i++) pushToLoot(run.loot, riftLoot[i], ret.x, ret.y); // #C2 修复：并包走上限，防超载
-    for (var k = 0; k < rifts.length; k++) { if (dist2(rifts[k].x, rifts[k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(k, 1); break; } }
+    for (var i = 0; i < riftLoot.length; i++) pushToLoot(run.loot, riftLoot[i], ep.x, ep.y); // 收益落在随机落点
+    for (var k = 0; k < rifts.length; k++) { if (dist2(rifts[k].x, rifts[k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(k, 1); break; } } // 原裂隙消失
     riftLoot = []; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null;
-    setBanner('裂隙内阵亡！被弹回主图（HP 30%），裂隙已关闭', 3);
+    setBanner('裂隙内阵亡！被随机弹回主图（HP 30%），原裂隙已关闭', 3);
     var _rlb3 = document.getElementById('riftLeaveBtn'); if (_rlb3) _rlb3.style.display = 'none';
   }
   function forceExitRift() {
@@ -5046,13 +5065,14 @@
     var ret = riftReturn;
     if (riftSnapshot) restoreWorld(riftSnapshot);
     inRift = false; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null; riftReturn = null; riftSnapshot = null;
-    player.x = ret.x; player.y = ret.y; player.vx = 0; player.vy = 0; player.iframe = Math.max(player.iframe || 0, 0.6);
+    var ep = riftRandomExitPos();
+    player.x = ep.x; player.y = ep.y; player.vx = 0; player.vy = 0; player.iframe = Math.max(player.iframe || 0, 0.6);
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
-    for (var _i = 0; _i < riftLoot.length; _i++) pushToLoot(run.loot, riftLoot[_i], ret.x, ret.y);
-    for (var _k = 0; _k < rifts.length; _k++) { if (dist2(rifts[_k].x, rifts[_k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(_k, 1); break; } }
+    for (var _i = 0; _i < riftLoot.length; _i++) pushToLoot(run.loot, riftLoot[_i], ep.x, ep.y); // 收益落在随机落点
+    for (var _k = 0; _k < rifts.length; _k++) { if (dist2(rifts[_k].x, rifts[_k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(_k, 1); break; } } // 原裂隙消失
     riftLoot = [];
     var _rlb = document.getElementById('riftLeaveBtn'); if (_rlb) _rlb.style.display = 'none';
-    setBanner('已脱离裂隙（已拾取收益保留）', 2.6);
+    setBanner('已脱离裂隙（已拾取收益保留）· 随机传送至主图', 2.6);
   }
 
   function damagePlayer(dmg) {
