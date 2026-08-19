@@ -419,6 +419,27 @@ try {
   global.innerWidth = 390; global.innerHeight = 844;
   (global._wh['resize'] || []).forEach(fn => { try { fn.call(global, { preventDefault(){}, stopPropagation(){} }); } catch (e) { errors.push('resize-portrait-back: ' + (e && e.stack || e)); } });
 
+  // ============================================================
+  // 20) #396 暂停按钮等宽（Boss 反馈：4 按钮不被长文本撑开成不同宽度）
+  // ============================================================
+  console.log('---- #396 暂停按钮等宽[移动] ----');
+  api.cleanState();
+  api.togglePause(); // 打开暂停面板（竖屏 390px 命中 max-width:768px 单列规则）
+  const _pb396 = ['pauseResume', 'pauseAutoFire', 'pauseHelp', 'pauseQuit'].map(id => elements[id]);
+  if (_pb396.some(b => !b)) errors.push('#396[移动]: 暂停按钮 DOM 缺失');
+  else {
+    // 桩无 CSS 布局引擎 → 静态 CSS 断言：所有 .pause-actions .btn-sprite 规则必须 flex: 0 0（禁 grow/shrink 拉伸）
+    const _cssM = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf8');
+    const _rulesM = (_cssM.match(/\.pause-actions \.btn-sprite\s*\{[^}]*\}/g) || []);
+    let _stretchM = false;
+    _rulesM.forEach(r => { if (/\bflex:\s*1\s+1\b/.test(r)) _stretchM = true; });
+    if (_rulesM.length === 0) errors.push('#396[移动]: 未找到 .pause-actions .btn-sprite 规则');
+    else if (_stretchM) errors.push('#396[移动]: .pause-actions .btn-sprite 存在 flex: 1 1 拉伸规则（应 0 0 固定等宽）');
+    else console.log('#396[移动] 暂停按钮 CSS 等宽断言 OK：' + _rulesM.length + ' 处规则均 flex: 0 0（竖屏 100% 单列等宽）');
+  }
+  api.togglePause(); // 关闭暂停恢复干净
+  api.cleanState();
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();

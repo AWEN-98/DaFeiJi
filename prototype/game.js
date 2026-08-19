@@ -8818,39 +8818,42 @@
     document.getElementById('resultTitle').textContent = outcome === 'success' ? '撤离成功！' : (outcome === 'abandon' ? '已弃局撤离' : '机体被击毁…');
     document.getElementById('resultTitle').style.color = outcome === 'success' ? COL.extract : (outcome === 'abandon' ? COL.gold : COL.enemy);
     var html = '';
-    // ★ 结算面板重构：击杀数 / 物资清单 / 灵玉碎屑 / 历史最高层 / 引导
+    // #396 结算压缩：11+ 行 → 6 行核心（结局/收获/层级/战利品/羁绊/库存 + 引导置底），800px 视口一屏显示完
     html += '<div class="stat-card big"><span>结局</span><b>' + label + '（第 ' + run.tier + ' 层 · ' + tierName(run.tier) + '）</b></div>';
-    html += '<div class="stat-card"><span>本局击杀</span><b>' + run.kills + ' 体</b></div>';
-    if (outcome === 'success') html += '<div class="stat-card ok"><span>战利品</span><b>全部入库：+' + kept + ' 件法器</b></div>';
-    // B5 联动：弃局/阵亡比例按实际保留率动态显示（有 ext1 时弃局 0.3+0.15=45%；阵亡恒 15%）
-    else if (outcome === 'abandon') html += '<div class="stat-card bad"><span>弃局带回 ' + Math.round(lootKeepRate('abandon') * 100) + '%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
-    else html += '<div class="stat-card bad"><span>阵亡带回 ' + Math.round(lootKeepRate('death') * 100) + '%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
-    // 灵玉 + 灵矿碎屑
-    html += '<div class="stat-card"><span>获得灵玉</span><b>+' + killReward + '</b></div>';
-    if (oreReward > 0) html += '<div class="stat-card"><span>获得灵矿碎屑</span><b>+' + oreReward + '</b></div>';
-    if (run.killedBoss) html += '<div class="stat-card ok"><span>本局击破 BOSS</span><b>奖励丰厚</b></div>';
-    // ★ 解锁新层提示
-    if (unlockedNew) html += '<div class="stat-card ok"><span>新层解锁</span><b>第 ' + meta.maxTier + ' 层「' + tierName(meta.maxTier) + '」</b></div>';
-    // ★ 历史最高通关层
-    html += '<div class="stat-card"><span>历史最高通关</span><b>第 ' + meta.bestLayer + ' 层 · ' + tierName(meta.bestLayer) + '</b></div>';
-    // 本局战利品清单（成就感）
+    // 合并战斗/收益统计为一行：击杀 · 法器入包(保留率) · 灵玉 · 矿碎屑 · BOSS击破
+    var earned = run.kills + ' 击杀';
+    if (outcome === 'success') earned += ' · +' + kept + ' 件法器';
+    else earned += ' · +' + kept + ' 件（保留 ' + Math.round(lootKeepRate(outcome) * 100) + '%·损失 ' + lostLoot + '）';
+    earned += ' · +' + killReward + ' 灵玉';
+    if (oreReward > 0) earned += ' · +' + oreReward + ' 矿碎屑';
+    if (run.killedBoss) earned += ' · BOSS击破';
+    html += '<div class="stat-card ' + (outcome === 'success' ? 'ok' : 'bad') + '"><span>本局收获</span><b>' + earned + '</b></div>';
+    // 合并层级进度：当前层 + 新层解锁 + 历史最高（一行）
+    var tierLine = '当前 ' + run.tier + ' 层';
+    if (unlockedNew) tierLine += ' 🆕解锁 ' + meta.maxTier + ' 层';
+    tierLine += ' · 历史最高 ' + meta.bestLayer + ' 层';
+    html += '<div class="stat-card' + (unlockedNew ? ' ok' : '') + '"><span>层级进度</span><b>' + tierLine + '</b></div>';
+    // 合并战利品清单为一行：件数 + 稀有度徽章 + 遗物名
     var dist = { white: 0, green: 0, blue: 0, purple: 0, orange: 0 }, nm = [], relicNames = [];
     run.loot.forEach(function (it) { dist[it.rarity]++; if (it.relicMods) relicNames.push(it.name); if (nm.length < 5) nm.push(it.name); });
-    var badges = [];
-    ['orange', 'purple', 'blue', 'green', 'white'].forEach(function (r) { if (dist[r] > 0) badges.push('<span style="color:' + RARCOL[r] + '">' + RARNAME[r] + '×' + dist[r] + '</span>'); });
-    html += '<div class="stat-card"><span>本局战利品</span><b>' + run.loot.length + ' 件</b></div>';
-    html += '<div class="mini" style="text-align:right">' + badges.join(' · ') + '</div>';
-    if (relicNames.length) html += '<div class="mini" style="text-align:right;color:#FFE9A8">★ 遗物：' + relicNames.join('、') + '</div>';
-    else if (nm.length) html += '<div class="mini" style="text-align:right">' + nm.join('、') + '…</div>';
+    var lootLine = run.loot.length + ' 件';
+    if (run.loot.length) {
+      var badges = [];
+      ['orange', 'purple', 'blue', 'green', 'white'].forEach(function (r) { if (dist[r] > 0) badges.push('<span style="color:' + RARCOL[r] + '">' + RARNAME[r] + '×' + dist[r] + '</span>'); });
+      if (badges.length) lootLine += '（' + badges.join(' ') + '）';
+      if (relicNames.length) lootLine += ' ★' + relicNames.join('、');
+      else if (nm.length) lootLine += '（' + nm.join('、') + '…）';
+    }
+    html += '<div class="stat-card"><span>本局战利品</span><b>' + lootLine + '</b></div>';
     var _bs = bondSummary();
     if (_bs.length) html += '<div class="stat-card"><span>本局羁绊</span><b>' + _bs.join(' · ') + '</b></div>';
     html += '<div class="stat-card"><span>当前库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉 · ' + (meta.ore || 0) + ' 灵矿碎屑</b></div>';
-    // ★ 引导玩家形成闭环
+    // ★ 引导玩家形成闭环（置底）
     var guide = '回基地「军械库」装载法器、「熔炼台」合成升稀、「研究院」消耗灵矿碎屑+灵玉永久升级科技。';
     if (unlockedNew) guide = '新层已解锁！回基地整备后挑战第 ' + meta.maxTier + ' 层「' + tierName(meta.maxTier) + '」获取更高品质掉落。';
     else if (meta.ore >= 15) guide = '灵矿碎屑充足！前往「研究院」升级天工机体/聚灵核心等永久科技，提升下局战力。';
     else if (meta.arsenal.length >= 3) guide = '法器库存充裕！前往「熔炼台」3合1合成高阶装备，或「军械库」装配更强法器。';
-    html += '<div class="muted" style="margin-top:12px">' + guide + ' 本局拾取符文 ' + player.runes.length + ' 枚。</div>';
+    html += '<div class="muted" style="margin-top:8px">' + guide + ' 本局拾取符文 ' + player.runes.length + ' 枚。</div>';
     document.getElementById('resultBody').innerHTML = html;
   }
 
@@ -9035,6 +9038,9 @@
       overlaysOpen: overlaysOpen,
       toggleMerge: toggleMerge,
       togglePause: togglePause,
+      // #396 结算面板压缩/暂停按钮等宽校验钩子：暴露 showResult/showScene 供桩与浏览器冒烟断言（仅 STUB 环境）
+      showResult: showResult,
+      showScene: showScene,
       hasMergeable: hasMergeable,
       isMobile: function () { return isMobile; },
       autoFire: function () { return autoFire; },

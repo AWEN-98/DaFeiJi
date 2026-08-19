@@ -601,10 +601,17 @@
   .stat-card.ok { border-color: rgba(232,220,196,0.35); } .stat-card.bad { border-color: rgba(201,79,79,0.35); }
   .center-panel { text-align: center; max-width: 460px; padding: 16px 20px; }
   .pause-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px !important; margin-top: 12px !important; }
-  .pause-actions .btn-sprite { min-height: 38px !important; height: 38px !important; min-width: 96px; flex: 1 1 calc(50% - 8px); max-width: 200px; margin: 0 6px !important; }
+  /* #396：禁止 flex-grow/shrink → 4 按钮固定两列等宽，不被「放弃本局（带回 30%）」等长文本撑开成不同宽度。
+     basis=50%-4px + margin:0 + gap:8 → 两列外宽=2*200+8=408 ≤ center-panel 内容宽 420，刚好 2×2 等宽排列 */
+  .pause-actions .btn-sprite { min-height: 38px !important; height: 38px !important; min-width: 96px; flex: 0 0 calc(50% - 4px); max-width: 200px; margin: 0 !important; box-sizing: border-box; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
   .buff-panel { max-width: 620px; }
   .merge-panel { max-width: 620px; }
-  .result-panel { max-width: 540px; }
+  .result-panel { max-width: 540px; max-height: calc(100vh - 32px); padding: 14px 22px; display: flex; flex-direction: column; }
+  /* #396 结算压缩：内部 stat-card 紧凑间距，800px 视口一屏显示完；#resultBody 仅作超长兜底滚动 */
+  #resultBody { flex: 1; min-height: 0; overflow-y: auto; }
+  .result-panel .stat-card { padding: 4px 10px; font-size: 12px; margin: 3px 0; }
+  .result-panel .stat-card.big { padding: 6px 12px; font-size: 13px; }
+  .result-panel .actions-right { margin-top: auto; padding-top: 6px; }
   .have-line { margin: 8px 0; color: var(--c-gold); font-size: var(--fs-xs); }
   .buff-meta { margin-top: 8px; font-size: var(--fs-xs); color: var(--c-muted); }
   .buff-have { margin-top: 8px; font-size: var(--fs-xs); color: var(--c-gold); }
@@ -726,13 +733,13 @@
     .btn-sprite { min-height: 44px; }
     .merge-panel .actions, .panel .actions { flex-wrap: wrap; gap: 10px; }
     .merge-panel .actions .btn, .panel .actions .btn { flex: 1 1 auto; min-height: 44px; }
-    .pause-actions .btn-sprite { flex: 1 1 100%; max-width: none; min-height: 46px; }
+    .pause-actions .btn-sprite { flex: 0 0 100%; max-width: none; min-height: 46px; margin: 0 !important; }
   }
   /* 横屏/矮视口：暂停菜单强制紧凑双列 + 高度上限，杜绝第4按钮垂直溢出裁切（覆盖上方窄屏单列规则） */
   @media (max-height: 520px) {
     .center-panel { padding: 14px 18px !important; max-height: calc(100vh - 24px); overflow-y: auto; }
     .pause-actions { gap: 8px !important; margin-top: 12px !important; }
-    .pause-actions .btn-sprite { flex: 1 1 calc(50% - 8px) !important; max-width: 220px !important; min-height: 38px !important; height: 38px !important; margin: 0 6px !important; }
+    .pause-actions .btn-sprite { flex: 0 0 calc(50% - 4px) !important; max-width: 220px !important; min-height: 38px !important; height: 38px !important; margin: 0 !important; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
   }
   /* #197 拾取筛选浮层 */
   .pf-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }

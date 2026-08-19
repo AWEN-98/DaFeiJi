@@ -748,6 +748,55 @@ try {
   else console.log('[20c] 周期刷怪 OK：8s 内刷出 ' + _spawned + ' 只敌人（spawnTimer ' + _st0.t.toFixed(2) + '→' + _st1.t.toFixed(2) + '）');
   api.cleanState();
 
+  // ============================================================
+  // 21) #396 Boss 反馈：结算面板压缩（一屏显示）+ 暂停按钮等宽（不被内容撑开）
+  // ============================================================
+  console.log('---- #396 结算面板压缩 + 暂停按钮等宽 ----');
+  // 21a 确定性结算输入：击杀20/BOSS击破/6件战利品(含遗物)/新层解锁/羁绊火3阶 → showResult 断言核心行
+  api.startMission(); for (let i = 0; i < 5; i++) tick(16.7); api.cleanState();
+  const _loot21 = [
+    { rarity: 'orange', name: '焰龙吐息', relicMods: null },
+    { rarity: 'purple', name: '紫绶仙衣', relicMods: null },
+    { rarity: 'purple', name: '紫绶仙衣', relicMods: null },
+    { rarity: 'blue', name: '碧波镜', relicMods: null },
+    { rarity: 'green', name: '青藤符', relicMods: null },
+    { rarity: 'orange', name: '星髓之印', relicMods: ['x'] }
+  ];
+  const _run21 = api.run(); _run21.kills = 20; _run21.killedBoss = true; _run21.loot = _loot21;
+  const _meta21 = api.meta(); _meta21.bestLayer = 5; _meta21.maxTier = 6; _meta21.arsenal = [1, 2, 3]; _meta21.currency = 88; _meta21.ore = 20;
+  api.addElem('火', 3); // 保证「本局羁绊」行存在
+  if (typeof api.showResult !== 'function') errors.push('#396: stub api 未暴露 showResult 钩子');
+  else {
+    api.showResult('success', 4, 2, 626, true, 205);
+    const _rb21 = document.getElementById('resultBody');
+    const _h21 = _rb21.innerHTML || '';
+    const _need21 = ['结局', '本局收获', '层级', '本局战利品', '本局羁绊', '当前库存'];
+    _need21.forEach(k => { if (_h21.indexOf(k) < 0) errors.push('#396: 结算面板缺少核心行「' + k + '」'); });
+    const _cards21 = (_h21.match(/class="stat-card/g) || []).length;
+    if (_cards21 < 5 || _cards21 > 7) errors.push('#396: 结算面板 stat-card 应 5-7 行，实际 ' + _cards21 + ' 行');
+    if (_h21.indexOf('回基地') < 0) errors.push('#396: 结算面板应保留引导文案（回基地…）');
+    // 800px 视口高度预算（模拟布局：stat-card≈40px + 其余块≈22px + 引导/按钮≈64px，应 ≤700px）
+    const _divs21 = (_h21.match(/<div/g) || []).length;
+    const _est21 = _cards21 * 40 + (_divs21 - _cards21) * 22 + 64;
+    if (_est21 > 700) errors.push('#396: 结算面板预估高度 ' + _est21 + 'px 超出 800px 视口预算（≤700）');
+    else console.log('[#396] 结算压缩 OK：stat-card=' + _cards21 + ' 行 / 预估高=' + _est21 + 'px / 核心行+引导齐全');
+  }
+  // 21b 暂停按钮等宽：静态 CSS 断言（桩无布局引擎）——所有 .pause-actions .btn-sprite 规则必须 flex: 0 0 固定basis
+  const _css396 = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf8');
+  const _pauseRules = (_css396.match(/\.pause-actions \.btn-sprite\s*\{[^}]*\}/g) || []);
+  let _stretch396 = false;
+  _pauseRules.forEach(r => { if (/\bflex:\s*1\s+1\b/.test(r)) _stretch396 = true; });
+  if (_pauseRules.length === 0) errors.push('#396: 未找到 .pause-actions .btn-sprite 规则');
+  else if (_stretch396) errors.push('#396: 暂停按钮存在 flex: 1 1（grow/shrink 会拉伸成不等宽），应全改 0 0 固定basis');
+  else {
+    const _hasHalf396 = _pauseRules.some(r => /\bflex:\s*0\s+0\s+calc\(50%\s*-\s*4px\)/.test(r));
+    const _hasFull396 = _pauseRules.some(r => /\bflex:\s*0\s+0\s+100%/.test(r));
+    if (!_hasHalf396) errors.push('#396: 桌面/矮视口暂停按钮应 flex: 0 0 calc(50% - 8px) 等宽两列');
+    if (!_hasFull396) errors.push('#396: 移动端暂停按钮单列应 flex: 0 0 100%');
+    else console.log('[#396] 暂停按钮等宽 CSS 断言 OK：' + _pauseRules.length + ' 处规则均 0 0 固定basis（含 50% 两列 + 100% 单列）');
+  }
+  api.cleanState();
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {
