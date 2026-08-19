@@ -1155,8 +1155,8 @@
     ['acft_qingfalcon', 'acft_xuanwu', 'acft_chilan'].forEach(function (p) { add('assets/v3/ui/portrait/' + p + '.png?v=5'); });
     // (d) 武器图标 5 品质(行) × 3 列（weaponIconHtml 的 r/c 命名）
     for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) add('assets/v4/weapons/weapon_r' + r + '_c' + c + '.png');
-    // (e) 装备图标 4 槽 × 5 品质（gearIconHtml 的 slot_rarity 命名；weapon 槽实际不渲染但按任务清单覆盖）
-    ['weapon', 'armor', 'core', 'ammo'].forEach(function (s) {
+    // (e) 装备图标 3 槽 × 5 品质（gearIconHtml 的 slot_rarity 命名；weapon 槽走 weaponIconHtml 用 weapon_r*c*.png，gear_weapon_* 不存在故排除）
+    ['armor', 'core', 'ammo'].forEach(function (s) {
       ['white', 'green', 'blue', 'purple', 'orange'].forEach(function (q) { add('assets/v4/gear/gear_' + s + '_' + q + '.png'); });
     });
     // (f) 研究院/图鉴/商店图标全集 + 兜底 icon_32（RES_ICONS/TECH_ICONS/CODEX_CATS/ICON）
@@ -2076,8 +2076,8 @@
     floatText(secretVault.x, secretVault.y - 30, '★★ 传说保底!', '#FFE9A8', 'crit');
   }
 
-  function tierMul() { return 1 + (run.tier - 1) * 0.5; } // 敌人HP倍率：每层 +50%
-  function tierDmgMul() { return 1 + (run.tier - 1) * 0.35; } // 敌人攻击倍率：每层 +35%
+  function tierMul(tier) { return 1 + (tier - 1) * 0.5; } // 敌人HP倍率：每层 +50%（v14.3 改签名接参数，基地态 run=null 不再崩）
+  function tierDmgMul(tier) { return 1 + (tier - 1) * 0.35; } // 敌人攻击倍率：每层 +35%（v14.3 改签名）
 
   // ====== 统一伤害公式 ======
   // 乘区A 基础攻击力 = 机体基础 + 永久升级 + 装备词条 (加法, 上限 240)
@@ -2533,7 +2533,7 @@
     return 'white';
   }
   // #B3 修复：统一难度口径——地图层级 + 时间升阶，敌人掉落/宝箱掉落共用，消除 etier/run.tier 两套语义
-  function diffTier() { return Math.min(99, run.tier + Math.floor(gameTime / 90)); } // 难度口径：随层级+时间递增，不封顶（原 min(4,...) 已解除）
+  function diffTier(tier) { return Math.min(99, tier + Math.floor(gameTime / 90)); } // 难度口径：随层级+时间递增，不封顶；v14.3 改签名接参数（基地态 run=null 不再崩）
   // ---------- 宝箱分级与开箱反馈 ----------
   var CHESTS = {
     wood:   { key: 'wood',   name: '木箱', color: '#8B95A0', edge: '#5b6470', glow: 6,  min: 2, max: 3, floor: 1, flash: '#cdd8e2', guard: 1 },
@@ -2630,7 +2630,7 @@
     etier = etier || clamp(1 + Math.floor(gameTime / 28), 1, 4);
     var arche = opts.arche || pickArchetype(etier);
     var elite = opts.elite || arche === 'bastion' || (!x && Math.random() < 0.08);
-    var baseHp = (16 + etier * 9) * tierMul();
+    var baseHp = (16 + etier * 9) * tierMul(etier);
     if (arche === 'turret') baseHp *= 2.2; else if (arche === 'heal') baseHp *= 1.25; else if (arche === 'split') baseHp *= 0.9; else if (arche === 'gunship') baseHp *= 3.4; else if (arche === 'looter') baseHp *= 1.15;
     else if (arche === 'sniper') baseHp *= 0.8; else if (arche === 'shielder') baseHp *= 1.8; else if (arche === 'swarm') baseHp *= 0.35;
     if (elite && arche !== 'bastion') baseHp *= 3;
@@ -2645,8 +2645,8 @@
       fireCd: rand(1.6, 3.0), tier: etier, arche: arche, ram: arche === 'ram' || arche === 'split' || arche === 'swarm',
       elite: elite, healCd: rand(2.5, 4.5), burst: 0,
       zig: arche === 'looter' || arche === 'swarm' ? rand(0, 6.28) : 0, fleeing: false, lootStolen: null,
-      rarity: elite ? (Math.random() < 0.35 ? 'purple' : 'blue') : rollRarity(diffTier()),
-      flash: 0, wake: entryWake, entryMax: entryWake, dmgMul: tierDmgMul() * (elite ? 1.2 : 1),
+      rarity: elite ? (Math.random() < 0.35 ? 'purple' : 'blue') : rollRarity(diffTier(run.tier)),
+      flash: 0, wake: entryWake, entryMax: entryWake, dmgMul: tierDmgMul(run.tier) * (elite ? 1.2 : 1),
       burn: 0, burnT: 0, small: arche === 'swarm', col: ecol, edge: eedge, bigBullet: arche === 'gunship',
       hitT: 0, hitMag: 0,
       // —— 警戒 / 感知 / 追击（规则圣经 v1）——
@@ -2681,8 +2681,8 @@
         var se = {
           x: sx, y: sy, vx: 0, vy: 0, hp: Math.round(baseHp), maxhp: Math.round(baseHp), r: 10,
           fireCd: 99, tier: etier, arche: 'swarm', ram: true, elite: false, healCd: 99, burst: 0,
-          zig: rand(0, 6.28), fleeing: false, lootStolen: null, rarity: rollRarity(diffTier()),
-          flash: 0, wake: ENTRY_SWARM, entryMax: ENTRY_SWARM, dmgMul: tierDmgMul(), burn: 0, burnT: 0, small: true,
+          zig: rand(0, 6.28), fleeing: false, lootStolen: null, rarity: rollRarity(diffTier(run.tier)),
+          flash: 0, wake: ENTRY_SWARM, entryMax: ENTRY_SWARM, dmgMul: tierDmgMul(run.tier), burn: 0, burnT: 0, small: true,
           col: '#A8C84E', edge: '#4a6020', bigBullet: false, hitT: 0, hitMag: 0,
           alert: 2, alertClock: 0, decayT: 0, quietT: 0,
           homeX: sx, homeY: sy, patrolAng: rand(0, 6.28),
@@ -3815,8 +3815,8 @@
           var _bra = b.dimRot, _bga = b.dimRot + Math.PI;
           var _tpx = player.x - b.x, _tpy = player.y - b.y;
           var _chk = function (ang) { var pr = _tpx * Math.cos(ang) + _tpy * Math.sin(ang); if (pr < 0 || pr > 1200) return false; var pe = Math.abs(-_tpx * Math.sin(ang) + _tpy * Math.cos(ang)); return pe < (PHB + 18); };
-          if (player.phase === PHASE.GOLD && _chk(_bra)) { damagePlayer(EDMG_HEAVY * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#C94F4F', 'crit'); }
-          if (player.phase === PHASE.EMBER && _chk(_bga)) { damagePlayer(EDMG_HEAVY * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#E0B84A', 'crit'); }
+          if (player.phase === PHASE.GOLD && _chk(_bra)) { damagePlayer(EDMG_HEAVY * tierDmgMul(run.tier)); floatText(player.x, player.y - 22, '维度撕裂!', '#C94F4F', 'crit'); }
+          if (player.phase === PHASE.EMBER && _chk(_bga)) { damagePlayer(EDMG_HEAVY * tierDmgMul(run.tier)); floatText(player.x, player.y - 22, '维度撕裂!', '#E0B84A', 'crit'); }
         }
         if (b.dimTearT <= 0) { b.dimTear = null; b.dimTearDone = true; setBanner('维度撕裂平息——追击破局！', 2.2); }
       }
@@ -3835,13 +3835,13 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.55 : (b.phase === 2 ? 0.75 : 1.2);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase >= 2 ? 3 : 1;
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.16; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 200, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.16; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), 200, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
     if (b.burstCd <= 0) {
       var n = b.phase === 3 ? 22 : (b.phase === 2 ? 18 : 12), spd = b.phase === 3 ? 175 : 145; b.ang += 0.35;
-      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
+      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), spd, { boss: true }); }
       b.burstCd = b.phase === 3 ? 2.2 : (b.phase === 2 ? 2.8 : 3.8);
     }
   }
@@ -3861,7 +3861,7 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.5 : (b.phase === 2 ? 0.7 : 1.0);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase >= 2 ? 5 : 3;
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.12; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 240, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.12; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), 240, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.summonCd -= dt;
@@ -3885,13 +3885,13 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.9 : (b.phase === 2 ? 1.2 : 1.7);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase === 3 ? 7 : (b.phase === 2 ? 5 : 3);
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.18; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 160, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.18; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), 160, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
     if (b.burstCd <= 0) {
       var n = b.phase === 3 ? 28 : (b.phase === 2 ? 22 : 16), spd = b.phase === 3 ? 150 : 120; b.ang += 0.25;
-      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
+      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), spd, { boss: true }); }
       b.burstCd = b.phase === 3 ? 2.6 : (b.phase === 2 ? 3.4 : 4.4);
     }
     // 吞噬借力（设计 §1.2）：周期性吞噬——常规为威胁拉拽；玩家处于引力裂隙内则反转成工具（吸宝+开秘库）
@@ -3915,7 +3915,7 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.45 : (b.phase === 2 ? 0.65 : 0.9);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase === 3 ? 6 : (b.phase === 2 ? 4 : 2);
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.22; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 210, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.22; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), 210, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
@@ -3924,12 +3924,12 @@
       if (phase === PHASE.EMBER) {
         // 余烬相：螺旋弹幕（难、但掉率 ×2）
         b.ang += 0.42;
-        for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd + i * 2, { boss: true }); }
+        for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), spd + i * 2, { boss: true }); }
         b.burstCd = b.phase === 3 ? 2.0 : (b.phase === 2 ? 2.6 : 3.4);
       } else {
         // 鎏金相：环形弹幕（易读、可走位，鼓励用相位柱切回鎏金创造读弹窗口）
         b.ang += 0.12;
-        for (var i2 = 0; i2 < n; i2++) { var a2 = b.ang + (i2 / n) * 6.28; fireBullet(b.x, b.y, a2, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
+        for (var i2 = 0; i2 < n; i2++) { var a2 = b.ang + (i2 / n) * 6.28; fireBullet(b.x, b.y, a2, 'enemy', EDMG_NORMAL * tierDmgMul(run.tier), spd, { boss: true }); }
         b.burstCd = b.phase === 3 ? 2.4 : (b.phase === 2 ? 3.0 : 3.8);
       }
     }
@@ -4113,7 +4113,7 @@
       spawnVfx('vfx_explosion_sheet', e.x, e.y, 100, 0.8, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 });
       addShake(5, 220, 100); addFreeze(60);
       if (dist2(e.x, e.y, player.x, player.y) < volR * volR && player.iframe <= 0) {
-        var volDmg = Math.round((12 + e.tier * 4) * tierDmgMul());
+        var volDmg = Math.round((12 + e.tier * 4) * tierDmgMul(e.tier));
         damagePlayer(volDmg);
         floatText(player.x, player.y - 22, '爆裂 -' + volDmg, '#FF6A2A', 'crit');
       }
@@ -4155,7 +4155,7 @@
     if (e.elite) bountyProgress('eliteKill', 1);
     if (player.phase === PHASE.EMBER) bountyProgress('emberKill', 1);
     // 灵蕴（经验宝石）：击杀掉落，飞过即吸取，累积升级触发三选一（掉落量随难度口径平滑成长）
-    dropXp(e.x, e.y, e.elite ? 6 : (1 + Math.floor(diffTier() * 0.8)));
+    dropXp(e.x, e.y, e.elite ? 6 : (1 + Math.floor(diffTier(run.tier) * 0.8)));
     run.enemyKills[e.arche] = (run.enemyKills[e.arche] || 0) + 1; // 敌怪图鉴计数
     if (runeCount < RUNE_CAP && buffTimer >= killForBuff) { buffTimer = 0; buffPending = true; } // 旧击杀计数触发（保留兼容；主成长改由 addXp 驱动）
     var idx = enemies.indexOf(e); if (idx >= 0) enemies.splice(idx, 1);
@@ -5193,7 +5193,7 @@
         if (ec.ram) { burst(ec.x, ec.y, COL.enemy, 5); onEnemyDeath(ec); }
       }
     }
-    if (boss && boss.wake <= 0 && dist2(boss.x, boss.y, player.x, player.y) < (boss.r + PHB + 1) * (boss.r + PHB + 1)) { if (player.iframe <= 0) damagePlayer(EDMG_HEAVY * tierDmgMul()); }
+    if (boss && boss.wake <= 0 && dist2(boss.x, boss.y, player.x, player.y) < (boss.r + PHB + 1) * (boss.r + PHB + 1)) { if (player.iframe <= 0) damagePlayer(EDMG_HEAVY * tierDmgMul(run.tier)); }
 
     // 战利品
     for (var l = loot.length - 1; l >= 0; l--) {
