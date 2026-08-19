@@ -1910,10 +1910,10 @@
     phase = p; phaseTransT = PHASE_TRANS;
     screenFlash = { color: p === PHASE.EMBER ? '#C8642A' : '#C9A24B', a: 0.32 };
     if (p === PHASE.EMBER) {
-      phaseTimer = PHASE_EMBER_DUR;
+      phaseTimer = PHASE_EMBER_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; // 深渊异变·潮汐：周期缩短40%
       setBanner('相位翻转 · 余烬相', 1.4);
     } else {
-      phaseTimer = PHASE_GOLD_DUR;
+      phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; // 深渊异变·潮汐：周期缩短40%
       emberOpenWindow = 0; closeExtractPoints();
       setBanner('相位翻转 · 鎏金相（安全 · 蓄能）', 1.4);
     }
@@ -2076,8 +2076,21 @@
     floatText(secretVault.x, secretVault.y - 30, '★★ 传说保底!', '#FFE9A8', 'crit');
   }
 
-  function tierMul(tier) { return 1 + (tier - 1) * 0.5; } // 敌人HP倍率：每层 +50%（v14.3 改签名接参数，基地态 run=null 不再崩）
-  function tierDmgMul(tier) { return 1 + (tier - 1) * 0.35; } // 敌人攻击倍率：每层 +35%（v14.3 改签名）
+  function tierMul(tier) { return 1 + (tier - 1) * 0.45; } // 敌人HP倍率：每层 +45%（v14.3 改签名接参数，基地态 run=null 不再崩）
+  function tierDmgMul(tier) { return 1 + (tier - 1) * 0.30; } // 敌人攻击倍率：每层 +30%（v14.3 改签名）
+  // ====== 深渊异变·词缀系统（确定性分配：按池顺序每 2 层追加 1 条，Tier 3 起生效） ======
+  var AFFIX_POOL = [
+    { key: 'frenzy',        name: '极速',      icon: '⚡', col: '#C8642A', desc: '敌怪移动速度 +20%' },
+    { key: 'volatile_all',  name: '自爆',      icon: '💥', col: '#C94F4F', desc: '杂兵阵亡 30% 概率自爆' },
+    { key: 'tide_fast',     name: '潮汐',      icon: '🌊', col: '#4E8FC7', desc: '相位交替周期缩短 40%' },
+    { key: 'gravity_surge', name: '引力潮涌',  icon: '🕳', col: '#B06FD0', desc: '引力裂缝吸力与伤害 +50%' }
+  ];
+  function tierAffixCount(tier) { return tier >= 3 ? Math.min(4, 1 + Math.floor((tier - 3) / 2)) : 0; } // 3-4层1条 5-6层2条 7-8层3条 9+层4条
+  function tierAffixes(tier) { var n = tierAffixCount(tier), arr = []; for (var i = 0; i < n; i++) arr.push(AFFIX_POOL[i].key); return arr; } // 确定性：按池顺序每2层追加1条
+  function hasAffix(key) { return !!(run && run.affixes && run.affixes.indexOf(key) >= 0); } // 词缀守卫：仅局内且含该词缀时生效（基地态 run=null 恒 false）
+  function tierDropBonus(tier) { return Math.min(0.35, (tier - 1) * 0.04); } // 传说/史诗掉落权重：每层 +4%，上限 35%
+  function tierOreBonus(tier) { return 1 + (tier - 1) * 0.5; } // 灵矿产出加成：每层 +50%
+  function tierTitle(t) { return t === 1 ? 'Tier 1【入门·潜入】' : t === 2 ? 'Tier 2【进阶·蚀空】' : 'Tier ' + t + '【深渊 ' + (t - 2) + ' 层】'; } // 基地出击面板标题（Tier 3+ 深渊层从 1 起，独立于 tierName）
 
   // ====== 统一伤害公式 ======
   // 乘区A 基础攻击力 = 机体基础 + 永久升级 + 装备词条 (加法, 上限 240)
@@ -2419,10 +2432,10 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
-    // 相位潮汐初始化（悬圃·蚀空区块）
-    phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
+    // 相位潮汐初始化（悬圃·蚀空区块）；深渊异变·潮汐：含 tide_fast 时周期 ×0.6
+    phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
     spawnTimer = 2.5; buffTimer = 0; buffPending = false; buffHold = 0; buffSafe = 0; gameTime = 0; hintTimer = 6; bannerQ.length = 0; runeCount = 0; killForBuff = runeNextReq(0); screenFlash = { color: '#fff', a: 0 };
     enemiesSlowT = 0;
     genMapLayout(); // 空域：清空障碍并设出生点
@@ -2443,6 +2456,14 @@
     placeEncounters(); // 遭遇制：按地点固定布置敌人（宝箱护卫 + 少量游荡机）
     placeRifts(); // 角落/边缘放置 1-2 个裂隙入口
     generateBounty(); // 局内动态悬赏：随机生成即时目标
+    // ★ 深渊异变·词缀横幅：进入带词缀层级时开局提示（仅 Tier 3+ 有词缀）
+    if (run.affixes.length > 0) {
+      var _affTxt = run.affixes.map(function (k) {
+        for (var _ai = 0; _ai < AFFIX_POOL.length; _ai++) if (AFFIX_POOL[_ai].key === k) return AFFIX_POOL[_ai].icon + AFFIX_POOL[_ai].name;
+        return k;
+      }).join(' ');
+      setBanner('深渊异变：' + _affTxt, 3.2);
+    }
   }
 
   function placeNodes(n) {
@@ -2525,7 +2546,7 @@
   // 2026-08-18 调低 + 修 bug：① 橙 5%→1.5% 基线、紫 10%→4.5%；② 橙/紫增幅放缓（保持 橙<紫 梯度不倒挂，tier4 极限态 rare+ 约 16%）；③ 修正原实现 bonus 方向写反的 bug（原来表现好反而掉更差）
   function rollRarity(tier, bonus) {
     var r = Math.random();
-    var s = (tier - 1) * 0.03 + (bonus || 0) * 0.5;
+    var s = tierDropBonus(tier) + (bonus || 0) * 0.5; // v15：层级品质权重走 tierDropBonus（每层+4%，封顶35%），替换旧 (tier-1)*0.03 因子
     if (r > 0.985 - s * 0.4) return 'orange';
     if (r > 0.94 - s * 0.7) return 'purple';
     if (r > 0.80 - s) return 'blue';
@@ -2870,7 +2891,8 @@
   }
   // ============ 掉落分层重构（2026-08-19）：单局整装预算硬控 + 灵矿碎屑材料 ============
   // 灵矿碎屑（材料）：自动磁吸，不占背包格，累积进 meta.ore（供后续强化/合成系统消耗）
-  function dropOre(x, y, amount) { dropLoot(x, y, 'white', 'ore', null, { amount: amount || 1 }); }
+  // v15：灵矿产出按层级加成 tierOreBonus（每层+50%）；amount 为调用方传的基础值，仅乘一次；基地态 run=null 按 tier1 算
+  function dropOre(x, y, amount) { dropLoot(x, y, 'white', 'ore', null, { amount: Math.max(1, Math.round((amount || 1) * tierOreBonus(run ? run.tier : 1))) }); }
   // 单局整装总产出预算：所有整装掉落（精英/Boss/宝箱）须过此闸；归零后整装降级为灵玉，严格把单局整装锁在 12~20 件
   function budgetArtifact(rar) {
     if (!run || !run.artBudget || run.artBudget <= 0) return false;
@@ -4088,6 +4110,18 @@
         damagePlayer(kd); floatText(player.x, player.y - 22, '爆炸 -' + kd, '#E0623A', 'crit');
       }
     }
+    // 深渊异变·自爆：杂兵（非自爆蜂/精英/Boss）阵亡 30% 概率小型范围爆炸（复用 kamikaze 爆炸结构，半径更小）
+    if (!e.kamikaze && !e.elite && !e.boss && hasAffix('volatile_all') && Math.random() < 0.30) {
+      var vAllR = 48;
+      burst(e.x, e.y, '#E0623A', 12, { ring: true, ringR: vAllR });
+      burst(e.x, e.y, '#FFE9A8', 6, { smin: 50, smax: 150 });
+      spawnVfx('vfx_explosion_sheet', e.x, e.y, 56, 0.5, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 });
+      addShake(2.5, 140, 50);
+      if (player.iframe <= 0 && dist2(e.x, e.y, player.x, player.y) < (vAllR + PHB) * (vAllR + PHB)) {
+        var vAllDmg = Math.round(EDMG_NORMAL * e.dmgMul);
+        damagePlayer(vAllDmg); floatText(player.x, player.y - 22, '自爆 -' + vAllDmg, '#E0623A', 'crit');
+      }
+    }
     // ★ 山海猎兽人：击杀被标记敌人时，标记跳转到最近敌人
     if (e.marked && player.setMarkCrit) {
       var nearestUnmarked = null, nd = Infinity;
@@ -4449,7 +4483,7 @@
         player.vy += (-_gdy / _gd) * GRAV_PUSH * dt;
         _grr.pulse = Math.min(1, _grr.pulse + dt * 2);
       } else if (_gd < _grr.pull) {
-        var _gf = Math.min(GRAV_K / (_gd + 24), GRAV_FMAX); // 引力上限，禁止无限大
+        var _gf = Math.min((hasAffix('gravity_surge') ? GRAV_K * 1.5 : GRAV_K) / (_gd + 24), GRAV_FMAX); // 引力上限，禁止无限大；深渊异变·引力潮涌：吸力+50%
         player.vx += (_gdx / _gd) * _gf * dt;
         player.vy += (_gdy / _gd) * _gf * dt;
         _grr.pulse = Math.min(1, _grr.pulse + dt * 2);
@@ -4876,7 +4910,7 @@
       // 朝玩家方向 & 移速底盘（供出场缓冲与主 AI 共用）
       var dx = player.x - e.x, dy = player.y - e.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
       var baseSpeed = (e.arche === 'turret' ? 22 : (e.arche === 'gunship' ? 45 : (e.arche === 'heal' ? 40 : (e.arche === 'sniper' ? 55 : (e.arche === 'shielder' ? 38 : (e.arche === 'swarm' ? 95 + e.tier * 10 : (e.ram ? 70 + e.tier * 8 : 52 + e.tier * 6)))))));
-      var es = (e.elite ? 1.3 : 1) * (e.boost || 1) * phaseSpeedMul;
+      var es = (e.elite ? 1.3 : 1) * (e.boost || 1) * phaseSpeedMul * (hasAffix('frenzy') ? 1.2 : 1); // 深渊异变·极速：移速+20%（作用于出场/巡逻/追击全路径）
       var ef = (enemiesSlowT > 0 ? enemiesSlowFactor : 1);
       if (player.slowAuraR > 0 && d < player.slowAuraR) ef *= player.slowFactor;
       if (e.wake > 0) {
@@ -4897,7 +4931,7 @@
         var tx2, ty2;
         if (e.fleeing) { tx2 = e.x + (e.x - WORLD_W / 2); ty2 = e.y + (e.y - WORLD_H / 2); } else { tx2 = player.x; ty2 = player.y; }
         e.px = e.x; e.py = e.y;
-        var ldd = Math.hypot(tx2 - e.x, ty2 - e.y) || 1, ls = e.fleeing ? 170 : 135;
+        var ldd = Math.hypot(tx2 - e.x, ty2 - e.y) || 1, ls = (e.fleeing ? 170 : 135) * (hasAffix('frenzy') ? 1.2 : 1); // 深渊异变·极速：劫掠者移速+20%
         e.x += (tx2 - e.x) / ldd * ls * dt + Math.cos(e.zig) * 45 * dt;
         e.y += (ty2 - e.y) / ldd * ls * dt + Math.sin(e.zig) * 45 * dt;
         e.flash = Math.max(0, e.flash - dt);
@@ -6926,7 +6960,7 @@
           g.tearT = 0.2;
           var dp = Math.hypot(player.x - g.x, player.y - g.y);
           if (dp < g.core + player.r) {
-            player.hp -= GRAV_TEAR_DMG; player.flash = Math.max(player.flash || 0, 0.08);
+            player.hp -= (hasAffix('gravity_surge') ? GRAV_TEAR_DMG * 1.5 : GRAV_TEAR_DMG); player.flash = Math.max(player.flash || 0, 0.08); // 深渊异变·引力潮涌：核心撕裂伤害+50%
             burst(player.x, player.y, '#C79BE8', 5, { smin: 30, smax: 100 });
             if (player.hp <= 0) { player.hp = 0; burst(player.x, player.y, player.color, 16); addShake(6, 260, 120, true); AudioSys.sfx.playerDie(); if (inRift) dieInRift(); else finishRun('death'); }
           }
@@ -6934,7 +6968,7 @@
             var _ee = enemies[_te];
             if (_ee.wake > 0) continue;
             if (Math.hypot(_ee.x - g.x, _ee.y - g.y) < g.core + _ee.r) {
-              _ee.hp -= GRAV_TEAR_DMG; _ee.flash = 0.08; _ee.hitT = 0.1; _ee.hitMag = 2;
+              _ee.hp -= (hasAffix('gravity_surge') ? GRAV_TEAR_DMG * 1.5 : GRAV_TEAR_DMG); _ee.flash = 0.08; _ee.hitT = 0.1; _ee.hitMag = 2; // 深渊异变·引力潮涌：核心撕裂伤害+50%
               burst(_ee.x, _ee.y, '#C79BE8', 4, { smin: 30, smax: 90 });
               if (_ee.hp <= 0) { bountyProgress('riftTear', 1); onEnemyDeath(_ee, true); }
             }
@@ -7617,38 +7651,56 @@
 
   function renderBase() {
     if (selectedTier > meta.maxTier) selectedTier = meta.maxTier;
-    // === 难度选择 ===
+    // === 难度选择（深渊异变·导航器：◀▶ + 信息卡 + 阶梯点）===
     var tr = document.getElementById('tierRow');
     if (tr) {
-      var tnames = '';
-      for (var t = 1; t <= meta.maxTier; t++) {
-        var unlocked = t <= meta.maxTier;
-        var cls = 'tname-row' + (selectedTier === t ? ' selected' : '') + (unlocked ? '' : ' locked');
-        var mulTxt = '×' + (1 + (t - 1) * 0.5).toFixed(1);
-        tnames += '<div class="' + cls + '" data-ti="' + t + '"><span>' + tierName(t) + '</span><i class="tmul">' + mulTxt + '</i></div>';
+      var affPills = '';
+      var affKeys = tierAffixes(selectedTier);
+      if (affKeys.length === 0) {
+        affPills = '<span class="affix-none">无异变</span>';
+      } else {
+        affPills = affKeys.map(function (k) {
+          for (var _ai = 0; _ai < AFFIX_POOL.length; _ai++) if (AFFIX_POOL[_ai].key === k) {
+            var _a = AFFIX_POOL[_ai];
+            return '<span class="affix-pill" style="color:' + _a.col + ';border-color:' + _a.col + ';box-shadow:0 0 10px ' + _a.col + '55">' + _a.icon + ' ' + _a.name + '</span>';
+          }
+          return '';
+        }).join('');
       }
-      var curT = tierName(selectedTier);
-      var rewardMul = '×' + (1 + (selectedTier - 1) * 0.5).toFixed(1);
+      var dropPct = Math.round(tierDropBonus(selectedTier) * 100);
+      var oreMul = tierOreBonus(selectedTier).toFixed(1);
       var hpMulTxt = '+' + Math.round((tierMul(selectedTier) - 1) * 100) + '%';
       var dmgMulTxt = '+' + Math.round((tierDmgMul(selectedTier) - 1) * 100) + '%';
+      var bestBadge = '<div class="tier-best-badge">👑 历史最高通关：第 ' + (meta.bestLayer || 1) + ' 层</div>';
+      var dots = '';
+      for (var t = 1; t <= meta.maxTier; t++) {
+        dots += '<div class="tier-dot' + (selectedTier === t ? ' on' : '') + '" data-ti="' + t + '">' + t + '</div>';
+      }
       tr.innerHTML =
-        '<div class="tier-names">' + tnames + '</div>' +
-        '<div class="tier-preview"><div class="inner">' +
-          '<div class="tname">' + curT + '</div>' +
-          '<div class="tlv">Lv' + selectedTier + '</div>' +
-          '<div class="tdesc">敌HP ' + hpMulTxt + ' · 敌ATK ' + dmgMulTxt + '<br>奖励倍率 ' + rewardMul + '</div>' +
-        '</div></div>' +
-        '<div class="tier-lv">' +
-          (function(){ var s=''; for(var i=1;i<=Math.min(meta.maxTier,6);i++) s+='<div class="tlv-box'+(selectedTier===i?' on':'')+'">Lv'+i+'</div>'; return s; })() +
-        '</div>';
-      var trows = tr.querySelectorAll('.tname-row');
-      for (var tri = 0; tri < trows.length; tri++) {
-        (function (row) {
-          row.addEventListener('click', function () {
-            if (row.classList.contains('locked')) return;
-            selectedTier = parseInt(row.dataset.ti) || 1; renderBase(); AudioSys.sfx.ui();
+        '<div class="tier-navigator">' +
+          '<button class="tier-prev" data-ti-prev="1"' + (selectedTier <= 1 ? ' disabled' : '') + ' aria-label="上一层">◀</button>' +
+          '<div class="tier-card">' +
+            bestBadge +
+            '<div class="tier-card-title">' + tierTitle(selectedTier) + '</div>' +
+            '<div class="tier-affixes">' + affPills + '</div>' +
+            '<div class="tier-rewards">装备品质 +' + dropPct + '% · 灵矿产出 ×' + oreMul + '</div>' +
+            '<div class="tier-muls">敌HP ' + hpMulTxt + ' · 敌ATK ' + dmgMulTxt + '</div>' +
+          '</div>' +
+          '<button class="tier-next" data-ti-next="1"' + (selectedTier >= meta.maxTier ? ' disabled' : '') + ' aria-label="下一层">▶</button>' +
+        '</div>' +
+        '<div class="tier-dots">' + dots + '</div>';
+      var prevBtn = tr.querySelector('.tier-prev');
+      var nextBtn = tr.querySelector('.tier-next');
+      if (prevBtn) prevBtn.addEventListener('click', function () { if (selectedTier > 1) { selectedTier--; renderBase(); AudioSys.sfx.ui(); } });
+      if (nextBtn) nextBtn.addEventListener('click', function () { if (selectedTier < meta.maxTier) { selectedTier++; renderBase(); AudioSys.sfx.ui(); } });
+      var dotsEls = tr.querySelectorAll('.tier-dot');
+      for (var di = 0; di < dotsEls.length; di++) {
+        (function (dot) {
+          dot.addEventListener('click', function () {
+            var ti = parseInt(dot.dataset.ti) || 1;
+            if (ti >= 1 && ti <= meta.maxTier) { selectedTier = ti; renderBase(); AudioSys.sfx.ui(); }
           });
-        })(trows[tri]);
+        })(dotsEls[di]);
       }
     }
     // === 机体轮播 + 信息（V43 结构） ===
@@ -8730,6 +8782,13 @@
   var tryLsBtn2 = document.getElementById('tryLandscape');
   if (tryLsBtn2) tryLsBtn2.onclick = tryLandscape;
 
+  // ---------- 浏览器冒烟只读钩子（puppeteer 断言 run.affixes 与所选 tier 匹配用；无副作用，仅暴露只读副本）----------
+  if (typeof window !== 'undefined') {
+    try {
+      if (!window.__v15run) Object.defineProperty(window, '__v15run', { configurable: true, get: function () { return run ? { tier: run.tier, affixes: run.affixes ? run.affixes.slice() : [] } : null; } });
+    } catch (e) {}
+  }
+
   // ---------- STUB 校验钩子（Node 内存桩测试专用；浏览器下无副作用）----------
   if (typeof global !== 'undefined' && global.__stub) {
     global.__stub.api = {
@@ -8925,6 +8984,22 @@
       meta: function () { return meta; },
       tech: function () { return meta.tech || {}; },
       tierName: tierName,
+      // === v15 深渊异变·词缀系统 · 测试桩钩子 ===
+      tierAffixes: tierAffixes,
+      tierAffixCount: tierAffixCount,
+      affixPool: function () { return AFFIX_POOL; },
+      tierDropBonus: tierDropBonus,
+      tierOreBonus: tierOreBonus,
+      tierTitle: tierTitle,
+      hasAffix: hasAffix,
+      setSelectedTier: function (t) { selectedTier = Math.max(1, Math.min(meta.maxTier, t || 1)); },
+      selectedTier: function () { return selectedTier; },
+      runAffixes: function () { return run ? run.affixes : []; },
+      phaseTimerVal: function () { return phaseTimer; },
+      phaseGoldDur: function () { return PHASE_GOLD_DUR; },
+      phaseEmberDur: function () { return PHASE_EMBER_DUR; },
+      phaseSpeedMulVal: function () { return phaseSpeedMul; },
+      gravityRifts: function () { return gravityRifts; },
       bestLayer: function () { return meta.bestLayer || 1; },
       maxTier: function () { return meta.maxTier; },
       buyTech: function (key) {

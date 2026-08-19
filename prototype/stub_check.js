@@ -568,6 +568,80 @@ try {
   if (!api.baseVisible()) errors.push('HA: 就绪后 rAF 轮询应放行显示 base, display=' + document.getElementById('base').style.display);
   console.log('[17b] 启动加载门 OK：pending → 遮罩显示+base隐藏 → resolve → rAF 放行 base');
 
+  // ============================================================
+  // 18) v15 深渊异变·词缀系统（确定性分配 / 收益函数 / newRun 匹配 / 出击面板 / 局内生效守卫）
+  // ============================================================
+  console.log('---- v15 深渊异变·词缀系统 ----');
+  // 18a 词缀确定性：tier1/2→[] tier3→['frenzy'] tier5→2条 tier7→3条 tier9+→4条，内容=池序前 N 个 key
+  var _18aCases = [[1, 0], [2, 0], [3, 1], [4, 1], [5, 2], [6, 2], [7, 3], [8, 3], [9, 4], [10, 4], [12, 4]];
+  _18aCases.forEach(function (pair) {
+    var _t = pair[0], _exp = pair[1];
+    var _aff = api.tierAffixes(_t);
+    if (!Array.isArray(_aff) || _aff.length !== _exp) errors.push('18a: tierAffixes(' + _t + ') 应 ' + _exp + ' 条，实际 ' + (_aff ? _aff.length : 'null'));
+    if (_aff && _exp > 0) {
+      var _pool = api.affixPool();
+      for (var _pi = 0; _pi < _exp; _pi++) if (_aff[_pi] !== _pool[_pi].key) errors.push('18a: tierAffixes(' + _t + ')[' + _pi + '] 应=' + _pool[_pi].key + '，实际 ' + _aff[_pi]);
+    }
+  });
+  if (api.tierAffixes(3).join(',') !== 'frenzy') errors.push('18a: tier3 应= [frenzy]，实际 ' + api.tierAffixes(3).join(','));
+  if (api.tierAffixes(5).join(',') !== 'frenzy,volatile_all') errors.push('18a: tier5 应= [frenzy,volatile_all]，实际 ' + api.tierAffixes(5).join(','));
+  if (api.tierAffixes(7).length !== 3) errors.push('18a: tier7 应 3 条词缀，实际 ' + api.tierAffixes(7).length);
+  else console.log('[18a] 词缀确定性 OK：tier1/2→0条 tier3→frenzy tier5→frenzy,volatile_all tier7→3条 tier9+→4条');
+  // 18b tierDropBonus / tierOreBonus 数值
+  if (Math.abs(api.tierDropBonus(1) - 0) > 1e-9) errors.push('18b: tierDropBonus(1) 应=0，实际 ' + api.tierDropBonus(1));
+  if (Math.abs(api.tierDropBonus(5) - 0.16) > 1e-9) errors.push('18b: tierDropBonus(5) 应=0.16，实际 ' + api.tierDropBonus(5));
+  if (Math.abs(api.tierDropBonus(10) - 0.35) > 1e-9) errors.push('18b: tierDropBonus(10) 应=0.35(cap)，实际 ' + api.tierDropBonus(10));
+  if (api.tierDropBonus(20) !== 0.35) errors.push('18b: tierDropBonus(20) 应封顶 0.35，实际 ' + api.tierDropBonus(20));
+  if (Math.abs(api.tierOreBonus(1) - 1) > 1e-9) errors.push('18b: tierOreBonus(1) 应=1，实际 ' + api.tierOreBonus(1));
+  if (Math.abs(api.tierOreBonus(5) - 3) > 1e-9) errors.push('18b: tierOreBonus(5) 应=3，实际 ' + api.tierOreBonus(5));
+  else console.log('[18b] 收益函数 OK：drop t1=0 t5=0.16 t10=0.35cap | ore t1=1 t5=3');
+  // 18c newRun 后 run.affixes 与 tier 匹配（tier7 应含 3 词缀）
+  api.meta().maxTier = 7;
+  api.setSelectedTier(7);
+  api.startMission(); for (var _i18 = 0; _i18 < 5; _i18++) tick(16.7);
+  var _aff18 = api.runAffixes();
+  if (!_aff18 || _aff18.join(',') !== 'frenzy,volatile_all,tide_fast') errors.push('18c: tier7 局 run.affixes 应=[frenzy,volatile_all,tide_fast]，实际 ' + (_aff18 ? _aff18.join(',') : 'null'));
+  else console.log('[18c] newRun 词缀匹配 OK：tier7 → ' + _aff18.join(','));
+  // 18d renderBase 出击面板：tier5 含词缀 pill + 收益率 + tierTitle；tier1 无异变
+  api.setSelectedTier(5);
+  try { api.renderBase(); } catch (e) { errors.push('18d: renderBase: ' + (e && e.stack || e)); }
+  var _tr18 = document.getElementById('tierRow').innerHTML || '';
+  if (_tr18.indexOf('affix-pill') < 0) errors.push('18d: tier5 出击面板应含 affix-pill class');
+  if (_tr18.indexOf('极速') < 0 || _tr18.indexOf('自爆') < 0) errors.push('18d: tier5 面板应含「极速」「自爆」词缀名');
+  if (_tr18.indexOf('装备品质 +16%') < 0) errors.push('18d: tier5 面板应显示「装备品质 +16%」');
+  if (_tr18.indexOf('灵矿产出 ×3.0') < 0) errors.push('18d: tier5 面板应显示「灵矿产出 ×3.0」');
+  if (api.tierTitle(1) !== 'Tier 1【入门·潜入】') errors.push('18d: tierTitle(1) 应= Tier 1【入门·潜入】，实际 ' + api.tierTitle(1));
+  if (api.tierTitle(3) !== 'Tier 3【深渊 1 层】') errors.push('18d: tierTitle(3) 应= Tier 3【深渊 1 层】，实际 ' + api.tierTitle(3));
+  if (api.tierTitle(4) !== 'Tier 4【深渊 2 层】') errors.push('18d: tierTitle(4) 应= Tier 4【深渊 2 层】，实际 ' + api.tierTitle(4));
+  api.setSelectedTier(1); api.renderBase();
+  var _tr18b = document.getElementById('tierRow').innerHTML || '';
+  if (_tr18b.indexOf('affix-none') < 0 || _tr18b.indexOf('无异变') < 0) errors.push('18d: tier1 面板应显示「无异变」');
+  else console.log('[18d] 出击面板 OK：tier5 词缀 pill(极速/自爆)+收益率+tierTitle；tier1 无异变');
+  // 18e 局内生效守卫：tide_fast 下 phaseTimer 初始 = PHASE_GOLD_DUR×0.6；frenzy 下敌追击位移比 ≈1.2
+  api.setSelectedTier(7);
+  api.startMission(); // 不在 tick 前额外推进，直接断言 newRun 初始 phaseTimer
+  var _pt18 = api.phaseTimerVal(), _gd18 = api.phaseGoldDur();
+  if (Math.abs(_pt18 - _gd18 * 0.6) > 0.001) errors.push('18e: tide_fast 下 phaseTimer 初始应=' + (_gd18 * 0.6).toFixed(2) + '(PHASE_GOLD_DUR×0.6)，实际 ' + _pt18.toFixed(2));
+  else console.log('[18e] tide_fast OK：tier7 局 phaseTimer=' + _pt18.toFixed(1) + ' = ' + _gd18 + '×0.6');
+  function _frenzyDisp18(tier) {
+    api.setSelectedTier(tier);
+    api.startMission(); for (var _f = 0; _f < 5; _f++) tick(16.7);
+    api.cleanState();
+    api.enemies().length = 0; api.obstacles().length = 0; api.gravityRifts().length = 0; api.weaverRifts().length = 0;
+    api.player().x = 1000; api.player().y = 500; api.player().vx = 0; api.player().vy = 0;
+    var _psm = api.phaseSpeedMulVal(); // 四幕移速系数：qi 幕=0.82（须归一化，否则比值失真）
+    var _e = api.spawnArche('shoot', 1700, 500);
+    _e.wake = 0; _e.alert = 2; _e.chargeState = 0; _e.vx = 0; _e.vy = 0; _e.alarmIgnored = true; // 防脱战衰减，确保全程追击
+    var _sx = _e.x, _sy = _e.y;
+    for (var _g = 0; _g < 30; _g++) { api.clearBullets(); api.tick(1); }
+    return { disp: Math.hypot(_e.x - _sx, _e.y - _sy), psm: _psm, base: 52 + _e.tier * 6 }; // shoot baseSpeed = 52 + tier*6
+  }
+  var _r18_7 = _frenzyDisp18(3), _r18_5 = _frenzyDisp18(1); // tier3 含极速 vs tier1 无词缀（tier5 也含极速，不可作对照）
+  var _n18_7 = _r18_7.disp / (_r18_7.base * _r18_7.psm), _n18_5 = _r18_5.disp / (_r18_5.base * _r18_5.psm);
+  var _r18 = _n18_7 / _n18_5;
+  if (!(_r18 > 1.05 && _r18 < 1.35)) errors.push('18e: frenzy 追击位移比(归一)应≈1.2，实际 ' + _r18.toFixed(3) + ' (d3=' + _r18_7.disp.toFixed(1) + ' psm3=' + _r18_7.psm.toFixed(2) + ' d1=' + _r18_5.disp.toFixed(1) + ' psm1=' + _r18_5.psm.toFixed(2) + ')');
+  else console.log('[18e] frenzy OK：归一位移比=' + _r18.toFixed(3) + ' ≈1.2（tier3 含极速 vs tier1 无异变）');
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {

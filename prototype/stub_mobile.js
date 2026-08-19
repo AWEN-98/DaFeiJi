@@ -359,6 +359,33 @@ try {
     } catch (e) { errors.push('HA[移动]: doEnter/enterBase 抛错: ' + (e && e.stack || e)); }
   }
 
+  // ============================================================
+  // 18) v15 深渊异变·词缀系统 · 移动端轻量回归（确定性分配 / 收益 / newRun 匹配 / 出击面板）
+  // ============================================================
+  console.log('---- v15 深渊异变[移动] ----');
+  // 18a 词缀确定性
+  if (!api.tierAffixes || !api.tierAffixes(3) || api.tierAffixes(3).join(',') !== 'frenzy') errors.push('v15[移动] 18a tier3 词缀应=[frenzy]，实际 ' + (api.tierAffixes ? api.tierAffixes(3).join(',') : 'n/a'));
+  if (!api.tierAffixes(5) || api.tierAffixes(5).join(',') !== 'frenzy,volatile_all') errors.push('v15[移动] 18a tier5 词缀应=[frenzy,volatile_all]，实际 ' + api.tierAffixes(5).join(','));
+  else console.log('[18a-移动] 词缀确定性 OK：tier3→frenzy tier5→frenzy,volatile_all');
+  // 18b 收益函数
+  if (Math.abs(api.tierDropBonus(5) - 0.16) > 1e-9) errors.push('v15[移动] 18b tierDropBonus(5) 应=0.16，实际 ' + api.tierDropBonus(5));
+  if (Math.abs(api.tierOreBonus(5) - 3) > 1e-9) errors.push('v15[移动] 18b tierOreBonus(5) 应=3，实际 ' + api.tierOreBonus(5));
+  else console.log('[18b-移动] 收益函数 OK：drop(5)=0.16 ore(5)=3');
+  // 18c newRun 后 run.affixes 与 tier 匹配
+  var _meta18 = api.meta(); _meta18.maxTier = 5;
+  api.setSelectedTier(5);
+  api.startMission(); for (var _mi18 = 0; _mi18 < 5; _mi18++) tick(16.7);
+  var _aff18m = api.runAffixes();
+  if (!_aff18m || _aff18m.join(',') !== 'frenzy,volatile_all') errors.push('v15[移动] 18c tier5 局 run.affixes 应=[frenzy,volatile_all]，实际 ' + (_aff18m ? _aff18m.join(',') : 'null'));
+  else console.log('[18c-移动] newRun 词缀匹配 OK：tier5 → ' + _aff18m.join(','));
+  // 18d 出击面板 renderBase 含词缀 pill（DOM 断言）
+  api.setSelectedTier(5);
+  try { api.renderBase(); } catch (e) { errors.push('v15[移动] 18d renderBase: ' + (e && e.stack || e)); }
+  var _tr18m = document.getElementById('tierRow').innerHTML || '';
+  if (_tr18m.indexOf('affix-pill') < 0) errors.push('v15[移动] 18d 出击面板应含 affix-pill');
+  if (_tr18m.indexOf('装备品质 +16%') < 0) errors.push('v15[移动] 18d 面板应显示「装备品质 +16%」');
+  else console.log('[18d-移动] 出击面板 OK：含 affix-pill + 收益率文案');
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();
