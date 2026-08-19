@@ -45,6 +45,7 @@ scripts/debug_*.png
 dump_hangar.html
 prototype/mockup_terminal*.html
 nul
+.tmp_browser/
 
 # ===== 部署预览目录（deploy_prep 生成，勿提交） =====
 playtest/
