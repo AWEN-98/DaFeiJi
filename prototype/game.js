@@ -387,24 +387,30 @@
     if (setKey) { art.setKey = setKey; }
     return art;
   }
+  // ====== 激进档数值平衡 v16（#398）：DPS 乘区 cap 常量，符文与装备词条共用 ======
+  var CAP_DMG_BASE = 160;   // 乘区A 基础攻击力（机体+永久升级+装备词条）上限（v16 由原注释 240 收束）
+  var CAP_FIRE_RATE = 8;    // 射速 cap（疾雷符/羁绊/三合词条/装备词条）
+  var CAP_PELLETS = 5;      // 弹片 cap（散射/分流/流沙/装备词条）
+  var CAP_CHAIN = 3;        // 连锁 cap（连锁符/羁绊 thun2/装备词条）
+  var CAP_PIERCE = 4;       // 穿透 cap（贯日/裂地/装备词条）
   function applyArtifactMods(m, alsoHp) {
     if (!m) return;
-    if (m.dmg) player.dmg += m.dmg;
+    if (m.dmg) player.dmg = Math.min(player.dmg + m.dmg, CAP_DMG_BASE);
     if (m.maxhp) { player.maxhp += m.maxhp; if (alsoHp !== false) player.hp += m.maxhp; } // #BP2：重算时 alsoHp=false，避免换装回血
     if (m.maxshield) player.maxshield += m.maxshield;
     if (m.regen) player.regen += m.regen;
-    if (m.fireRate) player.fireRate += m.fireRate;
+    if (m.fireRate) player.fireRate = Math.min(CAP_FIRE_RATE, player.fireRate + m.fireRate);
     if (m.critChance) player.critChance = Math.min(0.8, player.critChance + m.critChance);
     if (m.bulletSpeed) player.bulletSpeed += m.bulletSpeed;
     if (m.speed) player.speed += m.speed;
     if (m.dodgeChance) player.dodgeChance = Math.min(0.6, player.dodgeChance + m.dodgeChance);
-    if (m.pierce) player.pierce += m.pierce;
+    if (m.pierce) player.pierce = Math.min(CAP_PIERCE, player.pierce + m.pierce);
     if (m.burn) player.burn = Math.max(player.burn, m.burn);
-    if (m.pellets) player.pellets = Math.min(9, player.pellets + m.pellets);
+    if (m.pellets) player.pellets = Math.min(CAP_PELLETS, player.pellets + m.pellets);
     if (m.explode) player.explode = Math.max(player.explode, m.explode);
     // v8 新增词条
     if (m.lifesteal) player.lifesteal = (player.lifesteal || 0) + m.lifesteal;
-    if (m.chain) player.chain = (player.chain || 0) + m.chain;
+    if (m.chain) player.chain = Math.min(CAP_CHAIN, (player.chain || 0) + m.chain);
     if (m.homing) player.homing = true;
     if (m.thorns) player.thorns = (player.thorns || 0) + m.thorns;
     if (m.shieldRegen) player.shieldRegen = (player.shieldRegen || 0) + m.shieldRegen;
@@ -422,10 +428,10 @@
     var s = art.subtype;
     // 武器子类型
     if (s === 'ballistic') { player.dmg = Math.round(player.dmg * (b.dmgMult || 1)); player.bulletSpeed = Math.round(player.bulletSpeed * (b.bulletSpeedMult || 1)); }
-    else if (s === 'spread') { player.pellets = Math.min(9, player.pellets + (b.pellets || 0)); player.spreadAngle = b.spreadAngle; player.falloff = b.falloff; }
+    else if (s === 'spread') { player.pellets = Math.min(CAP_PELLETS, player.pellets + (b.pellets || 0)); player.spreadAngle = b.spreadAngle; player.falloff = b.falloff; }
     else if (s === 'homing') { player.homing = true; player.homingTurnRate = b.turnRate; player.dmg = Math.round(player.dmg * (b.dmgMult || 1)); }
     else if (s === 'splash') { player.explode = Math.max(player.explode, b.explodeR); player.splashRatio = b.splashRatio; }
-    else if (s === 'chain') { player.chain = (player.chain || 0) + (b.chainJump || 0); player.chainDecay = b.chainDecay; player.chainRange = b.chainRange; }
+    else if (s === 'chain') { player.chain = Math.min(CAP_CHAIN, (player.chain || 0) + (b.chainJump || 0)); player.chainDecay = b.chainDecay; player.chainRange = b.chainRange; }
     // 护甲子类型
     else if (s === 'heavy') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.speed = Math.round(player.speed * (1 - (b.speedPenalty || 0))); }
     else if (s === 'light') { player.maxhp = Math.round(player.maxhp * (b.hpMult || 1)); if (!safe) player.hp = player.maxhp; player.dodgeChance = Math.min(0.6, player.dodgeChance + (b.dodgeBonus || 0)); }
@@ -438,8 +444,8 @@
     else if (s === 'support') { player.pickR += (b.pickBonus || 0); player.jadeBonus = (player.jadeBonus || 0) + (b.jadeBonus || 0); player.dropBonus = (player.dropBonus || 0) + (b.dropBonus || 0); }
     else if (s === 'thorns') { player.thorns = (player.thorns || 0) + Math.round(player.maxhp * (b.thornsRatio || 0)); player.maxhp += (b.hpBonus || 0); if (!safe) player.hp += (b.hpBonus || 0); }
     // 弹药子类型
-    else if (s === 'pierce') { player.pierce += (b.pierceBonus || 0); }
-    else if (s === 'spread_a') { player.pellets = Math.min(9, player.pellets + (b.pelletsBonus || 0)); player.spreadAngle = (player.spreadAngle || 0) + (b.spreadBonus || 0); }
+    else if (s === 'pierce') { player.pierce = Math.min(CAP_PIERCE, player.pierce + (b.pierceBonus || 0)); }
+    else if (s === 'spread_a') { player.pellets = Math.min(CAP_PELLETS, player.pellets + (b.pelletsBonus || 0)); player.spreadAngle = (player.spreadAngle || 0) + (b.spreadBonus || 0); }
     else if (s === 'explosive') { player.explode = Math.max(player.explode, b.explodeR); player.splashRatio = b.splashRatio; }
     else if (s === 'homing_a') { player.homing = true; player.homingTurnRate = b.turnRate; }
     else if (s === 'vampire') { player.lifesteal = (player.lifesteal || 0) + (b.lifestealBonus || 0); }
@@ -506,6 +512,8 @@
     var t = meta.tech || {};
     if (t.hp) { player.maxhp = Math.round(player.maxhp * (1 + 0.05 * t.hp)); player.hp = player.maxhp; }
     if (t.dmg) player.atkMult *= (1 + 0.05 * t.dmg);
+    // #398 激进档：乘区A 基础攻击力 cap 160（尾部兜底，防词条/子类型倍率绕过；符文/研究走 atkMult 不受此限）
+    player.dmg = Math.min(player.dmg, CAP_DMG_BASE);
     // flip: 翻相恢复加速（降低 CORE_REGEN 等效秒数）—— 在 update 中读取 meta.tech.flip
     // bag: 背包扩容 —— 在 pushToLoot 中读取 meta.tech.bag
   }
@@ -632,24 +640,24 @@
   // elem: 风/雷/水/火/土（八卦五行）；apply 直接改写 player 属性（带上限）
   var RUNES = [
     // 火（进攻/灼烧）
-    { name: '烈焰符·火', elem: '火', desc: '伤害+22%', apply: function () { player.atkMult *= 1.22; } },
+    { name: '烈焰符·火', elem: '火', desc: '伤害+12%', apply: function () { player.atkMult *= 1.12; } },
     { name: '爆裂符·火', elem: '火', desc: '子弹命中产生小爆炸', apply: function () { player.explode = 48; } },
     { name: '灼烧符·火', elem: '火', desc: '命中附加灼烧', apply: function () { player.burn = 9; } },
     { name: '焚天符·火', elem: '火', desc: '暴击率+18%', apply: function () { player.critChance = Math.min(0.7, player.critChance + 0.18); } },
-    { name: '散射符·火', elem: '火', desc: '弹片+2', apply: function () { player.pellets = Math.min(9, player.pellets + 2); } },
-    { name: '赤焰核·火', elem: '火', desc: '伤害+12%·弹速+12%', apply: function () { player.atkMult *= 1.12; player.bulletSpeed *= 1.12; } },
+    { name: '散射符·火', elem: '火', desc: '弹片+2', apply: function () { player.pellets = Math.min(CAP_PELLETS, player.pellets + 2); } },
+    { name: '赤焰核·火', elem: '火', desc: '伤害+6%·弹速+12%', apply: function () { player.atkMult *= 1.06; player.bulletSpeed *= 1.12; } },
     // 水（控制/防御）
     { name: '玄冰符·水', elem: '水', desc: '护盾+45', apply: function () { player.maxshield += 45; player.shield = player.maxshield; } },
     { name: '回春符·水', elem: '水', desc: '护盾再生+6', apply: function () { player.regen += 6; } },
     { name: '反震符·水', elem: '水', desc: '受弹幕12%反弹', apply: function () { player.reflect = Math.min(0.6, player.reflect + 0.12); } },
-    { name: '分流符·水', elem: '水', desc: '弹片+1', apply: function () { player.pellets = Math.min(9, player.pellets + 1); } },
+    { name: '分流符·水', elem: '水', desc: '弹片+1', apply: function () { player.pellets = Math.min(CAP_PELLETS, player.pellets + 1); } },
     { name: '援护符·水', elem: '水', desc: '召唤自动炮台', apply: function () { player.drones = Math.min(4, player.drones + 1); } },
     { name: '玄甲符·水', elem: '水', desc: '护盾+30·再生+2', apply: function () { player.maxshield += 30; player.shield = player.maxshield; player.regen += 2; } },
     // 雷（速射/连锁）
-    { name: '疾雷符·雷', elem: '雷', desc: '射速+25%', apply: function () { player.fireRate = Math.min(15, player.fireRate * 1.25); } },
+    { name: '疾雷符·雷', elem: '雷', desc: '射速+25%', apply: function () { player.fireRate = Math.min(CAP_FIRE_RATE, player.fireRate * 1.25); } },
     { name: '弹速符·雷', elem: '雷', desc: '弹速+30%', apply: function () { player.bulletSpeed *= 1.3; } },
-    { name: '连锁符·雷', elem: '雷', desc: '命中连锁+1目标', apply: function () { player.chain = Math.min(5, player.chain + 1); } },
-    { name: '贯日符·雷', elem: '雷', desc: '穿透+1', apply: function () { player.pierce = Math.min(9, player.pierce + 1); } },
+    { name: '连锁符·雷', elem: '雷', desc: '命中连锁+1目标', apply: function () { player.chain = Math.min(CAP_CHAIN, player.chain + 1); } },
+    { name: '贯日符·雷', elem: '雷', desc: '穿透+1', apply: function () { player.pierce = Math.min(CAP_PIERCE, player.pierce + 1); } },
     { name: '聚能符·雷', elem: '雷', desc: '暴击率+12%', apply: function () { player.critChance = Math.min(0.7, player.critChance + 0.12); } },
     // 风（机动/特效）
     { name: '追风符·风', elem: '风', desc: '移速+15%', apply: function () { player.speed = Math.min(620, player.speed * 1.15); } },
@@ -661,8 +669,8 @@
     // 土（坤·防御/地脉）
     { name: '厚土符·土', elem: '土', desc: '最大HP+40', apply: function () { player.maxhp += 40; player.hp += 40; } },
     { name: '磐石符·土', elem: '土', desc: '护盾+35', apply: function () { player.maxshield += 35; player.shield = player.maxshield; } },
-    { name: '裂地符·土', elem: '土', desc: '穿透+2', apply: function () { player.pierce = Math.min(9, player.pierce + 2); } },
-    { name: '流沙符·土', elem: '土', desc: '弹片+2', apply: function () { player.pellets = Math.min(9, player.pellets + 2); } },
+    { name: '裂地符·土', elem: '土', desc: '穿透+2', apply: function () { player.pierce = Math.min(CAP_PIERCE, player.pierce + 2); } },
+    { name: '流沙符·土', elem: '土', desc: '弹片+2', apply: function () { player.pellets = Math.min(CAP_PELLETS, player.pellets + 2); } },
     { name: '灵壤符·土', elem: '土', desc: '暴击+10%·吸血4%', apply: function () { player.critChance = Math.min(0.7, player.critChance + 0.10); player.lifesteal = Math.min(0.4, player.lifesteal + 0.04); } }
   ];
 
@@ -683,8 +691,8 @@
     ],
     '雷': [
       { need: 1, key: 'thun1', name: '微鸣', desc: '伤害 +5%', dmgMul: 1.05, apply: function () {} },
-      { need: 2, key: 'thun2', name: '连锁', desc: '命中连锁 +1', dmgMul: 1, apply: function () { player.chain = Math.min(5, player.chain + 1); } },
-      { need: 3, key: 'thun3', name: '疾雷', desc: '射速 +22%', dmgMul: 1, apply: function () { player.fireRate = Math.min(15, player.fireRate * 1.22); } },
+      { need: 2, key: 'thun2', name: '连锁', desc: '命中连锁 +1', dmgMul: 1, apply: function () { player.chain = Math.min(CAP_CHAIN, player.chain + 1); } },
+      { need: 3, key: 'thun3', name: '疾雷', desc: '射速 +22%', dmgMul: 1, apply: function () { player.fireRate = Math.min(CAP_FIRE_RATE, player.fireRate * 1.22); } },
       { need: 4, key: 'thun4', name: '天罚', desc: '每 6 秒一道全屏闪电', dmgMul: 1, apply: function () { player.skyStrike = 1; player.skyCd = 6; player.skyT = 6; } }
     ],
     '风': [
@@ -2132,7 +2140,7 @@
     phaseObjectFeedback('vault', secretVault.x, secretVault.y);
   }
 
-  function tierMul(tier) { return 1 + (tier - 1) * 0.45; } // 敌人HP倍率：每层 +45%（v14.3 改签名接参数，基地态 run=null 不再崩）
+  function tierMul(tier) { return 1 + (tier - 1) * 0.70; } // 敌人HP倍率：每层 +70%（#398 激进档：0.45→0.70，v14.3 改签名接参数，基地态 run=null 不再崩）
   function tierDmgMul(tier) { return 1 + (tier - 1) * 0.30; } // 敌人攻击倍率：每层 +30%（v14.3 改签名）
   // ====== 深渊异变·词缀系统（确定性分配：按池顺序每 2 层追加 1 条，Tier 3 起生效） ======
   // ★ 371 修复：更名为 AFFIX_DEFS，避免覆盖 rollMods 依赖的 AFFIX_POOL 装备词缀池（否则任何带战利品结算必崩）
@@ -2158,9 +2166,9 @@
   // 乘区E 稀有度系数 = 1 + Σ(装备稀有度索引 × 0.03) (乘法)
   // 乘区F 处决 = (目标 HP < 50% && player.execute) ? 2.0 : 1 (乘法)
   // 弹片分配: 青隼 ×0.5 / 玄武 ×1÷3 / 赤鸾 ×1
-  // 总上限: rawBonus > 300% 时超出部分 × 0.3 衰减
-  var DMG_CAP_BONUS = 3.0;
-  var DMG_CAP_DECAY = 0.3;
+  // 总上限: rawBonus > 180% 时超出部分 × 0.12 衰减（#398 激进档：3.0→1.8，0.3→0.12，DPS 降约 75%）
+  var DMG_CAP_BONUS = 1.8;
+  var DMG_CAP_DECAY = 0.12;
 
   function rarityCoeff() {
     var c = 1;
@@ -2179,7 +2187,7 @@
 
   // 统一伤害计算: 传入子弹基础伤害(已含弹片分配)、暴击标记、目标
   function calcDamage(baseDmg, crit, target) {
-    var atkMult = player.atkMult || 1;
+    var atkMult = Math.min(player.atkMult || 1, 1.8); // #398 激进档：atkMult 全局 cap 1.8（符文/研究/觉醒仍叠加，但伤害结算被 clamp）
     var bond = elemResonance();
     var critMul = crit ? Math.min(player.critMult || 2, 3.0) : 1; // #B6 修复：暴击倍率上限 3.0，防后期刀刀烈火秒 Boss
     var rar = rarityCoeff();
@@ -3176,7 +3184,7 @@
     // 随机小词条（微小永久增益本局）
     var affix = randi(0, 3);
     if (affix === 0) player.atkMult *= 1.05;
-    else if (affix === 1) player.fireRate = Math.min(15, player.fireRate * 1.05);
+    else if (affix === 1) player.fireRate = Math.min(CAP_FIRE_RATE, player.fireRate * 1.05);
     else if (affix === 2) { player.maxhp += 8; player.hp += 8; }
     else player.bulletSpeed *= 1.05;
     burst(player.x, player.y, RARCOL[roll.out], 14);
@@ -3862,8 +3870,9 @@
     var radius = { taowu: 46, qiongqi: 50, taotie: 52, hundun: 48 };
     // #B1 修复：血量改「搜刮进度为主 + 少量封顶时间压力」，不再随真实时间线性膨胀惩罚慢速搜刮流
     // #Boss-HP-v2：v10 灵潮(连击+觉醒)上线后玩家 DPS ↑~50%，基血 620→2600、进度项 60→100/箱、层系数 0.7→0.85，目标 Boss 战 25~40s
-    var progBonus = clamp(run.nodes - (3 + run.tier), 0, 6) * 100;
-    var hp = (2600 + progBonus + Math.min(gameTime, 240) * 3) * (1 + (run.tier - 1) * 0.85) * hpMul[kind];
+    // #398 激进档：玩家 DPS 降约 75%，Boss 血量同步抬升——(4000 + 进度×150 + min(t,240)×5) × (1+(tier-1)×1.35) × tierMul(tier)
+    var progBonus = clamp(run.nodes - (3 + run.tier), 0, 6) * 150;
+    var hp = (4000 + progBonus + Math.min(gameTime, 240) * 5) * (1 + (run.tier - 1) * 1.35) * tierMul(run.tier) * hpMul[kind];
     var names = { taowu: '梼杌', qiongqi: '穷奇', taotie: '饕餮', hundun: '混沌' };
     var tips = {
       taowu: '⚠ 梼杌·重甲堡垒 来袭！（弹幕+阶段强化）',
@@ -7826,7 +7835,7 @@
       var m = art.mods;
       if (m.dmg) dmg += m.dmg; if (m.maxhp) hp += m.maxhp; if (m.maxshield) sh += m.maxshield;
       if (m.fireRate) fr += m.fireRate; if (m.critChance) cc += m.critChance;
-      if (m.speed) spd += m.speed; if (m.pierce) pierce += m.pierce; if (m.pellets) pl = Math.min(9, pl + m.pellets);
+      if (m.speed) spd += m.speed; if (m.pierce) pierce = Math.min(CAP_PIERCE, pierce + m.pierce); if (m.pellets) pl = Math.min(CAP_PELLETS, pl + m.pellets);
     });
     return { hp: Math.round(hp), dmg: dmg, spd: Math.round(spd), sh: Math.round(sh), fr: fr, pl: pl, cc: cc, pierce: pierce };
   }
@@ -9032,6 +9041,25 @@
       veins: function () { return veins; },
       absorbNearestVein: function () { var best = null, bd = Infinity; veins.forEach(function (v) { if (v.cd <= 0) { var d = dist2(player.x, player.y, v.x, v.y); if (d < bd) { bd = d; best = v; } } }); if (best) absorbVein(best); },
       veinAura: veinAuraMul,
+      // === #398 激进档数值平衡 · 测试桩钩子（calcDamage 峰值 / cap 常量 / 曲线系数 / 局内满配注入）===
+      calcDamage: calcDamage,
+      tierMul: tierMul,
+      tierDmgMul: tierDmgMul,
+      effAtk: effAtk,
+      caps: function () { return { dmgBase: CAP_DMG_BASE, fireRate: CAP_FIRE_RATE, pellets: CAP_PELLETS, chain: CAP_CHAIN, pierce: CAP_PIERCE, capBonus: DMG_CAP_BONUS, capDecay: DMG_CAP_DECAY, atkMultCap: 1.8 }; },
+      setPlayerStats: function (o) {
+        if (o.dmg !== undefined) player.dmg = o.dmg;
+        if (o.atkMult !== undefined) player.atkMult = o.atkMult;
+        if (o.pellets !== undefined) player.pellets = o.pellets;
+        if (o.fireRate !== undefined) player.fireRate = o.fireRate;
+        if (o.critChance !== undefined) player.critChance = o.critChance;
+        if (o.critMult !== undefined) player.critMult = o.critMult;
+        if (o.execute !== undefined) player.execute = o.execute;
+        if (o.combo !== undefined) player.combo = o.combo;
+        if (o.pierce !== undefined) player.pierce = o.pierce;
+        if (o.chain !== undefined) player.chain = o.chain;
+      },
+      spawnEnemyAt: function (arche, x, y, etier) { return spawnEnemy(x, y, etier, { arche: arche }); },
       renderFrame: function () { render(); },
       setBanner: setBanner,
       bannerQ: function () { return bannerQ; },
