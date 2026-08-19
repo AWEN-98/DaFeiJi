@@ -275,6 +275,26 @@ try {
   var pM = api.player();
   ['x', 'y', 'vx', 'vy', 'hp', 'maxhp', 'iframe'].forEach(function (k) { if (!mvFinite(pM[k])) errors.push('v12.6[移动] 玩家 NaN ' + k + '=' + pM[k]); });
 
+  // ============================================================
+  // 12) v12.7 战斗平衡重构 · 移动端轻量回归（竖屏 W=390，逻辑同桌面）
+  // ============================================================
+  console.log('---- v12.7 移动端轻量回归 ----');
+  api.startMission(); for (let i = 0; i < 6; i++) tick(16.7); api.cleanState();
+  // 12a 伤害校准
+  api.setPlayerHp(api.playerMaxhp());
+  for (let i = 0; i < 5; i++) { api.setIframe(0); api.damagePlayer(25); }
+  if (!(api.playerHp() <= 0.30 * api.playerMaxhp())) errors.push('v12.7[移动] 12a 5×25 应残血/死亡, hp=' + api.playerHp());
+  else console.log('[12a-移动] 伤害校准 OK：hp=' + api.playerHp().toFixed(0) + '/' + api.playerMaxhp() + ' (≤30%)');
+  // 12b iframe 上限
+  api.setPlayerHp(api.playerMaxhp()); api.setIframe(0); api.damagePlayer(25);
+  if (!(api.iframe() <= 0.2 + 1e-6)) errors.push('v12.7[移动] 12b iframe 应≤0.2, 实际=' + api.iframe());
+  else console.log('[12b-移动] iframe 上限 OK：' + api.iframe().toFixed(3));
+  // 12c 护甲 70% 上限
+  api.setPlayerHp(api.playerMaxhp()); api.setDmgReduce(0.95); api.setIframe(0);
+  let _hp0m = api.playerHp(); api.damagePlayer(100); let _takenM = _hp0m - api.playerHp();
+  if (!(_takenM >= 30 - 1e-6)) errors.push('v12.7[移动] 12c 减伤封顶70%(至少受30), taken=' + _takenM);
+  else console.log('[12c-移动] 护甲70%上限 OK：实受=' + _takenM.toFixed(1));
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();

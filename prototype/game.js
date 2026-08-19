@@ -1672,6 +1672,10 @@
   var CAM_LERP = 7;                                          // 相机平滑跟随系数（越大越跟手）
   var PILLAR_CHARGE_R = 160, PILLAR_CHARGE_RATE = 34, PILLAR_OVERLOAD_CD = 15, PILLAR_OVERLOAD_R = 360, PILLAR_OVERLOAD_DMG = 95; // 相位柱：充能半径/速率/过载冷却/脉冲半径/伤害
   var FLIP_IFRAME = 0.35, FLIP_GHOST_N = 4, PHASE_COUNTER_MULT = 1.5;         // 翻相：无敌帧/残影数/异相克制倍率
+  // v12.7 战斗平衡重构：敌人伤害基数集中常量（便于 Boss 调参）
+  var EDMG_NORMAL = 25, EDMG_ELITE = 72, EDMG_HEAVY = 120;
+  var _lsCd = 0;        // 吸血内置冷却计时器（v12.7）
+  var _lowHpT = 0;      // 残血心跳微震计时器（v12.7）
   var phase = PHASE.GOLD, phaseTimer = PHASE_GOLD_DUR, phaseTransT = 0, emberOpenWindow = 0;
   var phaseCore = CORE_START, phaseCoreRegen = 0;            // 相位核心充能（上限3/初始2/耗1/30s回1·鎏金×2）
   var activeEmber = false, emberPlayerMult = 1.0;            // 主动翻余烬旗标 / 余烬相受击增幅
@@ -2530,11 +2534,11 @@
     var _rad = (e.arche === 'shoot' || e.arche === 'turret') ? 560 : (e.arche === 'gunship' ? 640 : 700);
     if (DBG_ENEMY_AI) console.log('[AI] shoot arche=' + e.arche + ' alert=' + e.alert + ' fireCd=' + e.fireCd.toFixed(2) + ' d=' + d.toFixed(0) + ' rad=' + _rad + ' onScreen=' + onScreen + ' canFire=' + (onScreen && d < _rad) + ' ready=' + (e.fireCd <= 0));
     if (e.arche === 'shoot') {
-      if (e.fireCd <= 0 && d < 560 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', (7 + e.tier * 2) * e.dmgMul, 175); e.fireCd = rand(1.6, 3.0); }
+      if (e.fireCd <= 0 && d < 560 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', EDMG_NORMAL * e.dmgMul, 175); e.fireCd = rand(1.6, 3.0); }
     } else if (e.arche === 'turret') {
-      if (e.fireCd <= 0 && d < 560 && onScreen) { for (var tb = -1; tb <= 1; tb++) fireBullet(e.x, e.y, Math.atan2(dy, dx) + tb * 0.12, 'enemy', (8 + e.tier * 2) * e.dmgMul, 180); e.fireCd = rand(2.0, 3.0); }
+      if (e.fireCd <= 0 && d < 560 && onScreen) { for (var tb = -1; tb <= 1; tb++) fireBullet(e.x, e.y, Math.atan2(dy, dx) + tb * 0.12, 'enemy', EDMG_NORMAL * e.dmgMul, 180); e.fireCd = rand(2.0, 3.0); }
     } else if (e.arche === 'gunship') {
-      if (e.fireCd <= 0 && d < 640 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', (10 + e.tier * 3) * e.dmgMul, 130, { big: true }); e.fireCd = rand(2.4, 3.6); }
+      if (e.fireCd <= 0 && d < 640 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', EDMG_NORMAL * e.dmgMul, 130, { big: true }); e.fireCd = rand(2.4, 3.6); }
     } else if (e.arche === 'weaver') {
       // 引力编织者：发微型引力奇点球(拖拽) + 8 向螺旋余烬飞刃（中距风筝）
       e.weaverCd -= dt;
@@ -2545,7 +2549,7 @@
         e.weaverSpin = (e.weaverSpin || 0) + 0.4; // 每次出刃旋转，形成螺旋观感
         for (var _wb = 0; _wb < 8; _wb++) {
           var _wa = e.weaverSpin + _wb * (6.283 / 8);
-          fireBullet(e.x, e.y, _wa, 'enemy', (9 + e.tier * 2) * e.dmgMul, 165, { elem: 'ember', blade: true });
+          fireBullet(e.x, e.y, _wa, 'enemy', EDMG_NORMAL * e.dmgMul, 165, { elem: 'ember', blade: true });
         }
         addShake(1.2, 90, 40); AudioSys.sfx.hit();
         e.weaverCd = rand(2.6, 3.6);
@@ -2559,7 +2563,7 @@
         for (var _wv = 0; _wv < _waves; _wv++) {
           for (var _wi = 0; _wi < _per; _wi++) {
             var _ang = _ba0 - 0.6 + (_wi / (_per - 1)) * 1.2 + _wv * 0.18;
-            fireBullet(e.x, e.y, _ang, 'enemy', (8 + e.tier * 2) * e.dmgMul, 150 + _wv * 30);
+            fireBullet(e.x, e.y, _ang, 'enemy', EDMG_NORMAL * e.dmgMul, 150 + _wv * 30);
           }
         }
         burst(e.x, e.y, '#E0B84A', 8, { smin: 60, smax: 180 }); addShake(1.5, 120, 50); AudioSys.sfx.hit();
@@ -2584,7 +2588,7 @@
               var _proj = _px * Math.cos(_ba) + _py * Math.sin(_ba);
               if (_proj > 0) {
                 var _perp = Math.abs(-_px * Math.sin(_ba) + _py * Math.cos(_ba));
-                if (_perp < (PHB + 16)) { damagePlayer((24 + e.tier * 5) * e.dmgMul); floatText(player.x, player.y - 22, '贯穿光束!', '#E84A6A', 'crit'); }
+                if (_perp < (PHB + 16)) { damagePlayer(EDMG_ELITE * e.dmgMul); floatText(player.x, player.y - 22, '贯穿光束!', '#E84A6A', 'crit'); }
               }
             }
             e.sniperCharge = 0; e.fireCd = rand(2.6, 4.2);
@@ -2594,7 +2598,7 @@
       } else {
         // 普通狙击手：原逻辑
         if (e.sniperCharge < 1.2) { e.sniperCharge += dt; e.sniperAim = Math.atan2(dy, dx); }
-        else if (onScreen && d < 700) { fireBullet(e.x, e.y, e.sniperAim, 'enemy', (18 + e.tier * 4) * e.dmgMul, 420, { big: true }); burst(e.x, e.y, '#E8A050', 6, { smin: 80, smax: 200 }); addShake(1.5, 100, 40); e.sniperCharge = 0; e.fireCd = rand(2.5, 4.0); }
+        else if (onScreen && d < 700) { fireBullet(e.x, e.y, e.sniperAim, 'enemy', EDMG_ELITE * e.dmgMul, 420, { big: true }); burst(e.x, e.y, '#E8A050', 6, { smin: 80, smax: 200 }); addShake(1.5, 100, 40); e.sniperCharge = 0; e.fireCd = rand(2.5, 4.0); }
       }
     }
   }
@@ -3586,8 +3590,8 @@
           var _bra = b.dimRot, _bga = b.dimRot + Math.PI;
           var _tpx = player.x - b.x, _tpy = player.y - b.y;
           var _chk = function (ang) { var pr = _tpx * Math.cos(ang) + _tpy * Math.sin(ang); if (pr < 0 || pr > 1200) return false; var pe = Math.abs(-_tpx * Math.sin(ang) + _tpy * Math.cos(ang)); return pe < (PHB + 18); };
-          if (player.phase === PHASE.GOLD && _chk(_bra)) { damagePlayer((20 + run.tier * 4) * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#C94F4F', 'crit'); }
-          if (player.phase === PHASE.EMBER && _chk(_bga)) { damagePlayer((20 + run.tier * 4) * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#E0B84A', 'crit'); }
+          if (player.phase === PHASE.GOLD && _chk(_bra)) { damagePlayer(EDMG_HEAVY * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#C94F4F', 'crit'); }
+          if (player.phase === PHASE.EMBER && _chk(_bga)) { damagePlayer(EDMG_HEAVY * tierDmgMul()); floatText(player.x, player.y - 22, '维度撕裂!', '#E0B84A', 'crit'); }
         }
         if (b.dimTearT <= 0) { b.dimTear = null; b.dimTearDone = true; setBanner('维度撕裂平息——追击破局！', 2.2); }
       }
@@ -3606,13 +3610,13 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.55 : (b.phase === 2 ? 0.75 : 1.2);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase >= 2 ? 3 : 1;
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.16; fireBullet(b.x, b.y, base + off, 'enemy', 10 * tierDmgMul(), 200, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.16; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 200, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
     if (b.burstCd <= 0) {
       var n = b.phase === 3 ? 22 : (b.phase === 2 ? 18 : 12), spd = b.phase === 3 ? 175 : 145; b.ang += 0.35;
-      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', 9 * tierDmgMul(), spd, { boss: true }); }
+      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
       b.burstCd = b.phase === 3 ? 2.2 : (b.phase === 2 ? 2.8 : 3.8);
     }
   }
@@ -3632,7 +3636,7 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.5 : (b.phase === 2 ? 0.7 : 1.0);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase >= 2 ? 5 : 3;
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.12; fireBullet(b.x, b.y, base + off, 'enemy', 9 * tierDmgMul(), 240, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.12; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 240, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.summonCd -= dt;
@@ -3656,13 +3660,13 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.9 : (b.phase === 2 ? 1.2 : 1.7);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase === 3 ? 7 : (b.phase === 2 ? 5 : 3);
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.18; fireBullet(b.x, b.y, base + off, 'enemy', 11 * tierDmgMul(), 160, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.18; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 160, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
     if (b.burstCd <= 0) {
       var n = b.phase === 3 ? 28 : (b.phase === 2 ? 22 : 16), spd = b.phase === 3 ? 150 : 120; b.ang += 0.25;
-      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', 8 * tierDmgMul(), spd, { boss: true }); }
+      for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28; fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
       b.burstCd = b.phase === 3 ? 2.6 : (b.phase === 2 ? 3.4 : 4.4);
     }
     // 吞噬借力（设计 §1.2）：周期性吞噬——常规为威胁拉拽；玩家处于引力裂隙内则反转成工具（吸宝+开秘库）
@@ -3686,7 +3690,7 @@
     b.atkCd -= dt; var rate = b.phase === 3 ? 0.45 : (b.phase === 2 ? 0.65 : 0.9);
     if (b.atkCd <= 0) {
       var base = Math.atan2(dy, dx), shots = b.phase === 3 ? 6 : (b.phase === 2 ? 4 : 2);
-      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.22; fireBullet(b.x, b.y, base + off, 'enemy', 9 * tierDmgMul(), 210, { boss: true }); }
+      for (var s = 0; s < shots; s++) { var off = (s - (shots - 1) / 2) * 0.22; fireBullet(b.x, b.y, base + off, 'enemy', EDMG_NORMAL * tierDmgMul(), 210, { boss: true }); }
       b.atkCd = rate * (phase === PHASE.EMBER ? 1 / EMBER_ENRAGE_ATK_RATE : 1); // 余烬狂暴：射速×1.4
     }
     b.burstCd -= dt;
@@ -3695,12 +3699,12 @@
       if (phase === PHASE.EMBER) {
         // 余烬相：螺旋弹幕（难、但掉率 ×2）
         b.ang += 0.42;
-        for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', 7 * tierDmgMul(), spd + i * 2, { boss: true }); }
+        for (var i = 0; i < n; i++) { var a = b.ang + (i / n) * 6.28 * (b.phase === 3 ? 2.5 : 1.8); fireBullet(b.x, b.y, a, 'enemy', EDMG_NORMAL * tierDmgMul(), spd + i * 2, { boss: true }); }
         b.burstCd = b.phase === 3 ? 2.0 : (b.phase === 2 ? 2.6 : 3.4);
       } else {
         // 鎏金相：环形弹幕（易读、可走位，鼓励用相位柱切回鎏金创造读弹窗口）
         b.ang += 0.12;
-        for (var i2 = 0; i2 < n; i2++) { var a2 = b.ang + (i2 / n) * 6.28; fireBullet(b.x, b.y, a2, 'enemy', 7 * tierDmgMul(), spd, { boss: true }); }
+        for (var i2 = 0; i2 < n; i2++) { var a2 = b.ang + (i2 / n) * 6.28; fireBullet(b.x, b.y, a2, 'enemy', EDMG_NORMAL * tierDmgMul(), spd, { boss: true }); }
         b.burstCd = b.phase === 3 ? 2.4 : (b.phase === 2 ? 3.0 : 3.8);
       }
     }
@@ -3849,7 +3853,7 @@
       spawnVfx('vfx_explosion_sheet', e.x, e.y, 84, 0.6, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 });
       addShake(3.5, 180, 70); AudioSys.sfx.explode();
       if (player.iframe <= 0 && dist2(e.x, e.y, player.x, player.y) < (kR + PHB) * (kR + PHB)) {
-        var kd = Math.round(14 * e.dmgMul);
+        var kd = Math.round(EDMG_HEAVY * e.dmgMul);
         damagePlayer(kd); floatText(player.x, player.y - 22, '爆炸 -' + kd, '#E0623A', 'crit');
       }
     }
@@ -4240,6 +4244,9 @@
     cam.x += (_ctx - cam.x) * _cl;
     cam.y += (_cty - cam.y) * _cl;
     if (player.iframe > 0) player.iframe -= dt;
+    if (_lsCd > 0) _lsCd -= dt;
+    // v12.7 残血心跳：HP<30% 周期微震（心跳音效待补 audio-data.js 样本）
+    if (player.hp > 0 && player.hp < player.maxhp * 0.3) { _lowHpT += dt; if (_lowHpT >= 0.8) { _lowHpT = 0; addShake(1.0, 80, 40); } } else { _lowHpT = 0; }
     if (player.attackAnimT > 0) player.attackAnimT -= dt;
     if (player.dashAnimT > 0) player.dashAnimT -= dt;
     if (player.galeActive) player.iframe = Math.max(player.iframe, 0.1);
@@ -4853,7 +4860,12 @@
           spawnElementHit(bl.elem, bl.x, bl.y, 1.1);
           burst(bl.x, bl.y, BULLET_COL.boss, bl.crit ? 10 : 6, { smin: 80, smax: 240, lmin: 0.2, lmax: 0.35 });
           floatText(boss.x, boss.y - boss.r - 8, '-' + Math.round(bdmg), bl.crit ? BULLET_COL.buff : '#F4EFE6', bl.crit ? 'crit' : 'normal');
-          if (bl.lifesteal > 0) { var hb = Math.round(bdmg * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + hb); floatText(player.x, player.y - 20, '+' + hb, '#7FB069', 'heal'); }
+          if (bl.lifesteal > 0 && _lsCd <= 0) {
+            var _heal = Math.min(bdmg * bl.lifesteal, bdmg * 0.03); // 单次回复 ≤ 造成伤害的 3%
+            player.hp = Math.min(player.maxhp, player.hp + Math.round(_heal));
+            _lsCd = 0.2; // 0.2s 内置冷却，防高射速瞬间回满
+            floatText(player.x, player.y - 20, '+' + Math.round(_heal), '#7FB069', 'heal');
+          }
           if (boss.hp <= 0) killBoss();
           if (bl.pierce > 0) bl.pierce--; else { bullets.splice(b, 1); consumed = true; }
         }
@@ -4910,7 +4922,12 @@
                 en.marked = true; en.markT = 5;
               }
               if (dmg0 > bl.dmg * 2.5 && en.hp > 0) floatText(en.x, en.y - en.r - 20, '噬魂!', '#C94F4F', 'crit');
-              if (bl.lifesteal > 0) { var h1 = Math.round(dmg0 * bl.lifesteal); player.hp = Math.min(player.maxhp, player.hp + h1); floatText(player.x, player.y - 20, '+' + h1, '#7FB069', 'heal'); }
+              if (bl.lifesteal > 0 && _lsCd <= 0) {
+                var _heal = Math.min(dmg0 * bl.lifesteal, dmg0 * 0.03); // 单次回复 ≤ 造成伤害的 3%
+                player.hp = Math.min(player.maxhp, player.hp + Math.round(_heal));
+                _lsCd = 0.2; // 0.2s 内置冷却，防高射速瞬间回满
+                floatText(player.x, player.y - 20, '+' + Math.round(_heal), '#7FB069', 'heal');
+              }
               if (bl.pierce > 0) { bl.pierce--; } else { bullets.splice(b, 1); consumed = true; }
               if (en.hp <= 0) { onEnemyDeath(en); ei--; } // 敌人被移除，回退索引避免跳过下一个
               if (bl.pierce <= 0) break;
@@ -4936,12 +4953,12 @@
       if (dist2(ec.x, ec.y, player.x, player.y) < (ec.r + PHB) * (ec.r + PHB)) {
         if (player.iframe <= 0) {
           if (player.dodgeChance > 0 && Math.random() < player.dodgeChance) { player.flash = 0.1; }
-          else damagePlayer((ec.ram ? 13 : 7) * ec.dmgMul);
+          else damagePlayer((ec.ram ? EDMG_HEAVY : EDMG_NORMAL) * ec.dmgMul);
         }
         if (ec.ram) { burst(ec.x, ec.y, COL.enemy, 5); onEnemyDeath(ec); }
       }
     }
-    if (boss && boss.wake <= 0 && dist2(boss.x, boss.y, player.x, player.y) < (boss.r + PHB + 1) * (boss.r + PHB + 1)) { if (player.iframe <= 0) damagePlayer(16 * tierDmgMul()); }
+    if (boss && boss.wake <= 0 && dist2(boss.x, boss.y, player.x, player.y) < (boss.r + PHB + 1) * (boss.r + PHB + 1)) { if (player.iframe <= 0) damagePlayer(EDMG_HEAVY * tierDmgMul()); }
 
     // 战利品
     for (var l = loot.length - 1; l >= 0; l--) {
@@ -5334,6 +5351,12 @@
     if (phase === PHASE.EMBER) dmg *= emberPlayerMult; // 余烬相受击增幅（主动×1.3 / 失控×1.15，§7.3/§7.4）
     player.flash = 0.13;
     if (exfil) dmg *= 0.9; // 撤离期间飞船掩护，小幅减伤
+    // v12.7 护甲减伤：dmgReduce + 站定威慑，硬上限 70%（minDamage = raw*0.3）
+    var _mit = 0;
+    if (player.dmgReduce) _mit += player.dmgReduce;
+    if (player.setStandStillReduce > 0 && player.standStillT >= (player.setStandStillTime || 1.5)) _mit += player.setStandStillReduce;
+    _mit = Math.min(_mit, 0.70);
+    dmg *= (1 - _mit);
     if (player.shield > 0) { var ab = Math.min(player.shield, dmg); player.shield -= ab; dmg -= ab; if (player.undying && !player.undyingUsed && player.shield <= 0) { player.undyingUsed = true; player.hp = Math.min(player.maxhp, player.hp + Math.round(player.maxhp * 0.3)); floatText(player.x, player.y - 24, '厚德!', '#7FB069', 'heal'); AudioSys.sfx.heal(); } }
     if (dmg > 0) player.hp -= dmg;
     // 灵潮连击：真实掉血即断连（护盾全额吸收不断）——风险换爆发的对价
@@ -5343,7 +5366,7 @@
     // 反伤词条：受击时对周围敌人造成固定伤害
     if (player.thorns) { burst(player.x, player.y, '#FF7A59', 8, { ring: true, ringR: 40 }); for (var ti = 0; ti < enemies.length; ti++) { if (dist2(enemies[ti].x, enemies[ti].y, player.x, player.y) < 50 * 50) { enemies[ti].hp -= player.thorns; } } if (boss && dist2(boss.x, boss.y, player.x, player.y) < 60 * 60) { boss.hp -= player.thorns; boss.flash = 0.08; } }
     addShake(3.2, 150, 60); screenFlash = { color: '#C94F4F', a: 0.22 };
-    player.iframe = Math.max(player.iframe || 0, 0.6); // #C1 修复：受击无敌帧，防贴身敌每帧结算秒杀
+    player.iframe = Math.max(player.iframe || 0, 0.2); // v12.7 受击无敌帧降至 0.2s（仅防同帧多段；翻相 0.35/dash 0.5/gale 0.1 经 Math.max 保留更长免伤）
     AudioSys.sfx.playerHit();
     if (player.hp <= 0) { player.hp = 0; burst(player.x, player.y, player.color, 16); addShake(6, 260, 120, true); AudioSys.sfx.playerDie(); if (inRift) dieInRift(); else finishRun('death'); }
   }
@@ -7192,10 +7215,20 @@
       grd.addColorStop(0, 'rgba(0,0,0,0)'); grd.addColorStop(1, 'rgba(8,4,12,' + va + ')');
       ctx.fillStyle = grd; ctx.fillRect(0, 0, W, H);
     }
-    if (screenFlash.a > 0) { ctx.fillStyle = hexToRgba(screenFlash.color, screenFlash.a); ctx.fillRect(0, 0, W, H); }
+    if (screenFlash.a > 0) {
+      if (screenFlash.color === '#C94F4F') {
+        // v12.7 受击反馈：暗红边缘 vignette 脉冲（中心透明、四周暗红，幅度随 screenFlash.a 衰减）
+        var _vgrd = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.25, W / 2, H / 2, Math.max(W, H) * 0.75);
+        _vgrd.addColorStop(0, 'rgba(150,20,20,0)');
+        _vgrd.addColorStop(1, 'rgba(150,20,20,' + screenFlash.a.toFixed(3) + ')');
+        ctx.fillStyle = _vgrd; ctx.fillRect(0, 0, W, H);
+      } else {
+        ctx.fillStyle = hexToRgba(screenFlash.color, screenFlash.a); ctx.fillRect(0, 0, W, H);
+      }
+    }
     // 低血量警报：HP<30% 红色呼吸 vignette（边缘径向渐变，非全屏遮挡）
     if (scene === 'mission' && player && player.hp < player.maxhp * 0.3 && player.hp > 0) {
-      var _lva = 0.2 + 0.13 * Math.sin(performance.now() / 280);
+      var _lva = 0.3 + 0.3 * Math.sin(gameTime * 6);
       var lgrd = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.62);
       lgrd.addColorStop(0, 'rgba(0,0,0,0)'); lgrd.addColorStop(1, 'rgba(201,79,79,' + _lva.toFixed(3) + ')');
       ctx.fillStyle = lgrd; ctx.fillRect(0, 0, W, H);
@@ -8394,6 +8427,21 @@
       clearBullets: function () { bullets.length = 0; },
       setPlayerHp: function (v) { player.hp = v; if (player.maxhp < v) player.maxhp = v; },
       setIframe: function (v) { player.iframe = v; },
+      // v12.7 战斗平衡重构 · 测试桩钩子（伤害校准 / iframe上限 / 护甲上限 / 吸血ICD / 精英重击阈值 / 站定威慑）
+      playerHp: function () { return player.hp; },
+      playerMaxhp: function () { return player.maxhp; },
+      setDmgReduce: function (v) { player.dmgReduce = v; },
+      setLifesteal: function (v) { player.lifesteal = v; },
+      lsCd: function () { return _lsCd; },
+      standStillReduce: function (v) { player.setStandStillReduce = v; player.standStillT = (player.setStandStillTime || 1.5); },
+      testLifesteal: function (baseDmg) {
+        player.iframe = 0; // 等价 setIframe(0)：对象字面量方法内无法直接按裸名调用兄弟属性 setIframe
+        var dmg0 = baseDmg;
+        var _heal = Math.min(dmg0 * (player.lifesteal || 0), dmg0 * 0.03); // 单次回复 ≤ 造成伤害的 3%
+        player.hp = Math.min(player.maxhp, player.hp + Math.round(_heal));
+        _lsCd = 0.2; // 0.2s 内置冷却
+        return { heal: _heal, lsCdAfter: _lsCd };
+      },
       // 翻相免伤门（相位狙击手 / 维度撕裂 共用 player.iframe<=0 闸门）：翻相后 0.35s 内 lethal 命中应被免疫
       hitscanGate: function (dmg) {
         var before = player.hp;

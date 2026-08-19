@@ -332,7 +332,41 @@ try {
   var wvr = api.spawnArche('weaver', api.player().x + 260, api.player().y); wvr.wake = 0;
   for (let i = 0; i < 20; i++) { wvr.weaverCd = 0; wvr.fireCd = 0; wvr.x = api.player().x + 260; wvr.y = api.player().y; api.tick(1); api.clearBullets(); }
   if (api.weaverRifts().length === 0) errors.push('v12.6: weaver 应生成 weaverRifts（拖拽机制），实际 0');
-  else console.log('[11h] 引力编织者 OK：生成 weaverRifts=' + api.weaverRifts().length);
+      else console.log('[11h] 引力编织者 OK：生成 weaverRifts=' + api.weaverRifts().length);
+
+  // ============================================================
+  // 12) v12.7 战斗平衡重构专项（伤害校准 / iframe上限 / 护甲70%上限 / 吸血ICD+上限 / 精英·重击阈值）
+  // ============================================================
+  console.log('---- v12.7 战斗平衡重构专项 ----');
+  api.startMission(); for (let i = 0; i < 6; i++) tick(16.7); api.cleanState(); // 重置玩家(maxhp=100, 清掉 11h 的 99999 残留)
+  // 12a 伤害校准：5×25 应进入残血/死亡（maxhp=100 → 第4发即致死）
+  api.setPlayerHp(api.playerMaxhp());
+  for (let i = 0; i < 5; i++) { api.setIframe(0); api.damagePlayer(25); }
+  if (!(api.playerHp() <= 0.30 * api.playerMaxhp())) errors.push('v12.7: 12a 5×25 应残血/死亡, hp=' + api.playerHp() + '/' + api.playerMaxhp());
+  else console.log('[12a] 伤害校准 OK：5×25 → hp=' + api.playerHp().toFixed(0) + '/' + api.playerMaxhp() + ' (≤30%)');
+  // 12b iframe 上限：非翻相受击 ≤ 0.2s（翻相 0.35/dash 0.5/gale 0.1 经 Math.max 保留更长免伤）
+  api.setPlayerHp(api.playerMaxhp()); api.setIframe(0); api.damagePlayer(25);
+  if (!(api.iframe() <= 0.2 + 1e-6)) errors.push('v12.7: 12b 非翻相受击 iframe 应≤0.2, 实际=' + api.iframe());
+  else console.log('[12b] iframe 上限 OK：受击 iframe=' + api.iframe().toFixed(3) + ' (≤0.2)');
+  // 12c 护甲 70% 上限：dmgReduce=0.95 → 实受至少 30（减伤封顶 70%）
+  api.setPlayerHp(api.playerMaxhp()); api.setDmgReduce(0.95); api.setIframe(0);
+  let _hp0c = api.playerHp(); api.damagePlayer(100); let _taken = _hp0c - api.playerHp();
+  if (!(_taken >= 30 - 1e-6)) errors.push('v12.7: 12c 减伤应封顶70%(至少受30), taken=' + _taken);
+  else console.log('[12c] 护甲70%上限 OK：dmgReduce=0.95 → 实受=' + _taken.toFixed(1) + ' (≥30)');
+  // 12d 吸血上限+ICD：单次回复≤造成伤害的 3%，且触发 0.2s 内置冷却
+  api.setDmgReduce(0); api.setPlayerHp(api.playerMaxhp()); api.setLifesteal(0.5);
+  let _r = api.testLifesteal(100);
+  if (!(_r.heal <= 100 * 0.03 + 1e-6)) errors.push('v12.7: 12d 吸血单次应≤3%, heal=' + _r.heal);
+  if (!(_r.lsCdAfter > 0)) errors.push('v12.7: 12d 吸血应有ICD, lsCdAfter=' + _r.lsCdAfter);
+  console.log('[12d] 吸血上限+ICD OK：heal=' + _r.heal.toFixed(2) + ' (≤3), lsCdAfter=' + _r.lsCdAfter);
+  // 12e 精英/重击阈值：EDMG_ELITE=72 / EDMG_HEAVY=120 掉血精确（设 maxhp=200 避免被 0 截断，单独校验每个阈值）
+  api.setDmgReduce(0); api.setPlayerHp(200); api.setIframe(0);
+  api.damagePlayer(72); let _d72 = 200 - api.playerHp();
+  if (Math.abs(_d72 - 72) > 1e-6) errors.push('v12.7: 12e EDMG_ELITE(72) 掉血=' + _d72 + ' 应为72');
+  api.setPlayerHp(200); api.setIframe(0);
+  api.damagePlayer(120); let _d120 = 200 - api.playerHp();
+  if (Math.abs(_d120 - 120) > 1e-6) errors.push('v12.7: 12e EDMG_HEAVY(120) 掉血=' + _d120 + ' 应为120');
+  if (Math.abs(_d72 - 72) <= 1e-6 && Math.abs(_d120 - 120) <= 1e-6) console.log('[12e] 精英/重击阈值 OK：72→掉' + _d72 + ' / 120→掉' + _d120);
 
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
