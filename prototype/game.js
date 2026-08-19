@@ -1852,14 +1852,21 @@
   var rotHintDismissed = false;
   var player, bullets, enemies, loot, nodes, particles, floaters, extractPoints, exfil, boss, bossSpawned, vaults, totems;
   var run, spawnTimer, buffTimer, buffPending, buffHold, buffSafe, gameTime, hintTimer, bannerQ = [], killForBuff, runeCount, screenFlash;
-  // banner 队列：多条通知按序展示（最多4条），同文本刷新不重复排队 —— 消灭单槽互相覆盖
+  // banner 队列：#389 三槽分桶（top/mid/bot），按 pri 决定 y 位置
+  //   'top' = 屏幕顶部 12+SA.t（战局重要：杀 Boss / beacon 激活 / 自毁 / 转幕 / 穷奇召唤 / 安全时间）
+  //   'mid' = 屏幕中央略上 H*0.32（特殊：单条中央信息）
+  //   'bot' = 底部 64/205 槽（默认：掉落 / 按键提示 / 普通警告）
+  // 同文本刷新不重复排队 —— 消灭单槽互相覆盖
   // 2026-08-18 规范化：生命周期硬顶 ≤4s；展示位置移至底部居中；字号减半
-  function setBanner(text, life, col) {
+  function setBanner(text, life, col, pri) {
     var t = String(text);
     life = Math.min(Math.max(0.6, life || 2.2), 4);
-    for (var i = 0; i < bannerQ.length; i++) if (bannerQ[i].text === t) { bannerQ[i].life = life; bannerQ[i].max = life; if (col) bannerQ[i].col = col; return; }
-    bannerQ.push({ text: t, life: life, max: life, col: col || null, age: 0 });
-    if (bannerQ.length > 4) bannerQ.shift();
+    pri = pri || 'bot';
+    if (pri !== 'top' && pri !== 'mid' && pri !== 'bot') pri = 'bot';
+    for (var i = 0; i < bannerQ.length; i++) if (bannerQ[i].text === t) { bannerQ[i].life = life; bannerQ[i].max = life; if (col) bannerQ[i].col = col; bannerQ[i].pri = pri; return; }
+    bannerQ.push({ text: t, life: life, max: life, col: col || null, age: 0, pri: pri });
+    // 全局上限 6（top 2 + mid 1 + bot 2 = 5 实际可见），避免极端情况爆队列
+    if (bannerQ.length > 6) bannerQ.shift();
   }
   var runPhase = 'qi', huntActive = false, huntWarnT = 0; // 起承转合·幕章状态机 + 围猎狂暴标记
   // 敌机行为 / 撤离惊动（规则圣经 v1）全局状态
@@ -3717,13 +3724,13 @@
       else if (d <= rp) { e.alert = Math.min(2, e.alert + 1); e.alarmIgnored = false; }
     }
     exfilAlarmT = 1.2;
-    setBanner('撤离惊动！灵能脉冲唤醒敌机（红=狂暴死追·黄=波及）', 2.6);
+    setBanner('撤离惊动！灵能脉冲唤醒敌机（红=狂暴死追·黄=波及）', 2.6, null, 'top');
   }
   function abortExfil(ez) {
     for (var i = 0; i < enemies.length; i++) { var e = enemies[i]; if (e.alarmIgnored) { e.alert = 0; e.alarmIgnored = false; e.alertClock = 0; e.decayT = 0; e.pursueT = 0; } }
     ez.prog = 0; ez.state = 'cooldown'; ez.cd = EXFIL2.abortCd;
     exfilStarted = false; exfilChoice = null; exfilCenter = null; exfilAutoT = 0;
-    setBanner('撤离中断！被惊动敌机撤退，撤离点冷却 ' + Math.ceil(EXFIL2.abortCd) + 's', 2.8);
+    setBanner('撤离中断！被惊动敌机撤退，撤离点冷却 ' + Math.ceil(EXFIL2.abortCd) + 's', 2.8, null, 'top');
   }
   function updateExtractPoints(dt) {
     // v12.6：全局战场自毁倒计时（领主击破、beacon 激活后启动）
@@ -3750,7 +3757,7 @@
       } else if (z.state === 'warning') {
         if (z.timer <= 0) {
           z.state = 'open'; z.timer = EXTRACT.openDur;
-          setBanner('撤离点 ' + z.label + ' 已开放！冲入光柱读条 2.8s 带出战利品（敌人正在围堵）', 3);
+          setBanner('撤离点 ' + z.label + ' 已开放！冲入光柱读条 2.8s 带出战利品（敌人正在围堵）', 3, null, 'top');
           for (var egi = 0; egi < enemies.length; egi++) { if (enemies[egi].extractGuard === i) { enemies[egi].wake = 0; enemies[egi].alert = 1; } }
         }
       } else if (z.state === 'open') {
@@ -3794,7 +3801,7 @@
     run.selfDestruct = EXTRACT.beaconDur; run.evacBeacon = true;
     addShake(8, 600, 200, true); addTint('#FFE9A8', 0.3); screenFlash = { color: '#FFE9A8', a: 0.3 };
     AudioSys.sfx.alarm();
-    setBanner('★ 领主已殒！金色光柱冲霄——战场将在 ' + EXTRACT.beaconDur + 's 后自毁，冲入光柱撤离！', 3.8);
+    setBanner('★ 领主已殒！金色光柱冲霄——战场将在 ' + EXTRACT.beaconDur + 's 后自毁，冲入光柱撤离！', 3.8, null, 'top');
     // 刷狂暴余烬杂兵围堵（出现即锁定、全速死追）
     for (var s = 0; s < 6; s++) {
       var ang = rand(0, 6.28), rr = rand(420, 640);
@@ -3807,7 +3814,7 @@
   // v12.6：战场自毁坍塌（45s 内未撤离 → 强制结算失败）
   function collapseEvac() {
     if (scene !== 'mission') return;
-    setBanner('⚠ 战场自毁！撤离失败！', 3);
+    setBanner('⚠ 战场自毁！撤离失败！', 3, null, 'top');
     addShake(9, 700, 240, true); addTint('#B03A3A', 0.4); screenFlash = { color: '#B03A3A', a: 0.4 };
     AudioSys.sfx.bossDie();
     finishRun('death');
@@ -3885,7 +3892,7 @@
     if (b.hp <= 0) { killBoss(); return; }
     // v12.6：半血维度撕裂大招（叠加在 4 种 Boss 现有弹幕之上）
     if (b.dimTear || (!b.dimTearDone && b.hp <= b.maxhp * 0.5)) {
-      if (!b.dimTear) { b.dimTear = 'charge'; b.dimTearT = 1.4; setBanner('⚠ 维度撕裂蓄能！领主正在撕开相位壁——准备按颜色翻相！', 2.6); addShake(4, 240, 120, true); }
+      if (!b.dimTear) { b.dimTear = 'charge'; b.dimTearT = 1.4; setBanner('⚠ 维度撕裂蓄能！领主正在撕开相位壁——准备按颜色翻相！', 2.6, null, 'top'); addShake(4, 240, 120, true); }
       b.dimTearT -= dt;
       if (b.dimTear === 'charge') {
         b.x += (WORLD_W / 2 - b.x) * Math.min(1, dt * 2.2);
@@ -3901,7 +3908,7 @@
             burst(_drx, _dry, '#B06FD0', 14, { ring: true, ringR: 36 });
           }
           addShake(6, 360, 150, true); addTint('#B06FD0', 0.3); AudioSys.sfx.bossRoar();
-          setBanner('⚠ 维度撕裂！红束致命于鎏金相 / 金束致命于余烬相——按光阵颜色即时翻相规避！', 3.4);
+          setBanner('⚠ 维度撕裂！红束致命于鎏金相 / 金束致命于余烬相——按光阵颜色即时翻相规避！', 3.4, null, 'top');
         }
       } else if (b.dimTear === 'active') {
         b.dimRot += dt * 1.6;
@@ -3967,7 +3974,7 @@
           var cnt = b.phase >= 2 ? 3 : 2;
           for (var k = 0; k < cnt; k++) spawnEnemy(b.x + rand(-40, 40), b.y + rand(-40, 40), b.tier || run.tier);
         }
-        b.summonCd = b.phase >= 3 ? 4 : 7; setBanner('穷奇召唤眷属！', 1.2);
+        b.summonCd = b.phase >= 3 ? 4 : 7; setBanner('穷奇召唤眷属！', 1.2, null, 'top');
       }
     } else if (b.summonCd <= 0) { b.summonWarn = 0.6; }
   }
@@ -4283,7 +4290,7 @@
       huntWarnT -= dt;
       if (huntWarnT <= 0) {
         huntWarnT = HUNT_WARN_INT;
-        setBanner('⚠ 猎杀预警！敌机增援自四面涌来（狂暴·速攻）', 2.4, '#C8642A');
+        setBanner('⚠ 猎杀预警！敌机增援自四面涌来（狂暴·速攻）', 2.4, '#C8642A', 'top');
         floatText(player.x, player.y - 36, '猎杀预警·增援', '#C94F4F');
         var reach = Math.max(W, H) * 0.62 + 160;
         for (var h = 0; h < 4; h++) {
@@ -4300,13 +4307,13 @@
   }
   function onRunPhaseChange(np, need) {
     if (np === 'qi') {
-      setBanner('起 · 潜入空域，搜刮战利品', 2.6, '#E8DCC4');
+      setBanner('起 · 潜入空域，搜刮战利品', 2.6, '#E8DCC4', 'top');
     } else if (np === 'cheng') {
-      setBanner('承 · 搜刮积累 · 灵潮涌动：灵脉冷却重置，快去吸收', 2.8, '#C9A24B');
+      setBanner('承 · 搜刮积累 · 灵潮涌动：灵脉冷却重置，快去吸收', 2.8, '#C9A24B', 'top');
       screenFlash = { color: '#C9A24B', a: 0.16 };
       for (var cv = 0; cv < veins.length; cv++) veins[cv].cd = 0; // 灵潮涌动（v11）：灵脉全部就绪
     } else if (np === 'zhuan') {
-      setBanner('转 · 围猎降临！灵脉染污：吸收灵韵×2 但惊动围猎', 3.2, '#C8642A');
+      setBanner('转 · 围猎降临！灵脉染污：吸收灵韵×2 但惊动围猎', 3.2, '#C8642A', 'top');
       screenFlash = { color: '#C8642A', a: 0.3 }; addShake(5, 420, 150, true);
       for (var zv = 0; zv < veins.length; zv++) veins[zv].corrupted = true; // 染污（v11）：风险换构筑提速
       huntActive = true; huntWarnT = 4.5; // 首波预警稍快，给玩家反应
@@ -4316,7 +4323,7 @@
       }
       floatText(player.x, player.y - 36, '围猎开始', '#C8642A');
     } else if (np === 'he') {
-      setBanner('合 · 终局！穷奇降临 · 撤离带出战利品', 3.6, '#C94F4F');
+      setBanner('合 · 终局！穷奇降临 · 撤离带出战利品', 3.6, '#C94F4F', 'top');
       screenFlash = { color: '#C94F4F', a: 0.32 }; addShake(7, 620, 210, true);
     }
   }
@@ -4464,6 +4471,8 @@
     if (gameTime > SAFETY_TIME) {
       if (phase !== PHASE.EMBER) doFlip(PHASE.EMBER, { active: false, source: 'safety', openWindow: 9999 });
       else { emberOpenWindow = Math.max(emberOpenWindow, 9999); openExtractPoints(); }
+      // #389 SAFETY_TIME 触发：顶部横幅通知玩家（一次性）
+      if (!run._safetyBannerShown) { run._safetyBannerShown = true; setBanner('⚠ 超时保底撤离：余烬相强制开启撤离窗口！', 3.6, '#C94F4F', 'top'); }
     }
     if (tipTimer > 0) { tipTimer -= dt; if (tipTimer <= 0 && tipEl) tipEl.style.display = 'none'; }
     // 天罚（雷系4阶）：每 skyCd 秒全屏闪电
@@ -7030,6 +7039,13 @@
   // 悬停提示标签：精炼描边底框 + 文字（置于物体上方）
   function drawInteractLabel(x, y, text, col) {
     try {
+      // #389 顶部安全区：物体太靠屏幕顶部时，标签往物体下方 8px 偏移，避免与 top banner 槽互压
+      // x/y 在 drawExtract/drawPhaseObjects 等调用时已是世界坐标（ctx 已 translate -cam），
+      // 屏幕 Y = worldY - cam.y；为安全把"距屏幕顶部 50px 以内"的标签往下挪 8px
+      try {
+        var _syLbl = y - cam.y;
+        if (_syLbl < 50) y += (50 - _syLbl) + 8;
+      } catch (e) { /* cam 不可用时忽略 */ }
       ctx.save();
       ctx.font = 'bold 13px sans-serif';
       var w = ctx.measureText(text).width;
@@ -7288,8 +7304,11 @@
     var lpW = isMobile ? 176 : 200, lpH = 92;
     var lpX = 16 + SA.l;
     var lpY = (isMobile ? 46 : 16) + SA.t; // 移动端让出最左上角暂停微按钮的 6~38px 区
-    // 顶部信息堆栈：Boss条→撤离点→灵潮连击→幕章→banner队列，自 y=12 动态依序排布，消灭固定坐标互相重叠
-    var _sy = 12 + SA.t;
+    // 顶部信息堆栈：Boss条→撤离点→灵潮连击→幕章→banner队列
+    // #389 调整：top banner 槽独立占据 12+SA.t ~ 12+SA.t+64 区，
+    // 已有顶部信息堆栈（boss/extract/combo/act）整体下移到 12+SA.t+64 后开始，
+    // 避免与战局重要 top banner 互压
+    var _sy = 12 + SA.t + 64;
     function _slot(h) { var y = _sy; _sy += h + 8; return y; }
     var _bossY = boss ? _slot(30) : -1;
     var _extOpen = [], _extWarn = [];
@@ -7451,18 +7470,30 @@
     ctx.fillText('HP ' + Math.ceil(player.hp) + '/' + player.maxhp, lpX + 10, lpY + (isMobile ? 84 : 78));
     ctx.fillStyle = '#E8DCC4'; ctx.font = (isMobile ? '9px' : 'bold 11px') + ' sans-serif';
     ctx.fillText('第' + run.tier + '层 · 杀' + run.kills + ' · 峰' + player.comboBest, lpX + (isMobile ? 66 : 78), lpY + (isMobile ? 84 : 78));
-    // 羁绊条：桌面竖列贴 HP 面板右侧；移动端已收纳进面板顶部标签行（见上），不再外挂
+    // 羁绊条：#389 合并方案——5 元素 chip 横向一行 + | 分隔 + 9px 紧凑字 + 半透明背景，
+    // 放在相位卡下方一行（替代原桌面竖列 30×16×5 块），不再与相位卡/HP 面板挤压
     if (!isMobile) {
-      var _els = ['风', '雷', '水', '火', '土'], _bw = 30, _bh = 16, _gap = 3;
-      var _sx = lpX + lpW + 8, _sy = lpY;
+      var _els = ['风', '雷', '水', '火', '土'];
+      var _chipW = 30, _chipH = 16, _chipGap = 1; // 紧凑：5 个 30 + 4 间隔 1 = 154px（之前 5×30+3×4 = 162）
+      var _chipX0 = lpX + 8;
+      var _chipY0 = lpY + lpH + 6 + 58 + 6; // 相位卡底（58 高）+ 6px 间距
+      // 背景单条半透明（不再每 chip 独立描边）：整行更紧凑
+      var _totalW = _els.length * _chipW + (_els.length - 1) * _chipGap;
+      ctx.fillStyle = 'rgba(16,13,9,0.5)'; ctx.strokeStyle = 'rgba(201,162,75,0.25)'; ctx.lineWidth = 1;
+      if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(_chipX0 - 4, _chipY0 - 1, _totalW + 8, _chipH + 2, 6); ctx.fill(); ctx.stroke(); }
+      else { ctx.fillRect(_chipX0 - 4, _chipY0 - 1, _totalW + 8, _chipH + 2); ctx.strokeRect(_chipX0 - 4, _chipY0 - 1, _totalW + 8, _chipH + 2); }
       for (var _bi = 0; _bi < _els.length; _bi++) {
         var _el = _els[_bi], _cnt = player.elements[_el] || 0, _mx = 0;
         BOND_TIERS[_el].forEach(function (t) { if (player.bondTiers[t.key]) _mx = t.need; });
-        var _yy = _sy + _bi * (_bh + _gap);
-        ctx.fillStyle = 'rgba(16,13,9,0.55)'; ctx.strokeStyle = _mx > 0 ? ELEMCOL[_el] : 'rgba(201,162,75,0.25)'; ctx.lineWidth = 1;
-        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(_sx, _yy, _bw, _bh, 4); ctx.fill(); ctx.stroke(); } else { ctx.fillRect(_sx, _yy, _bw, _bh); ctx.strokeRect(_sx, _yy, _bw, _bh); }
-        ctx.fillStyle = ELEMCOL[_el]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText((TRIGRAM[_el] || '') + _el + ' ' + _cnt, _sx + _bw / 2, _yy + 12);
+        var _cx = _chipX0 + _bi * (_chipW + _chipGap);
+        // 元素文字 + 计数值（金色，9px）
+        ctx.fillStyle = _mx > 0 ? ELEMCOL[_el] : '#C9A24B'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText((TRIGRAM[_el] || '') + _el + _cnt, _cx + _chipW / 2, _chipY0 + 11);
+        // | 分隔符
+        if (_bi < _els.length - 1) {
+          ctx.fillStyle = 'rgba(201,162,75,0.3)';
+          ctx.fillText('|', _cx + _chipW + _chipGap / 2, _chipY0 + 11);
+        }
       }
       ctx.textAlign = 'left';
     }
@@ -7520,19 +7551,25 @@
       else { ctx.fillRect(W / 2 - htw / 2 - 16, hY, htw + 32, 26); ctx.strokeRect(W / 2 - htw / 2 - 16, hY, htw + 32, 26); }
       ctx.fillStyle = hc; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(htxt, W / 2, hY + 18); ctx.textAlign = 'left';
     }
-    // #381-⑤ 相位柱充能引导：玩家进入同相充能半径时，屏幕中央横幅显示充能百分比 + 操作提示（柱顶进度环 + 闪电链之外的双重引导）
+    // #381-⑤ 相位柱充能引导：玩家进入同相充能半径时，世界坐标锚定在相位柱上方（p.y - 50），
+    // 离开半径自动消失（不与底部 banner 互压）。#389 修复：之前画在屏幕中央与底部 banner 抢位置
     if (!inRift && scene === 'mission' && phasePillars) {
       for (var _pgi = 0; _pgi < phasePillars.length; _pgi++) {
         var _pg = phasePillars[_pgi];
         if (_pg.overloadCd > 0 || phase !== _pg.affinity) continue;
         if (Math.hypot(player.x - _pg.x, player.y - _pg.y) < PILLAR_CHARGE_R) {
-          var _pgTxt = '站圈充能相位柱 · ' + Math.floor(_pg.charge) + '%';
-          ctx.font = 'bold 13px sans-serif'; var _pgw = ctx.measureText(_pgTxt).width;
+          var _pgTxt = '站圈充能 · ' + Math.floor(_pg.charge) + '%';
+          ctx.font = 'bold 12px sans-serif'; var _pgw = ctx.measureText(_pgTxt).width;
+          // 世界→屏幕投影：胶囊画在相位柱上方 50px，世界坐标减 cam
+          var _pgScreenX = _pg.x - cam.x;
+          var _pgScreenY = _pg.y - 50 - cam.y;
+          // 边界 clamp：避免离屏或被顶到屏幕最上沿（与 top banner 留 4px 间隙）
+          _pgScreenX = clamp(_pgScreenX, _pgw / 2 + 18, W - _pgw / 2 - 18);
+          _pgScreenY = clamp(_pgScreenY, 12 + SA.t + 60, H - 60); // 顶部 60px 让给 top banner 槽，底部 60px 让给 bot 槽
           ctx.fillStyle = 'rgba(16,13,9,0.82)'; ctx.strokeStyle = _pg.affinity === PHASE.EMBER ? '#C8642A' : '#C9A24B'; ctx.lineWidth = 1.5;
-          var _pgY = isMobile ? H - 244 - SA.b : H - 176;
-          if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26, 13); ctx.fill(); ctx.stroke(); }
-          else { ctx.fillRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26); ctx.strokeRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26); }
-          ctx.fillStyle = _pg.affinity === PHASE.EMBER ? '#FF9A6B' : '#FFE9A8'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(_pgTxt, W / 2, _pgY + 18); ctx.textAlign = 'left';
+          if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(_pgScreenX - _pgw / 2 - 10, _pgScreenY - 13, _pgw + 20, 22, 11); ctx.fill(); ctx.stroke(); }
+          else { ctx.fillRect(_pgScreenX - _pgw / 2 - 10, _pgScreenY - 13, _pgw + 20, 22); ctx.strokeRect(_pgScreenX - _pgw / 2 - 10, _pgScreenY - 13, _pgw + 20, 22); }
+          ctx.fillStyle = _pg.affinity === PHASE.EMBER ? '#FF9A6B' : '#FFE9A8'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(_pgTxt, _pgScreenX, _pgScreenY + 2); ctx.textAlign = 'left';
           break;
         }
       }
@@ -7547,16 +7584,33 @@
       hp(W / 2 - tw / 2 - 10, H - 30, tw + 20, 19, 9);
       ctx.fillStyle = '#B8AE98'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(ht, W / 2, H - 17); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
     }
-    // banner 队列（2026-08-18 规范化）：底部水平居中，避开底部安全区与虚拟按键；字号减半；淡入+尾段淡出
-    for (var bq = 0; bq < bannerQ.length && bq < 2; bq++) {
-      var bn = bannerQ[bq];
-      var aIn = clamp(bn.age / 0.25, 0, 1);
-      ctx.globalAlpha = clamp(bn.life / 0.5, 0, 1) * aIn;
-      ctx.font = 'bold ' + (isMobile ? 10 : 11) + 'px sans-serif'; var bw2 = ctx.measureText(bn.text).width;
-      ctx.fillStyle = 'rgba(16,13,9,0.62)'; ctx.strokeStyle = bn.col ? hexToRgba(bn.col, 0.4) : 'rgba(201,162,75,0.35)';
-      var _by2 = (isMobile ? H - 205 - SA.b : H - 64) - bq * 26;
-      hp(W / 2 - bw2 / 2 - 12, _by2, bw2 + 24, 22, 11);
-      ctx.fillStyle = bn.col || COL.gold; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(bn.text, W / 2, _by2 + 14.5); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    // banner 队列（#389 三槽分桶）：top=屏幕顶部 12+SA.t；mid=中央略上 1/3 处；bot=底部 64/205
+    // 各槽限制条数：top 2 条（错开 28px） / mid 1 条 / bot 2 条（错开 26px）
+    // 战局重要通知走 top 槽；单条中央信息走 mid；常规掉落/按键提示/警告走 bot
+    {
+      var _topN = 0, _midN = 0, _botN = 0;
+      var _topY0 = 12 + SA.t;           // 顶部 1px 安全区
+      var _midY  = Math.round(H * 0.32); // 屏幕中央略上 1/3 处
+      var _botY0 = isMobile ? (H - 205 - SA.b) : (H - 64); // 底部提示行 + 留出 hint 行
+      for (var bq2 = 0; bq2 < bannerQ.length; bq2++) {
+        var bn2 = bannerQ[bq2];
+        var pri2 = bn2.pri || 'bot';
+        var slot = -1, by2 = 0;
+        if (pri2 === 'top' && _topN < 2) { slot = 0; by2 = _topY0 + _topN * 28; _topN++; }
+        else if (pri2 === 'mid' && _midN < 1) { slot = 1; by2 = _midY; _midN++; }
+        else if (_botN < 2) { slot = 2; by2 = _botY0 - _botN * 26; _botN++; }
+        else { continue; } // 槽满丢弃
+        var aIn2 = clamp(bn2.age / 0.25, 0, 1);
+        var fade2 = clamp(bn2.life / 0.5, 0, 1) * aIn2;
+        ctx.globalAlpha = fade2;
+        ctx.font = 'bold ' + (isMobile ? 10 : 11) + 'px sans-serif'; var bw3 = ctx.measureText(bn2.text).width;
+        ctx.fillStyle = 'rgba(16,13,9,0.62)';
+        // top 槽边框加重（重要战局信息），mid/bot 槽弱化
+        ctx.strokeStyle = pri2 === 'top' ? (bn2.col ? hexToRgba(bn2.col, 0.7) : 'rgba(201,162,75,0.6)') : (bn2.col ? hexToRgba(bn2.col, 0.4) : 'rgba(201,162,75,0.35)');
+        ctx.lineWidth = pri2 === 'top' ? 1.5 : 1;
+        hp(W / 2 - bw3 / 2 - 12, by2, bw3 + 24, 22, 11);
+        ctx.fillStyle = bn2.col || COL.gold; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(bn2.text, W / 2, by2 + 14.5); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+      }
     }
     // Boss 血条（面板 + 渐变条 + 名字）
     if (boss) {
