@@ -58,6 +58,7 @@
   var RARCOL = { white: '#D8D6CE', green: '#4E9A7E', blue: '#4E8FC7', purple: '#8A6FB8', orange: '#D98A3D' };
   var RARVAL = [10, 25, 60, 140, 320];
   var TIERNAME = ['入门', '进阶', '深渊'];
+  function tierName(t) { return t <= 3 ? (TIERNAME[t - 1] || ('第' + t + '层')) : ('深渊 ' + (t - 3)); }
   // 八卦五行：巽(风) · 震(雷) · 坎(水) · 离(火) · 坤(土)
   var ELEMCOL = { '火': '#C94F3E', '水': '#4E8FC7', '雷': '#D9B64A', '风': '#37C2C9', '土': '#B07D45' };
   var TRIGRAM = { '风': '巽', '雷': '震', '水': '坎', '火': '离', '土': '坤' };
@@ -136,8 +137,9 @@
   // ---------- 元进度 ----------
   function defaultMeta() {
     return { currency: 0, ore: 0, unlocked: { a: true, b: false, c: false }, runs: 0, bestKills: 0,
-      maxTier: 1, bossCleared: false, seenTutorial: false,
+      maxTier: 1, bossCleared: false, seenTutorial: false, bestLayer: 1,
       up: { hp: 0, dmg: 0, speed: 0, shield: 0, pickup: 0 },
+      tech: { hp: 0, dmg: 0, flip: 0, bag: 0 }, // 研究院天梯（多级永久升级）
       arsenal: [], equipped: { weapon: null, armor: null, core: null, ammo: null },
       research: {}, bondBest: {}, codex: { loot: {}, enemies: {} } };
   }
@@ -148,7 +150,7 @@
     });
   }
   function loadMeta() {
-    try { var s = localStorage.getItem('kongyu_meta'); if (s) { var m = Object.assign(defaultMeta(), JSON.parse(s)); m.up = Object.assign({ hp: 0, dmg: 0, speed: 0, shield: 0, pickup: 0 }, m.up || {}); m.unlocked = Object.assign({ a: true, b: false, c: false }, m.unlocked || {}); m.equipped = Object.assign({ weapon: null, armor: null, core: null, ammo: null }, m.equipped || {}); if (!m.arsenal) m.arsenal = []; if (!m.research) m.research = {}; if (!m.bondBest) m.bondBest = {}; if (!m.codex) m.codex = { loot: {}, enemies: {} }; return m; } } catch (e) {}
+    try { var s = localStorage.getItem('kongyu_meta'); if (s) { var m = Object.assign(defaultMeta(), JSON.parse(s)); m.up = Object.assign({ hp: 0, dmg: 0, speed: 0, shield: 0, pickup: 0 }, m.up || {}); m.unlocked = Object.assign({ a: true, b: false, c: false }, m.unlocked || {}); m.equipped = Object.assign({ weapon: null, armor: null, core: null, ammo: null }, m.equipped || {}); m.tech = Object.assign({ hp: 0, dmg: 0, flip: 0, bag: 0 }, m.tech || {}); if (!m.arsenal) m.arsenal = []; if (!m.research) m.research = {}; if (!m.bondBest) m.bondBest = {}; if (!m.codex) m.codex = { loot: {}, enemies: {} }; if (!m.bestLayer) m.bestLayer = m.maxTier || 1; return m; } } catch (e) {}
     return defaultMeta();
   }
   function saveMeta() { try { localStorage.setItem('kongyu_meta', JSON.stringify(meta)); } catch (e) {} }
@@ -500,6 +502,12 @@
     if (meta.research.hp1) { player.maxhp = Math.round(player.maxhp * 1.15); player.hp = player.maxhp; }
     if (meta.research.mag1) player.pickR += 36;
     if (meta.research.ext1) player.extractBonus = 0.15;
+    // 研究院天梯（多级永久升级）
+    var t = meta.tech || {};
+    if (t.hp) { player.maxhp = Math.round(player.maxhp * (1 + 0.05 * t.hp)); player.hp = player.maxhp; }
+    if (t.dmg) player.atkMult *= (1 + 0.05 * t.dmg);
+    // flip: 翻相恢复加速（降低 CORE_REGEN 等效秒数）—— 在 update 中读取 meta.tech.flip
+    // bag: 背包扩容 —— 在 pushToLoot 中读取 meta.tech.bag
   }
   // 结算：战利品按 outcome 比例入库为法器（研究院撤离研究可加成）
   function bankLoot(outcome) {
@@ -531,8 +539,53 @@
     { key: 'mag1', name: '磁吸研究', desc: '拾取范围 +36', cost: 350, reqTier: 1 },
     { key: 'ext1', name: '撤离研究', desc: '撤离多带出 15% 法器', cost: 650, reqTier: 2 }
   ];
+  // === 研究院天梯（多级永久升级 · 消耗灵玉+灵矿碎屑）===
+  var TECH_TREE = [
+    { key: 'hp', name: '天工机体', desc: '生命上限 +5%/级', max: 10, costJade: function (l) { return 200 + l * 120; }, costOre: function (l) { return 15 + l * 8; } },
+    { key: 'dmg', name: '聚灵核心', desc: '主武器伤害 +5%/级', max: 10, costJade: function (l) { return 220 + l * 130; }, costOre: function (l) { return 18 + l * 9; } },
+    { key: 'flip', name: '太极灵韵', desc: '翻相恢复 -0.3s/级', max: 5, costJade: function (l) { return 300 + l * 180; }, costOre: function (l) { return 25 + l * 12; } },
+    { key: 'bag', name: '乾坤纳戒', desc: '局内背包 +1 格/级', max: 3, costJade: function (l) { return 400 + l * 250; }, costOre: function (l) { return 30 + l * 15; } }
+  ];
 
-  // ---------- 机体（武器形态差异化）----------
+  // === 局内动态悬赏（Dynamic Bounty）===
+  var BOUNTY_TYPES = [
+    { id: 'killElite', desc: '击破 {n} 处精英敌机', target: function () { return 2 + Math.floor(run.tier * 0.5); }, track: 'eliteKill' },
+    { id: 'killEmber', desc: '余烬相击杀 {n} 名敌机', target: function () { return 6 + run.tier; }, track: 'emberKill' },
+    { id: 'collectOre', desc: '搜集 {n} 个灵矿碎屑', target: function () { return 5 + run.tier * 2; }, track: 'orePickup' },
+    { id: 'breakRift', desc: '以引力裂隙撕裂 {n} 名敌机', target: function () { return 3; }, track: 'riftTear' },
+    { id: 'collectNodes', desc: '采集 {n} 个灵韵节点', target: function () { return 3 + run.tier; }, track: 'nodeCollect' }
+  ];
+  var bounty = null; // 当局悬赏对象 {type, desc, target, progress, completed}
+  function generateBounty() {
+    var bt = BOUNTY_TYPES[randi(0, BOUNTY_TYPES.length - 1)];
+    var n = bt.target();
+    bounty = { id: bt.id, desc: bt.desc.replace('{n}', n), target: n, progress: 0, completed: false, track: bt.track };
+  }
+  function bountyProgress(trackKey, amount) {
+    if (!bounty || bounty.completed || bounty.track !== trackKey) return;
+    bounty.progress = Math.min(bounty.target, bounty.progress + (amount || 1));
+    if (bounty.progress >= bounty.target) completeBounty();
+  }
+  function completeBounty() {
+    if (!bounty || bounty.completed) return;
+    bounty.completed = true;
+    // 奖励：天工宝箱（高品质法器掉落）+ 暴击/移速加成
+    var dropRar = Math.random() < 0.3 ? 'purple' : 'blue';
+    if (budgetArtifact(dropRar)) dropLoot(player.x + rand(-40, 40), player.y + rand(-40, 40), dropRar, 'artifact');
+    else dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 50 });
+    dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 30 + run.tier * 10 });
+    dropOre(player.x, player.y, 3 + run.tier);
+    // 即时增益：暴击+8%、移速+15%，持续整局
+    player.critChance = Math.min(0.85, player.critChance + 0.08);
+    player.speed += 15;
+    player.bountyBuff = true;
+    burst(player.x, player.y, '#FFE9A8', 30, { ring: true, ringR: 80, r0: 10 });
+    spawnRing(player.x, player.y, '#FFE9A8', 100);
+    setBanner('★ 悬赏达成！天工宝箱 + 暴击/移速增益', 2.4);
+    AudioSys.sfx.eliteDie();
+    addShake(3, 200, 80);
+  }
+
   // pellets: 基础弹片数; homing: 是否天生追踪; spread: 散射角
   var AIRCRAFT = {
     a: { id: 'a', name: '青隼', desc: '突击·直射', hp: 100, speed: 235, fireRate: 4.5, dmg: 11, bulletSpeed: 520, color: COL.player, unlockCost: 0, pellets: 1, homing: false, spread: 0 },
@@ -1862,8 +1915,8 @@
     floatText(secretVault.x, secretVault.y - 30, '★★ 传说保底!', '#FFE9A8', 'crit');
   }
 
-  function tierMul() { return 1 + (run.tier - 1) * 0.5; }
-  function tierDmgMul() { return 1 + (run.tier - 1) * 0.35; }
+  function tierMul() { return 1 + (run.tier - 1) * 0.5; } // 敌人HP倍率：每层 +50%
+  function tierDmgMul() { return 1 + (run.tier - 1) * 0.35; } // 敌人攻击倍率：每层 +35%
 
   // ====== 统一伤害公式 ======
   // 乘区A 基础攻击力 = 机体基础 + 永久升级 + 装备词条 (加法, 上限 240)
@@ -2205,7 +2258,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2218,6 +2271,7 @@
     placeNodes(6 + tier);
     placeVeins(); // 灵脉共振（v11）：每系一条增益资源区，铺在节点之间的开阔空域
     applyEquipped(); // 把已装备法器 + 研究院被动实打实叠到这局属性上
+    invMax = 8 + (meta.tech && meta.tech.bag ? meta.tech.bag : 0); // 乾坤纳戒：背包扩容
     run._gearFull = snapshotGearBase(); // #BP2：抓取「已叠完 meta 装备+研究院」的战斗属性基线（不含符文/战损），供 recomputeRunStats 安全重算；局内换装在此基线上叠加，绝不回血
     spawnPhaseObjects(); // 相位柱 / 引力裂隙 / 磁锁秘库布点
     if (meta.runs === 0) { var ek = isMobile ? '点按' : '[E]'; showTip('<b>目标：</b>搜刮战利品 → 撤离带回法器。天空有<b>礁石掩体/隔断墙</b>可当掩护、<b>五行灵脉</b>（小地图菱形点）飞过即吸灵韵喂羁绊；<b>封印宝箱</b>按住' + ek + '解封（会刷敌）、<b>符文宝箱</b>击破环绕符文柱解锁，都在特殊位置、保底高品质。撤离点<b>限时开放</b>（光柱亮起才能走）。战利品改为<b>手动拾取</b>：靠近按' + ek + '或点按拾取（不再触碰即捡）', 5); }
@@ -2227,6 +2281,7 @@
     placeVaults(tier); // 特殊位置放置封印/符文宝箱（好宝箱，需做任务解锁）
     placeEncounters(); // 遭遇制：按地点固定布置敌人（宝箱护卫 + 少量游荡机）
     placeRifts(); // 角落/边缘放置 1-2 个裂隙入口
+    generateBounty(); // 局内动态悬赏：随机生成即时目标
   }
 
   function placeNodes(n) {
@@ -2317,7 +2372,7 @@
     return 'white';
   }
   // #B3 修复：统一难度口径——地图层级 + 时间升阶，敌人掉落/宝箱掉落共用，消除 etier/run.tier 两套语义
-  function diffTier() { return Math.min(4, run.tier + Math.floor(gameTime / 90)); }
+  function diffTier() { return Math.min(99, run.tier + Math.floor(gameTime / 90)); } // 难度口径：随层级+时间递增，不封顶（原 min(4,...) 已解除）
   // ---------- 宝箱分级与开箱反馈 ----------
   var CHESTS = {
     wood:   { key: 'wood',   name: '木箱', color: '#8B95A0', edge: '#5b6470', glow: 6,  min: 2, max: 3, floor: 1, flash: '#cdd8e2', guard: 1 },
@@ -2947,6 +3002,8 @@
       var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt;
       floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8');
       AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
+      bountyProgress('orePickup', oamt); // 动态悬赏：灵矿碎屑采集
+      run.oreCollected = (run.oreCollected || 0) + oamt; // 局末结算：追踪本局采集量
       loot.splice(idx, 1); return;
     }
     // artifact / legendary / bossrelic / legendary_weapon → 入背包（满则取舍）
@@ -3772,16 +3829,22 @@
     showScene('result');
     var killReward = Math.floor(run.kills * 2) + (outcome === 'success' ? 30 : outcome === 'abandon' ? 10 : 0);
     if (outcome === 'success' && exfilJadePenalty > 0) killReward = Math.floor(killReward * (1 - exfilJadePenalty)); // 急速读条折损
+    // ★ 深渊层级：成功撤离带回 100% 灵矿碎屑 / 阵亡 15% / 弃局 30%
+    var oreReturnRate = outcome === 'success' ? 1.0 : (outcome === 'abandon' ? 0.30 : 0.15);
+    var oreReward = Math.floor((run.oreCollected || 0) * oreReturnRate);
     var kept = bankLoot(outcome);                 // 战利品入库为法器（按 outcome 比例，带研究院撤离加成）
     var lostLoot = run.loot.length - kept;        // 被没收的战利品件数
-    meta.currency += killReward; meta.runs += 1;  // 灵玉仅来自击杀（用于回收/研究院/永久强化）
+    meta.currency += killReward; meta.ore += oreReward; meta.runs += 1;  // 灵玉仅来自击杀；灵矿碎屑来自采集
     if (run.kills > meta.bestKills) meta.bestKills = run.kills;
     var unlockedNew = false;
-    if (outcome === 'success' && run.killedBoss && run.tier === meta.maxTier && meta.maxTier < 3) { meta.maxTier++; unlockedNew = true; }
+    // ★ 解除 3 层封顶：通关当前最高层 Boss + 成功撤离 → 解锁下一层深渊裂隙（上限 99 层）
+    if (outcome === 'success' && run.killedBoss && run.tier === meta.maxTier && meta.maxTier < 99) { meta.maxTier++; unlockedNew = true; }
+    // ★ 历史最高通关层记录
+    if (outcome === 'success' && run.tier > meta.bestLayer) meta.bestLayer = run.tier;
     checkUnlocks();
     for (var ek in run.enemyKills) { meta.codex.enemies[ek] = (meta.codex.enemies[ek] || 0) + run.enemyKills[ek]; } // 敌怪图鉴入库
     saveMeta();
-    showResult(outcome, kept, lostLoot, killReward, unlockedNew);
+    showResult(outcome, kept, lostLoot, killReward, unlockedNew, oreReward);
   }
 
   // ---------- 敌人死亡（掉落/分裂/计数/移除）----------
@@ -3927,6 +3990,9 @@
       floatText(player.x, player.y - 46, '☯ 绝技就绪 [J]', '#D9B64A', 'crit');
     }
     run.kills++;
+    // 动态悬赏进度追踪
+    if (e.elite) bountyProgress('eliteKill', 1);
+    if (player.phase === PHASE.EMBER) bountyProgress('emberKill', 1);
     // 灵蕴（经验宝石）：击杀掉落，飞过即吸取，累积升级触发三选一（掉落量随难度口径平滑成长）
     dropXp(e.x, e.y, e.elite ? 6 : (1 + Math.floor(diffTier() * 0.8)));
     run.enemyKills[e.arche] = (run.enemyKills[e.arche] || 0) + 1; // 敌怪图鉴计数
@@ -4032,8 +4098,9 @@
         if (phaseTimer <= 0) doFlip(PHASE.GOLD, { active: false, source: 'auto' });
       }
     }
-    // 相位核心被动回充（30s/格；鎏金相 ×2）
-    phaseCoreRegen += dt * (phase === PHASE.GOLD ? (CORE_REGEN_GOLD_MULT / CORE_REGEN) : (1 / CORE_REGEN));
+    // 相位核心被动回充（30s/格；鎏金相 ×2）—— 太极灵韵科技加速回充
+    var _flipBoost = 1 + (meta.tech && meta.tech.flip ? meta.tech.flip * 0.3 / CORE_REGEN : 0);
+    phaseCoreRegen += dt * _flipBoost * (phase === PHASE.GOLD ? (CORE_REGEN_GOLD_MULT / CORE_REGEN) : (1 / CORE_REGEN));
     if (phaseCoreRegen >= 1) {
       var _addC = Math.floor(phaseCoreRegen);
       phaseCore = Math.min(CORE_CAP, phaseCore + _addC);
@@ -4988,6 +5055,8 @@
       }
       if (it.type === 'ore' && dist2(it.x, it.y, player.x, player.y) < player.pickR * player.pickR) {
         var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt; floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8'); AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
+        bountyProgress('orePickup', oamt); // 动态悬赏：灵矿碎屑采集
+        run.oreCollected = (run.oreCollected || 0) + oamt; // 局末结算：追踪本局采集量
         loot.splice(l, 1); continue;
       }
       // 其余战利品保留在地面，等待玩家手动拾取（点按 / 触屏点按）
@@ -4999,6 +5068,7 @@
   }
   function collectNode(nd) {
     nd.collected = true; run.nodes++;
+    bountyProgress('nodeCollect', 1); // 动态悬赏：灵韵节点采集
     var c = CHESTS[nd.chest]; if (!c) return;
     // #C2 修复：宝箱入包统一走 pushToLoot（8 格上限 + 满则弃最低）；
     // 被 #197 掉落筛选过滤的稀有度不掉入背包，改为掉到地面（暗化显示，E 键可强制捡回）
@@ -6703,7 +6773,7 @@
             if (Math.hypot(_ee.x - g.x, _ee.y - g.y) < g.core + _ee.r) {
               _ee.hp -= GRAV_TEAR_DMG; _ee.flash = 0.08; _ee.hitT = 0.1; _ee.hitMag = 2;
               burst(_ee.x, _ee.y, '#C79BE8', 4, { smin: 30, smax: 90 });
-              if (_ee.hp <= 0) onEnemyDeath(_ee, true);
+              if (_ee.hp <= 0) { bountyProgress('riftTear', 1); onEnemyDeath(_ee, true); }
             }
           }
         }
@@ -7163,6 +7233,29 @@
       ctx.fillText('💡 按 M 可合成', W - 22, 156); ctx.textAlign = 'left';
     }
   }
+  // 动态悬赏 HUD（左上面板下方，小地图对侧）
+  function drawBounty() {
+    if (!bounty) return;
+    var bw = isMobile ? 168 : 200, bh = 44;
+    var bx = 16 + SA.l;
+    var by = (isMobile ? 46 : 16) + SA.t + (isMobile ? 96 : 100) + 6; // 紧贴左上面板下方
+    ctx.fillStyle = 'rgba(16,13,9,0.78)';
+    ctx.strokeStyle = bounty.completed ? COL.extract : 'rgba(201,162,75,0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 8); else ctx.rect(bx, by, bw, bh); ctx.fill(); ctx.stroke();
+    // 标题行
+    ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = bounty.completed ? COL.extract : '#C9A24B';
+    ctx.fillText('★ 悬赏', bx + 10, by + 14);
+    // 进度条
+    var pbx = bx + 10, pby = by + 20, pbw = bw - 20, pbh = 5;
+    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(pbx, pby, pbw, pbh);
+    var pct = bounty.completed ? 1 : bounty.progress / bounty.target;
+    ctx.fillStyle = bounty.completed ? COL.extract : '#C9A24B'; ctx.fillRect(pbx, pby, pbw * pct, pbh);
+    // 描述行
+    ctx.font = '9px sans-serif'; ctx.fillStyle = bounty.completed ? COL.extract : '#E8DCC4';
+    var desc = bounty.completed ? '✓ 已达成 · 天工宝箱已掉落' : bounty.desc + ' (' + bounty.progress + '/' + bounty.target + ')';
+    ctx.fillText(desc, bx + 10, by + 38);
+  }
   // 屏幕边缘威胁箭头（增援 / 开箱护卫）：玩家可见来袭方向与威胁色
   function drawEdgeArrows() {
     var list = [];
@@ -7219,6 +7312,7 @@
     ctx.restore();
     drawPhaseTint(); // 全图调色 shift（金暖 ↔ 余烬橙暗，性能优先单覆盖层）
     drawHUD();
+    drawBounty(); // 动态悬赏面板（左上面板下方）
     drawPickupList();
     drawEdgeArrows();
     if (tint.a > 0) { ctx.fillStyle = hexToRgba(tint.col, tint.a); ctx.fillRect(0, 0, W, H); }
@@ -7354,32 +7448,33 @@
     // === 难度选择 ===
     var tr = document.getElementById('tierRow');
     if (tr) {
-      var tierLvMap = {1:'Lv1',2:'Lv3',3:'Lv6'};
       var tnames = '';
-      for (var t = 1; t <= TIERNAME.length; t++) {
+      for (var t = 1; t <= meta.maxTier; t++) {
         var unlocked = t <= meta.maxTier;
         var cls = 'tname-row' + (selectedTier === t ? ' selected' : '') + (unlocked ? '' : ' locked');
-        var mul = ['Lv1 · 1.0x', 'Lv3 · 1.4x', 'Lv6 · 2.0x'][t - 1] || '';
-        tnames += '<div class="' + cls + '" data-t="' + TIERNAME[t-1] + '"><span>' + TIERNAME[t-1] + '</span><i class="tmul">' + mul + '</i></div>';
+        var mulTxt = '×' + (1 + (t - 1) * 0.5).toFixed(1);
+        tnames += '<div class="' + cls + '" data-ti="' + t + '"><span>' + tierName(t) + '</span><i class="tmul">' + mulTxt + '</i></div>';
       }
-      var curT = TIERNAME[selectedTier - 1];
-      var rewardMul = ['×1.0','×1.4','×2.0'][selectedTier - 1] || '×1.0';
+      var curT = tierName(selectedTier);
+      var rewardMul = '×' + (1 + (selectedTier - 1) * 0.5).toFixed(1);
+      var hpMulTxt = '+' + Math.round((tierMul(selectedTier) - 1) * 100) + '%';
+      var dmgMulTxt = '+' + Math.round((tierDmgMul(selectedTier) - 1) * 100) + '%';
       tr.innerHTML =
         '<div class="tier-names">' + tnames + '</div>' +
         '<div class="tier-preview"><div class="inner">' +
           '<div class="tname">' + curT + '</div>' +
-          '<div class="tlv">' + (tierLvMap[selectedTier] || ('Lv'+selectedTier)) + '</div>' +
-          '<div class="tdesc">精英密度随层级提升<br>奖励倍率 ' + rewardMul + '</div>' +
+          '<div class="tlv">Lv' + selectedTier + '</div>' +
+          '<div class="tdesc">敌HP ' + hpMulTxt + ' · 敌ATK ' + dmgMulTxt + '<br>奖励倍率 ' + rewardMul + '</div>' +
         '</div></div>' +
         '<div class="tier-lv">' +
-          '<div class="tlv-box">Lv1</div><div class="tlv-box">Lv3</div><div class="tlv-box">Lv6</div>' +
+          (function(){ var s=''; for(var i=1;i<=Math.min(meta.maxTier,6);i++) s+='<div class="tlv-box'+(selectedTier===i?' on':'')+'">Lv'+i+'</div>'; return s; })() +
         '</div>';
       var trows = tr.querySelectorAll('.tname-row');
       for (var tri = 0; tri < trows.length; tri++) {
         (function (row) {
           row.addEventListener('click', function () {
             if (row.classList.contains('locked')) return;
-            selectedTier = TIERNAME.indexOf(row.dataset.t) + 1; renderBase(); AudioSys.sfx.ui();
+            selectedTier = parseInt(row.dataset.ti) || 1; renderBase(); AudioSys.sfx.ui();
           });
         })(trows[tri]);
       }
@@ -7420,7 +7515,7 @@
     var resArsenal = document.getElementById('resArsenal');
     if (resArsenal) resArsenal.textContent = meta.arsenal.length;
     var resProgress = document.getElementById('resProgress');
-    if (resProgress) resProgress.textContent = meta.maxTier + '/3';
+    if (resProgress) resProgress.textContent = '最高 ' + meta.bestLayer + ' 层';
     renderArsenal(); renderForge(); renderResearch(); renderCodex();
   }
 
@@ -8058,8 +8153,35 @@
   }
   // 研究院节点图标（v3 切图）：锋锐→雷刃 会心→星盘 体魄→盾 磁吸→聚合 撤离→转换
   var RES_ICONS = { dmg1: 'icon_22', crit1: 'icon_33', hp1: 'icon_30', mag1: 'icon_20', ext1: 'icon_13' };
+  var TECH_ICONS = { hp: 'icon_30', dmg: 'icon_22', flip: 'icon_33', bag: 'icon_10' };
   function renderResearch() {
     var box = document.getElementById('researchList'); box.innerHTML = '';
+    // === 天梯科技（多级永久升级 · 消耗灵玉+灵矿碎屑）===
+    var techHeader = document.createElement('div'); techHeader.className = 'research-section-header';
+    techHeader.innerHTML = '<span>天梯科技</span><i>消耗灵玉+灵矿碎屑永久升级，每局生效</i>';
+    box.appendChild(techHeader);
+    TECH_TREE.forEach(function (tk) {
+      var lv = (meta.tech && meta.tech[tk.key]) || 0;
+      var maxed = lv >= tk.max;
+      var costJ = tk.costJade(lv), costO = tk.costOre(lv);
+      var afford = meta.currency >= costJ && (meta.ore || 0) >= costO && !maxed;
+      var el = document.createElement('div'); el.className = 'research-card' + (maxed ? ' maxed' : (afford ? ' canbuy' : ' cant'));
+      var statusTxt = maxed ? ('✓ 满级 Lv' + lv) : ('Lv' + lv + ' → ' + (lv + 1) + ' · 需 ' + costJ + ' 灵玉 + ' + costO + ' 碎屑');
+      el.innerHTML = '<div class="rc-icon"><img src="assets/v3/ui/cropped/' + (TECH_ICONS[tk.key] || 'icon_32') + '.png" alt=""></div>' +
+        '<div class="rc-name">' + tk.name + ' <span style="color:#C9A24B">Lv' + lv + '/' + tk.max + '</span></div>' +
+        '<div class="rc-desc">' + tk.desc + '</div>' +
+        '<div class="rc-status">' + statusTxt + '</div>';
+      el.title = tk.name + '：' + tk.desc + '（当前 Lv' + lv + '/' + tk.max + '）';
+      if (!maxed && afford) el.onclick = function () {
+        meta.currency -= costJ; meta.ore = (meta.ore || 0) - costO;
+        meta.tech[tk.key] = lv + 1; saveMeta(); renderBase(); AudioSys.sfx.merge();
+      };
+      box.appendChild(el);
+    });
+    // === 基础研究（一次性解锁）===
+    var resHeader = document.createElement('div'); resHeader.className = 'research-section-header';
+    resHeader.innerHTML = '<span>基础研究</span><i>一次性灵玉解锁，永久生效</i>';
+    box.appendChild(resHeader);
     RESEARCH.forEach(function (r) {
       var done = !!meta.research[r.key];
       var reqOk = meta.maxTier >= (r.reqTier || 1);
@@ -8074,12 +8196,6 @@
       if (!done && afford) el.onclick = function () { meta.currency -= r.cost; meta.research[r.key] = true; saveMeta(); renderBase(); };
       box.appendChild(el);
     });
-    var soon = document.createElement('div'); soon.className = 'research-card locked';
-    soon.innerHTML = '<div class="rc-icon"><img src="assets/v3/ui/cropped/icon_32.png" alt=""></div>' +
-      '<div class="rc-name">未尽研究</div>' +
-      '<div class="rc-desc">后续章节揭晓</div>' +
-      '<div class="rc-status">敬请期待</div>';
-    box.appendChild(soon);
   }
   // ---------- 图鉴：六分类（敌怪/战利品/套装/传说武器/机体/研究） ----------
   var codexCat = 'enemies';
@@ -8181,19 +8297,25 @@
     }
   }
   function startMission() { if (!meta.unlocked[selectedAircraft]) { return; } forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
-  function showResult(outcome, kept, lostLoot, killReward, unlockedNew) {
+  function showResult(outcome, kept, lostLoot, killReward, unlockedNew, oreReward) {
     var label = outcome === 'success' ? '撤离成功' : (outcome === 'abandon' ? '主动弃局' : '阵亡');
     document.getElementById('resultTitle').textContent = outcome === 'success' ? '撤离成功！' : (outcome === 'abandon' ? '已弃局撤离' : '机体被击毁…');
     document.getElementById('resultTitle').style.color = outcome === 'success' ? COL.extract : (outcome === 'abandon' ? COL.gold : COL.enemy);
     var html = '';
-    html += '<div class="stat-card big"><span>结局</span><b>' + label + '（第 ' + run.tier + ' 层）</b></div>';
+    // ★ 结算面板重构：击杀数 / 物资清单 / 灵玉碎屑 / 历史最高层 / 引导
+    html += '<div class="stat-card big"><span>结局</span><b>' + label + '（第 ' + run.tier + ' 层 · ' + tierName(run.tier) + '）</b></div>';
+    html += '<div class="stat-card"><span>本局击杀</span><b>' + run.kills + ' 体</b></div>';
     if (outcome === 'success') html += '<div class="stat-card ok"><span>战利品</span><b>全部入库：+' + kept + ' 件法器</b></div>';
     else if (outcome === 'abandon') html += '<div class="stat-card bad"><span>弃局带回 30%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
     else html += '<div class="stat-card bad"><span>阵亡带回 15%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
-    html += '<div class="stat-card"><span>击杀灵玉</span><b>+' + killReward + '</b></div>';
+    // 灵玉 + 灵矿碎屑
+    html += '<div class="stat-card"><span>获得灵玉</span><b>+' + killReward + '</b></div>';
+    if (oreReward > 0) html += '<div class="stat-card"><span>获得灵矿碎屑</span><b>+' + oreReward + '</b></div>';
     if (run.killedBoss) html += '<div class="stat-card ok"><span>本局击破 BOSS</span><b>奖励丰厚</b></div>';
-    if (unlockedNew) html += '<div class="stat-card ok"><span>新层解锁</span><b>第 ' + meta.maxTier + ' 层「' + TIERNAME[meta.maxTier - 1] + '」</b></div>';
-    if (run.tier === 3 && outcome === 'success' && run.killedBoss) html += '<div class="stat-card ok"><span>全层通关</span><b>你已征服深渊</b></div>';
+    // ★ 解锁新层提示
+    if (unlockedNew) html += '<div class="stat-card ok"><span>新层解锁</span><b>第 ' + meta.maxTier + ' 层「' + tierName(meta.maxTier) + '」</b></div>';
+    // ★ 历史最高通关层
+    html += '<div class="stat-card"><span>历史最高通关</span><b>第 ' + meta.bestLayer + ' 层 · ' + tierName(meta.bestLayer) + '</b></div>';
     // 本局战利品清单（成就感）
     var dist = { white: 0, green: 0, blue: 0, purple: 0, orange: 0 }, nm = [], relicNames = [];
     run.loot.forEach(function (it) { dist[it.rarity]++; if (it.relicMods) relicNames.push(it.name); if (nm.length < 5) nm.push(it.name); });
@@ -8205,8 +8327,13 @@
     else if (nm.length) html += '<div class="mini" style="text-align:right">' + nm.join('、') + '…</div>';
     var _bs = bondSummary();
     if (_bs.length) html += '<div class="stat-card"><span>本局羁绊</span><b>' + _bs.join(' · ') + '</b></div>';
-    html += '<div class="stat-card"><span>库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉 · ' + (meta.ore || 0) + ' 灵矿碎屑</b></div>';
-    html += '<div class="muted" style="margin-top:12px">回基地「军械库」装载法器、「熔炼台」合成升稀、「研究院」解锁永久被动。本局拾取符文 ' + player.runes.length + ' 枚。</div>';
+    html += '<div class="stat-card"><span>当前库存</span><b>' + meta.arsenal.length + ' 件法器 · ' + meta.currency + ' 灵玉 · ' + (meta.ore || 0) + ' 灵矿碎屑</b></div>';
+    // ★ 引导玩家形成闭环
+    var guide = '回基地「军械库」装载法器、「熔炼台」合成升稀、「研究院」消耗灵矿碎屑+灵玉永久升级科技。';
+    if (unlockedNew) guide = '新层已解锁！回基地整备后挑战第 ' + meta.maxTier + ' 层「' + tierName(meta.maxTier) + '」获取更高品质掉落。';
+    else if (meta.ore >= 15) guide = '灵矿碎屑充足！前往「研究院」升级天工机体/聚灵核心等永久科技，提升下局战力。';
+    else if (meta.arsenal.length >= 3) guide = '法器库存充裕！前往「熔炼台」3合1合成高阶装备，或「军械库」装配更强法器。';
+    html += '<div class="muted" style="margin-top:12px">' + guide + ' 本局拾取符文 ' + player.runes.length + ' 枚。</div>';
     document.getElementById('resultBody').innerHTML = html;
   }
 
@@ -8503,6 +8630,36 @@
       consumablesCenter: function () {
         var n = 3, size = isMobile ? 30 : 38, gap = isMobile ? 6 : 10, totalW = n * size + (n - 1) * gap;
         return { bx: (W - totalW) / 2, by: H - size - (isMobile ? 24 + SA.b : 16), totalW: totalW, size: size };
+      },
+      // === v14 局内动态目标 + 局外永久成长 · 测试桩钩子 ===
+      bounty: function () { return bounty; },
+      bountyProgress: bountyProgress,
+      generateBounty: generateBounty,
+      completeBounty: completeBounty,
+      meta: function () { return meta; },
+      tech: function () { return meta.tech || {}; },
+      tierName: tierName,
+      bestLayer: function () { return meta.bestLayer || 1; },
+      maxTier: function () { return meta.maxTier; },
+      buyTech: function (key) {
+        var tk = TECH_TREE.find(function (t) { return t.key === key; });
+        if (!tk) return { ok: false, reason: 'not_found' };
+        var lv = (meta.tech && meta.tech[key]) || 0;
+        if (lv >= tk.max) return { ok: false, reason: 'maxed' };
+        var cj = tk.costJade(lv), co = tk.costOre(lv);
+        if (meta.currency < cj || (meta.ore || 0) < co) return { ok: false, reason: 'insufficient' };
+        meta.currency -= cj; meta.ore = (meta.ore || 0) - co; meta.tech[key] = lv + 1; saveMeta();
+        return { ok: true, key: key, level: lv + 1, jadeSpent: cj, oreSpent: co };
+      },
+      // 模拟完成本局并结算（供桩断言 oreReward / bestLayer / maxTier 推进）
+      simFinishRun: function (outcome, killBoss) {
+        if (scene !== 'mission') startMission(); // 确保处于 mission 态（桩测试中 scene 可能已被前序用例改为 result）
+        if (!run) return { ok: false };
+        if (killBoss) { run.killedBoss = true; run.kills += 5; }
+        run.oreCollected = (run.oreCollected || 0) + 20;
+        var mt0 = meta.maxTier, bl0 = meta.bestLayer, ore0 = meta.ore;
+        finishRun(outcome);
+        return { ok: true, maxTierBefore: mt0, maxTierAfter: meta.maxTier, bestLayerBefore: bl0, bestLayerAfter: meta.bestLayer, oreBefore: ore0, oreAfter: meta.ore };
       }
     };
   }

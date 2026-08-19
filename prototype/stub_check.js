@@ -393,6 +393,60 @@ try {
   if (_cc.by > api.logicalH() - _cc.size - _sa.b) errors.push('v13: 13d 丹药槽 by 应避开底部SA, by=' + _cc.by + ' H=' + api.logicalH() + ' size=' + _cc.size + ' SA.b=' + _sa.b);
   else console.log('[13d] 丹药槽避底SA OK：by=' + _cc.by + ' (H-size-SA.b=' + (api.logicalH() - _cc.size - _sa.b) + ')');
 
+  // ============================================================
+  // 14) v14 局内动态目标 + 局外永久成长 · 悬赏/科技树/层级推进/结算
+  // ============================================================
+  console.log('---- v14 动态目标+永久成长专项 ----');
+  // 14a 动态悬赏：进图后 bounty 不为 null，有合法 id/desc/target>0/progress=0
+  var _bty = api.bounty();
+  if (!_bty) errors.push('v14: 14a 进图后 bounty 不应为 null');
+  else {
+    if (!_bty.id || !_bty.desc || !(_bty.target > 0) || _bty.progress !== 0)
+      errors.push('v14: 14a bounty 字段异常 id=' + _bty.id + ' target=' + _bty.target + ' progress=' + _bty.progress);
+    else console.log('[14a] 动态悬赏生成 OK：' + _bty.desc + ' (目标=' + _bty.target + ')');
+  }
+  // 14b 悬赏追踪：击杀敌人后 progress 应增加（killElite 类型）
+  var _btyId = _bty ? _bty.id : '';
+  if (_btyId === 'killElite' || _btyId === 'killEmber') {
+    var _prog0 = _bty.progress;
+    // 找一个敌人击杀
+    var _enemies = api.enemies();
+    if (_enemies.length > 0) { api.killEnemy(0); }
+    var _bty2 = api.bounty();
+    if (_bty2 && _bty2.progress <= _prog0) errors.push('v14: 14b 悬赏追踪 progress 未增加 prog0=' + _prog0 + ' prog1=' + (_bty2 ? _bty2.progress : -1));
+    else if (_bty2) console.log('[14b] 悬赏追踪 OK：progress ' + _prog0 + ' → ' + _bty2.progress);
+  } else {
+    console.log('[14b] 悬赏类型=' + _btyId + ' 跳过击杀追踪断言（非击杀类）');
+  }
+  // 14c 科技树购买：给足灵玉+碎屑后 buyTech 应成功，level 递增
+  var _meta = api.meta();
+  var _jadeBefore = _meta.currency, _oreBefore = _meta.ore || 0;
+  // 注入足够资源
+  _meta.currency = 99999; _meta.ore = 99999;
+  var _buyR = api.buyTech('hp');
+  if (!_buyR.ok) errors.push('v14: 14c buyTech(hp) 应成功(资源充足), reason=' + (_buyR.reason || '?'));
+  else {
+    var _techAfter = api.tech();
+    if (_techAfter.hp !== 1) errors.push('v14: 14c buyTech 后 hp 等级应为1, 实际=' + _techAfter.hp);
+    else console.log('[14c] 科技树购买 OK：hp Lv0→1, 花费 jade=' + _buyR.jadeSpent + ' ore=' + _buyR.oreSpent);
+  }
+  // 14d tierName 动态层级名称：≤3 用固定名，>3 用"深渊 N"
+  var _tn1 = api.tierName(1), _tn3 = api.tierName(3), _tn4 = api.tierName(4), _tn7 = api.tierName(7);
+  if (_tn1 !== '入门') errors.push('v14: 14d tierName(1) 应=入门, 实际=' + _tn1);
+  else if (_tn3 !== '深渊') errors.push('v14: 14d tierName(3) 应=深渊, 实际=' + _tn3);
+  else if (_tn4 !== '深渊 1') errors.push('v14: 14d tierName(4) 应=深渊 1, 实际=' + _tn4);
+  else if (_tn7 !== '深渊 4') errors.push('v14: 14d tierName(7) 应=深渊 4, 实际=' + _tn7);
+  else console.log('[14d] tierName 动态名称 OK：1→' + _tn1 + ' / 3→' + _tn3 + ' / 4→' + _tn4 + ' / 7→' + _tn7);
+  // 14e 模拟完成本局并结算：成功击杀 Boss + 撤离 → maxTier 推进 + bestLayer 更新 + ore 增加
+  var _sim = api.simFinishRun('success', true);
+  if (!_sim.ok) errors.push('v14: 14e simFinishRun 应成功');
+  else {
+    if (_sim.maxTierAfter <= _sim.maxTierBefore) errors.push('v14: 14e maxTier 应推进 ' + _sim.maxTierBefore + '→' + _sim.maxTierAfter);
+    else if (_sim.bestLayerAfter < _sim.bestLayerBefore) errors.push('v14: 14e bestLayer 不应倒退');
+    else if (_sim.oreAfter < _sim.oreBefore) errors.push('v14: 14e ore 不应减少(成功撤离)');
+    else console.log('[14e] 局末结算 OK：maxTier ' + _sim.maxTierBefore + '→' + _sim.maxTierAfter + ' bestLayer ' + _sim.bestLayerBefore + '→' + _sim.bestLayerAfter + ' ore ' + _sim.oreBefore + '→' + _sim.oreAfter);
+  }
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {

@@ -318,6 +318,25 @@ try {
   if (_ccm.by > api.logicalH() - _ccm.size - _sam.b) errors.push('v13[移动] 13d 丹药槽 by 应避开底部SA, by=' + _ccm.by);
   else console.log('[13d-移动] 丹药槽避底SA OK：by=' + _ccm.by);
 
+  // ============================================================
+  // 14) v14 局内动态目标 + 局外永久成长 · 移动端轻量回归
+  // ============================================================
+  console.log('---- v14 动态目标+永久成长[移动] ----');
+  // 14a 移动端进图后悬赏生成
+  var _btyM = api.bounty();
+  if (!_btyM) errors.push('v14[移动] 14a bounty 不应为 null');
+  else console.log('[14a-移动] 悬赏生成 OK：' + _btyM.desc);
+  // 14b 移动端科技树购买：资源不足时 buyTech 应安全失败
+  var _metaM = api.meta();
+  _metaM.currency = 0; _metaM.ore = 0;
+  var _buyFail = api.buyTech('dmg');
+  if (_buyFail.ok) errors.push('v14[移动] 14b 资源为0时 buyTech 不应成功');
+  else console.log('[14b-移动] 资源不足安全失败 OK：reason=' + _buyFail.reason);
+  // 14c 移动端 tierName 名称正确
+  if (api.tierName(1) !== '入门') errors.push('v14[移动] 14c tierName(1) 应=入门');
+  else if (api.tierName(5) !== '深渊 2') errors.push('v14[移动] 14c tierName(5) 应=深渊 2, 实际=' + api.tierName(5));
+  else console.log('[14c-移动] tierName OK：1→入门 / 5→深渊 2');
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();
