@@ -337,6 +337,28 @@ try {
   else if (api.tierName(5) !== '深渊 2') errors.push('v14[移动] 14c tierName(5) 应=深渊 2, 实际=' + api.tierName(5));
   else console.log('[14c-移动] tierName OK：1→入门 / 5→深渊 2');
 
+  // ============================================================
+  // 15) 移动端启动加载门（doEnter → enterBase → base 显示；HtmlAssets 桩安全）
+  // ============================================================
+  console.log('---- 移动端启动加载门 ----');
+  if (typeof api.htmlAssetsReady !== 'function') errors.push('HA[移动]: htmlAssetsReady 钩子缺失');
+  else {
+    const _mt = api.htmlAssetTotal(), _ml = api.htmlAssetLoaded();
+    if (!(_mt > 0)) errors.push('HA[移动]: 应收集 >0 条 HTML UI 资产路径，实际 total=' + _mt);
+    if (!(_ml === _mt)) errors.push('HA[移动]: 桩安全路径应同步计满 loaded==total, loaded=' + _ml + ' total=' + _mt);
+    if (!api.htmlAssetsReady()) errors.push('HA[移动]: htmlAssetsReady 应为 true');
+    else console.log('HA[移动] 预加载器桩安全 OK：total=' + _mt + ' loaded=' + _ml + ' isReady=true');
+  }
+  // 移动端启动入口：点击 enterOverlay → doEnter → enterBase（就绪直接进 base，无遮罩卡死）
+  if (elements['enterOverlay']) {
+    try {
+      elements['enterOverlay'].dispatchEvent('click', { type: 'click', preventDefault(){}, stopPropagation(){} });
+      for (let i = 0; i < 5; i++) tick(16.7);
+      if (!api.baseVisible()) errors.push('HA[移动]: 点击 enterOverlay 后应进入 base（baseVisible=false）');
+      else console.log('HA[移动] doEnter→enterBase OK：点击启动遮罩后 base 显示');
+    } catch (e) { errors.push('HA[移动]: doEnter/enterBase 抛错: ' + (e && e.stack || e)); }
+  }
+
 } catch (e) { errors.push('run: ' + (e && e.stack || e)); }
 
 summary();

@@ -1109,6 +1109,124 @@
     }
   };
   function loadImg(key, path) { return AssetManager.load(key, path); }
+  // ---------- HTML UI 资产预加载器（双轨：canvas 资产 + html 资产）----------
+  // 基地（机库/军械库/熔炼台/研究院/图鉴）的图片均为 HTML <img>/CSS background-image，
+  // 不在 Canvas AssetManager 管理内。此预加载器收集动态生成的 img 引用路径并用
+  // new Image() 预热浏览器缓存：首次刷新进基地不再闪空白/破图（Boss 反馈修复）。
+  // 桩安全：Node 桩的 Image 无 complete 属性 → 同步计满（不阻塞启动加载门）。
+  var STATIC_HTML_UI_ASSETS = [
+    // —— index.html 静态引用（2026-08-19 grep 提取，保留 ?v= 版本串以命中同一缓存键）——
+    'assets/icons/rarity_badges.png',
+    'assets/v3/ui/cropped/btn_primary_disabled.png', 'assets/v3/ui/cropped/btn_primary_hover.png', 'assets/v3/ui/cropped/btn_primary_normal.png', 'assets/v3/ui/cropped/btn_primary_pressed.png',
+    'assets/v3/ui/cropped/btn_secondary_disabled.png', 'assets/v3/ui/cropped/btn_secondary_hover.png', 'assets/v3/ui/cropped/btn_secondary_normal.png', 'assets/v3/ui/cropped/btn_secondary_pressed.png',
+    'assets/v3/ui/cropped/btn_utility_disabled.png', 'assets/v3/ui/cropped/btn_utility_hover.png', 'assets/v3/ui/cropped/btn_utility_normal.png', 'assets/v3/ui/cropped/btn_utility_pressed.png',
+    'assets/v3/ui/cropped/icon_00.png', 'assets/v3/ui/cropped/icon_01.png', 'assets/v3/ui/cropped/icon_02.png', 'assets/v3/ui/cropped/icon_03.png',
+    'assets/v3/ui/cropped/icon_10.png', 'assets/v3/ui/cropped/icon_11.png', 'assets/v3/ui/cropped/icon_12.png', 'assets/v3/ui/cropped/icon_13.png',
+    'assets/v3/ui/cropped/icon_20.png', 'assets/v3/ui/cropped/icon_21.png', 'assets/v3/ui/cropped/icon_22.png', 'assets/v3/ui/cropped/icon_23.png',
+    'assets/v3/ui/cropped/icon_30.png', 'assets/v3/ui/cropped/icon_31.png', 'assets/v3/ui/cropped/icon_32.png', 'assets/v3/ui/cropped/icon_33.png',
+    'assets/v3/ui/cropped/rarity_common_corner.png', 'assets/v3/ui/cropped/rarity_common_ring.png',
+    'assets/v3/ui/cropped/rarity_epic_corner.png', 'assets/v3/ui/cropped/rarity_epic_ring.png',
+    'assets/v3/ui/cropped/rarity_legendary_corner.png', 'assets/v3/ui/cropped/rarity_legendary_ring.png',
+    'assets/v3/ui/cropped/rarity_rare_corner.png', 'assets/v3/ui/cropped/rarity_rare_ring.png',
+    'assets/v3/ui/cropped/rarity_uncommon_corner.png', 'assets/v3/ui/cropped/rarity_uncommon_ring.png',
+    'assets/v3/ui/cropped/slot_ammo_hover.png', 'assets/v3/ui/cropped/slot_ammo_normal.png', 'assets/v3/ui/cropped/slot_ammo_selected.png',
+    'assets/v3/ui/cropped/slot_armor_hover.png', 'assets/v3/ui/cropped/slot_armor_normal.png', 'assets/v3/ui/cropped/slot_armor_selected.png',
+    'assets/v3/ui/cropped/slot_core_hover.png', 'assets/v3/ui/cropped/slot_core_normal.png', 'assets/v3/ui/cropped/slot_core_selected.png',
+    'assets/v3/ui/cropped/slot_weapon_hover.png', 'assets/v3/ui/cropped/slot_weapon_normal.png', 'assets/v3/ui/cropped/slot_weapon_selected.png',
+    'assets/v3/ui/cropped/tab_arsenal_disabled.png', 'assets/v3/ui/cropped/tab_arsenal_hover.png', 'assets/v3/ui/cropped/tab_arsenal_normal.png', 'assets/v3/ui/cropped/tab_arsenal_selected.png',
+    'assets/v3/ui/cropped/tab_codex_disabled.png', 'assets/v3/ui/cropped/tab_codex_hover.png', 'assets/v3/ui/cropped/tab_codex_normal.png', 'assets/v3/ui/cropped/tab_codex_selected.png',
+    'assets/v3/ui/cropped/tab_forge_disabled.png', 'assets/v3/ui/cropped/tab_forge_hover.png', 'assets/v3/ui/cropped/tab_forge_normal.png', 'assets/v3/ui/cropped/tab_forge_selected.png',
+    'assets/v3/ui/cropped/tab_hangar_disabled.png', 'assets/v3/ui/cropped/tab_hangar_hover.png', 'assets/v3/ui/cropped/tab_hangar_normal.png', 'assets/v3/ui/cropped/tab_hangar_selected.png',
+    'assets/v3/ui/cropped/tab_lab_disabled.png', 'assets/v3/ui/cropped/tab_lab_hover.png', 'assets/v3/ui/cropped/tab_lab_normal.png', 'assets/v3/ui/cropped/tab_lab_selected.png',
+    'assets/v3/ui/special/ui_base_frame.png?v=1019b', 'assets/v3/ui/special/ui_base_frame.png?v=1019c',
+    'assets/v3/ui/special/ui_codex_book.png?v=1019b', 'assets/v3/ui/special/ui_forge_table.png', 'assets/v3/ui/special/ui_lab_scroll.png?v=1019b',
+    'assets/v4/ui/buttons/btn_sheet.png?v=1018a', 'assets/v4/ui/rarity/rarity_trim_sheet.png'
+  ];
+  function collectHtmlUiAssets() {
+    var set = {}, out = [];
+    function add(p) { if (!p || set[p]) return; set[p] = 1; out.push(p); }
+    // (a) index.html 静态清单（含 ?v= 版本串）
+    STATIC_HTML_UI_ASSETS.forEach(add);
+    // (b) 机库槽位背景 4 槽 × normal/selected（hover 态已含于静态清单）
+    ['weapon', 'armor', 'core', 'ammo'].forEach(function (s) {
+      ['normal', 'selected'].forEach(function (st) { add('assets/v3/ui/cropped/slot_' + s + '_' + st + '.png'); });
+    });
+    // (c) 机库机体立绘（?v=5 与 renderHangarAircraft 渲染串一致）
+    ['acft_qingfalcon', 'acft_xuanwu', 'acft_chilan'].forEach(function (p) { add('assets/v3/ui/portrait/' + p + '.png?v=5'); });
+    // (d) 武器图标 5 品质(行) × 3 列（weaponIconHtml 的 r/c 命名）
+    for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) add('assets/v4/weapons/weapon_r' + r + '_c' + c + '.png');
+    // (e) 装备图标 4 槽 × 5 品质（gearIconHtml 的 slot_rarity 命名；weapon 槽实际不渲染但按任务清单覆盖）
+    ['weapon', 'armor', 'core', 'ammo'].forEach(function (s) {
+      ['white', 'green', 'blue', 'purple', 'orange'].forEach(function (q) { add('assets/v4/gear/gear_' + s + '_' + q + '.png'); });
+    });
+    // (f) 研究院/图鉴/商店图标全集 + 兜底 icon_32（RES_ICONS/TECH_ICONS/CODEX_CATS/ICON）
+    ['icon_00', 'icon_01', 'icon_02', 'icon_03', 'icon_10', 'icon_11', 'icon_12', 'icon_13', 'icon_20', 'icon_21', 'icon_22', 'icon_23', 'icon_30', 'icon_31', 'icon_32', 'icon_33'].forEach(function (ic) { add('assets/v3/ui/cropped/' + ic + '.png'); });
+    // (g) 商店卡背景（renderBase 动态使用 card_shop_*）
+    ['card_shop_normal', 'card_shop_locked', 'card_shop_selected'].forEach(function (p) { add('assets/v3/ui/cropped/' + p + '.png'); });
+    // (h) 运行时补充（空守卫，桩环境 querySelectorAll 返回 [] 不抛错）：
+    //    DOM 中已存在的 assets <img>（取原始属性值，避免浏览器把 src 解析成绝对路径）
+    try {
+      var imgs = document.querySelectorAll ? document.querySelectorAll('img[src^="assets/"]') : [];
+      for (var i = 0; i < (imgs && imgs.length || 0); i++) {
+        var s0 = imgs[i] && imgs[i].getAttribute ? imgs[i].getAttribute('src') : null;
+        if (!s0 && imgs[i]) s0 = imgs[i].src;
+        if (s0) add(s0);
+      }
+    } catch (e) {}
+    //    样式表 url(assets/...)（跨域/未就绪时 cssRules 不可读 → 跳过；容错解析相对或绝对 URL）
+    try {
+      if (document.styleSheets) {
+        for (var si = 0; si < document.styleSheets.length; si++) {
+          var rules = [];
+          try { rules = document.styleSheets[si].cssRules || document.styleSheets[si].rules || []; } catch (e2) { rules = []; }
+          for (var ri = 0; ri < rules.length; ri++) {
+            var txt = rules[ri] && rules[ri].cssText;
+            if (!txt) continue;
+            var mrx = /url\((['"]?)([^)'"]+\.(?:png|jpg|webp)(?:\?[^)'"]*)?)\1\)/g, mm;
+            while ((mm = mrx.exec(txt)) !== null) {
+              var u = mm[2], qi = u.indexOf('assets/');
+              if (qi < 0) continue;
+              var rel = u.slice(qi), qm = u.match(/\?[^)'"]*$/);
+              if (qm) rel = u.slice(qi, u.indexOf('?', qi)) + qm[0];
+              add(rel);
+            }
+          }
+        }
+      }
+    } catch (e3) {}
+    return out;
+  }
+  var HtmlAssets = {
+    total: 0, loaded: 0, done: false,
+    paths: [], _imgs: [],
+    preload: function () {
+      var self = this;
+      this.paths = collectHtmlUiAssets();
+      this.total = this.paths.length;
+      for (var i = 0; i < this.paths.length; i++) {
+        (function (p) {
+          var im = new Image();
+          var mark = function () { self.loaded++; if (self.loaded >= self.total) self.done = true; };
+          // 桩安全路径：Node 桩的 Image 无 complete 属性（无真实解码）→ 同步计满，避免加载门永久 pending
+          if (!('complete' in im)) { mark(); return; }
+          self._imgs.push(im);
+          im.onload = mark;
+          im.onerror = mark; // 坏图/404 也计数（避免坏图永久卡死加载门）
+          im.src = p;
+        })(this.paths[i]);
+      }
+    },
+    isReady: function () {
+      if (this.done || this.total === 0) return true;
+      var all = true;
+      for (var i = 0; i < this._imgs.length; i++) {
+        var im = this._imgs[i];
+        if (!im || !im.complete) { all = false; break; }
+      }
+      if (all) { this.done = true; return true; }
+      return false;
+    }
+  };
   // 居中绘制精灵；angle 弧度；返回是否成功（未就绪返回 false 让调用方回退）
   function blit(key, x, y, w, h, angle) {
     var im = IMG[key];
@@ -8383,6 +8501,34 @@
     m.style.opacity = '0';
     setTimeout(function () { if (loadMaskEl) loadMaskEl.style.display = 'none'; }, 320); // 0.3s 淡出后移除
   }
+  // 统一就绪判定：Canvas 资产（AssetManager）+ HTML UI 资产（HtmlAssets）双轨全就绪
+  function AllAssetsReady() {
+    return AssetManager.isReady() && HtmlAssets.isReady();
+  }
+  // 全资产等待：rAF 轮询 + 5s 超时兜底（坏图/404 也放行，不卡死启动）
+  function waitForAllAssets(cb) {
+    if (AllAssetsReady()) { if (cb) cb(); return; }
+    var t0 = performance.now();
+    var poll = function () {
+      if (AllAssetsReady()) { if (cb) cb(); return; }
+      if (performance.now() - t0 > 5000) { if (cb) cb(); return; }
+      requestAnimationFrame(poll);
+    };
+    requestAnimationFrame(poll);
+  }
+  // 启动级全局加载门：鎏金遮罩 → 全部资产就绪（或 5s 超时）→ 淡出遮罩 + 进基地。
+  // 修复 Boss 反馈「首次刷新基地资产不加载」：之前两处启动直接 showScene('base')，
+  // 未等 HTML <img>/CSS background-image 从网络加载完，导致首刷闪空白/破图。
+  function enterBase() {
+    if (AllAssetsReady()) { showScene('base'); return; }
+    showLoadMask();
+    // 遮罩显示期间确保 base 不显示（防首刷白屏残留，即使此前已渲染过）
+    var b = document.getElementById('base'); if (b) b.style.display = 'none';
+    waitForAllAssets(function () {
+      hideLoadMask();
+      showScene('base');
+    });
+  }
   function doStartMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
   function startMission() {
     if (!meta.unlocked[selectedAircraft]) { return; }
@@ -8445,7 +8591,7 @@
       btn.onclick = function () { switchBaseTab(btn.getAttribute('data-tab')); AudioSys.sfx.ui(); };
     })(baseTabs[ti]);
   }
-  document.getElementById('titleStart').onclick = function () { if (isMobile) enterImmersive(true); showScene('base'); };
+  document.getElementById('titleStart').onclick = function () { if (isMobile) enterImmersive(true); enterBase(); };
   document.getElementById('tutorialClose').onclick = function () { meta.seenTutorial = true; saveMeta(); document.getElementById('tutorial').style.display = 'none'; };
   // 出击按钮：机库用 id，其他标签页用 .launch-start 类
   var startBtns = document.querySelectorAll('#startBtn, .launch-start');
@@ -8648,6 +8794,26 @@
         return AssetManager.isReady();
       },
       loadMaskVisible: function () { return !!(loadMaskEl && loadMaskEl.style && loadMaskEl.style.display === 'flex'); },
+      // HtmlAssets 双轨预加载器 + 启动级全局加载门钩子：供桩断言（桩内 Image 无 complete → 同步就绪；
+      // force/resolve 走 rAF 轮询放行路径，与 AssetManager 15a/15b 同构）
+      htmlAssetTotal: function () { return HtmlAssets.total; },
+      htmlAssetLoaded: function () { return HtmlAssets.loaded; },
+      htmlAssetsReady: function () { return HtmlAssets.isReady(); },
+      htmlAssetPaths: function () { return HtmlAssets.paths || []; },
+      forceHtmlAssetPending: function () {
+        HtmlAssets.done = false;
+        var fake = { complete: false, naturalWidth: 0 };
+        HtmlAssets._imgs.push(fake);
+        HtmlAssets._pendingFake = fake;
+        return HtmlAssets._imgs.length;
+      },
+      resolveHtmlAssetPending: function () {
+        if (HtmlAssets._pendingFake) { HtmlAssets._pendingFake.complete = true; HtmlAssets._pendingFake = null; }
+        return HtmlAssets.isReady();
+      },
+      allAssetsReady: function () { return AllAssetsReady(); },
+      enterBase: enterBase,
+      baseVisible: function () { var b = document.getElementById('base'); return !!(b && b.style && b.style.display === 'flex'); },
       // 锚点簇 PCG / 视线遮挡：暴露障碍/楼顶/LOS，供 stub_los.js 断言
       obstacles: function () { return obstacles; },
       buildingRooftops: function () { return buildingRooftops; },
@@ -8784,6 +8950,11 @@
     };
   }
 
+  // ---------- 启动级全局加载门：预加载 HTML UI 资产 → 等双轨就绪 → 进基地 ----------
+  // 首次刷新（含强刷清缓存）时 HTML <img>/CSS background-image 从网络加载慢，base 若先渲染会闪空白。
+  // 故先预热全部 base UI 资产并显示鎏金遮罩，就绪（或 5s 超时兜底）后才 showScene('base')。
+  HtmlAssets.preload();
+
   // ---------- 移动端启动遮罩：首次点击触发全屏+横屏 ----------
   var enterOverlay = document.getElementById('enterOverlay');
   if (enterOverlay && isMobile) {
@@ -8797,13 +8968,13 @@
       enterOverlay.style.display = 'none';
       AudioSys.unlock();
       enterImmersive(true);
-      showScene('base'); // 2026-08-18 去掉开场标题，直接进基地
+      enterBase(); // 2026-08-18 去掉开场标题，直接进基地（走启动级加载门：遮罩→资产就绪→进基地）
       checkOrientation();
     }
     enterOverlay.addEventListener('touchend', function (e) { e.preventDefault(); doEnter(); }, { passive: false });
     enterOverlay.addEventListener('click', function () { doEnter(); });
   } else {
-    showScene('base'); // 2026-08-18 去掉开场标题，直接进基地
+    enterBase(); // 2026-08-18 去掉开场标题，直接进基地（走启动级加载门：遮罩→资产就绪→进基地）
   }
   // 确保初始尺寸正确
   resize();

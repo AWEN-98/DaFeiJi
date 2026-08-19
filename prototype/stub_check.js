@@ -531,6 +531,43 @@ try {
   if (!_fd16 || !_fd16.classList.contains('open')) errors.push('forge: 点击 fg-slot 后 forgeDrawer 应 .open');
   else console.log('[16c] 熔炼台链路 OK：' + _slotN + ' 槽位 + 点击弹底抽 .open');
 
+  // ============================================================
+  // 17) HtmlAssets 双轨预加载器 + 启动级全局加载门（首次刷新基地资产不加载 · Boss 反馈修复）
+  // ============================================================
+  console.log('---- HtmlAssets 预加载器 + 启动加载门 ----');
+  // 17a 桩安全路径：收集路径数>0、同步计满、isReady true、关键动态路径全覆盖
+  if (typeof api.htmlAssetsReady !== 'function') errors.push('HA: htmlAssetsReady 钩子缺失');
+  else {
+    const _ht = api.htmlAssetTotal(), _hl = api.htmlAssetLoaded(), _hp = api.htmlAssetPaths();
+    if (!(_ht > 0)) errors.push('HA: 应收集 >0 条 HTML UI 资产路径，实际 total=' + _ht);
+    if (!(_hl === _ht)) errors.push('HA: 桩安全路径应同步计满 loaded==total, loaded=' + _hl + ' total=' + _ht);
+    if (!api.htmlAssetsReady()) errors.push('HA: 桩环境 htmlAssetsReady 应为 true');
+    // 应覆盖关键动态路径：机库槽位 / 武器图标 / 装备图标 / 研究院图标 / 机体立绘（含 ?v=5）
+    const _hpSet = {};
+    _hp.forEach(p => { _hpSet[p] = 1; });
+    const _need = [
+      'assets/v3/ui/cropped/slot_weapon_normal.png',
+      'assets/v3/ui/cropped/slot_ammo_selected.png',
+      'assets/v4/weapons/weapon_r4_c2.png',
+      'assets/v4/gear/gear_core_purple.png',
+      'assets/v3/ui/cropped/icon_22.png',
+      'assets/v3/ui/portrait/acft_qingfalcon.png?v=5'
+    ];
+    const _miss = _need.filter(p => !_hpSet[p]);
+    if (_miss.length) errors.push('HA: 关键路径缺失 ' + _miss.join(','));
+    else console.log('[17a] HtmlAssets 桩安全路径 OK：total=' + _ht + ' loaded=' + _hl + ' isReady=true 关键路径覆盖 ' + _need.length + '/' + _need.length);
+  }
+  // 17b 启动加载门：未就绪时不显示 base（遮罩显示、base 隐藏）→ 就绪后 rAF 轮询放行显示 base
+  api.forceHtmlAssetPending();
+  if (api.htmlAssetsReady()) errors.push('HA: forceHtmlAssetPending 后 htmlAssetsReady 应为 false');
+  api.enterBase();
+  if (api.baseVisible()) errors.push('HA: 未就绪时启动门不应显示 base');
+  if (!api.loadMaskVisible()) errors.push('HA: 未就绪时应显示加载遮罩');
+  api.resolveHtmlAssetPending();
+  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → 淡出遮罩 + showScene('base')
+  if (!api.baseVisible()) errors.push('HA: 就绪后 rAF 轮询应放行显示 base, display=' + document.getElementById('base').style.display);
+  console.log('[17b] 启动加载门 OK：pending → 遮罩显示+base隐藏 → resolve → rAF 放行 base');
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {
