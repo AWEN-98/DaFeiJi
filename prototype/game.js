@@ -1065,7 +1065,50 @@
   var CHI_ATK_FPS = 14;
   var CHI_ATK_DUR = 8 / CHI_ATK_FPS; // 赤鸾攻击动画一轮，第4帧发射追踪羽矛
   var IMG = {};
-  function loadImg(key, path) { var im = new Image(); im.src = path; IMG[key] = im; return im; }
+  // ---------- 异步图片预加载管理器（AssetManager）----------
+  // 保留 loadImg(key,path) 签名不变（约 80 处调用点不动）；内部统一走 AssetManager.load：
+  // onload/onerror 均推进就绪计数（坏图也计数，避免卡死）；isReady() 兜底扫描 im.complete（缓存命中）。
+  var AssetManager = {
+    total: 0, loaded: 0, done: false,
+    _imgs: [],
+    load: function (key, path) {
+      this.total++;
+      var im = new Image();
+      IMG[key] = im;
+      var self = this;
+      var mark = function () { self.loaded++; if (self.loaded >= self.total) self.done = true; };
+      // 桩安全路径：Node 桩的 Image 无 complete 属性（无真实解码），同步计为就绪，避免加载门永久 pending
+      if (!('complete' in im)) { mark(); return im; }
+      this._imgs.push(im);
+      im.onload = mark;
+      im.onerror = mark; // 坏图也计数（避免坏图永久卡死加载门）
+      im.src = path;
+      return im;
+    },
+    isReady: function () {
+      if (this.done || this.total === 0) return true;
+      // 全部 im.complete（缓存命中时 onload 可能不再触发，同步兜底）
+      var all = true;
+      for (var i = 0; i < this._imgs.length; i++) {
+        var im = this._imgs[i];
+        if (!im || !im.complete) { all = false; break; }
+      }
+      if (all) { this.done = true; return true; }
+      return false;
+    },
+    waitForAll: function (cb) {
+      if (this.isReady()) { if (cb) cb(); return; }
+      var t0 = performance.now();
+      var self = this;
+      var poll = function () {
+        if (self.isReady()) { if (cb) cb(); return; }
+        if (performance.now() - t0 > 3000) { self.done = true; if (cb) cb(); return; } // 3s 超时兜底：坏图也放行
+        requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
+    }
+  };
+  function loadImg(key, path) { return AssetManager.load(key, path); }
   // 居中绘制精灵；angle 弧度；返回是否成功（未就绪返回 false 让调用方回退）
   function blit(key, x, y, w, h, angle) {
     var im = IMG[key];
@@ -7236,31 +7279,37 @@
       ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
       ctx.fillText('💡 按 M 可合成', W - 22, _bpTop + 14); ctx.textAlign = 'left';
     }
+    drawBounty(); // 动态悬赏面板（右侧小地图下方；桌面背包整块下方）
   }
-  // 动态悬赏 HUD（左上面板下方，小地图对侧）
+  // 动态悬赏 HUD（右侧小地图下方；桌面避让背包整块，移动端避让小地图）
   function drawBounty() {
     if (!bounty) return;
-    var bw = isMobile ? 168 : 200, bh = 44;
-    var bx = 16 + SA.l;
-    // 桌面：紧跟相位仪卡片底部 = lpY(16+SA.t)+机体面板高(92)+间隙(6)+相位卡高(58)+间隙(6)=178+SA.t
-    // 移动端：相位条在顶部居中不参与左上堆叠，保持原偏移(96+6)
-    var by = (isMobile ? 46 : 16) + SA.t + (isMobile ? (96 + 6) : (92 + 6 + 58 + 6));
-    ctx.fillStyle = 'rgba(16,13,9,0.78)';
-    ctx.strokeStyle = bounty.completed ? COL.extract : 'rgba(201,162,75,0.5)';
+    var bw = 150, bh = 42;
+    var bx = W - 160 - SA.r;
+    var by;
+    if (isMobile) {
+      by = 140 + SA.t; // 移动端无背包：小地图底≈126，留 14px 间隙
+    } else {
+      // 桌面：背包整块下方（镜像 drawBackpack 公式：cols=4,s=26,g=5；2 行 × (s+g) = 62；勿硬编码）
+      var _mmw = 150, _mmh = Math.round(_mmw * WORLD_H / WORLD_W);
+      var _bpTop = (78 + SA.t) + _mmh + 8;
+      var _bpH = 2 * (26 + 5);
+      by = _bpTop + _bpH + 8;
+    }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(18,14,10,0.8)';
+    ctx.strokeStyle = bounty.completed ? '#7FB069' : 'rgba(201,162,75,0.4)';
+    ctx.lineWidth = 1.5;
+    roundRectPath(ctx, bx, by, bw, bh, 6); ctx.fill(); ctx.stroke();
     ctx.lineWidth = 1;
-    ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 8); else ctx.rect(bx, by, bw, bh); ctx.fill(); ctx.stroke();
     // 标题行
-    ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = bounty.completed ? COL.extract : '#C9A24B';
-    ctx.fillText('★ 悬赏', bx + 10, by + 14);
-    // 进度条
-    var pbx = bx + 10, pby = by + 20, pbw = bw - 20, pbh = 5;
-    ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fillRect(pbx, pby, pbw, pbh);
-    var pct = bounty.completed ? 1 : bounty.progress / bounty.target;
-    ctx.fillStyle = bounty.completed ? COL.extract : '#C9A24B'; ctx.fillRect(pbx, pby, pbw * pct, pbh);
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillStyle = bounty.completed ? '#7FB069' : '#C9A24B';
+    ctx.fillText(bounty.completed ? '★ 悬赏达成 (增益生效)' : '✦ 当局悬赏', bx + 10, by + 16);
     // 描述行
-    ctx.font = '9px sans-serif'; ctx.fillStyle = bounty.completed ? COL.extract : '#E8DCC4';
-    var desc = bounty.completed ? '✓ 已达成 · 天工宝箱已掉落' : bounty.desc + ' (' + bounty.progress + '/' + bounty.target + ')';
-    ctx.fillText(desc, bx + 10, by + 38);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#E8DCC4';
+    ctx.fillText(bounty.desc + ' (' + bounty.progress + '/' + bounty.target + ')', bx + 10, by + 32);
   }
   // 屏幕边缘威胁箭头（增援 / 开箱护卫）：玩家可见来袭方向与威胁色
   function drawEdgeArrows() {
@@ -7318,7 +7367,6 @@
     ctx.restore();
     drawPhaseTint(); // 全图调色 shift（金暖 ↔ 余烬橙暗，性能优先单覆盖层）
     drawHUD();
-    drawBounty(); // 动态悬赏面板（左上面板下方）
     drawPickupList();
     drawEdgeArrows();
     if (tint.a > 0) { ctx.fillStyle = hexToRgba(tint.col, tint.a); ctx.fillRect(0, 0, W, H); }
@@ -8161,7 +8209,7 @@
   var RES_ICONS = { dmg1: 'icon_22', crit1: 'icon_33', hp1: 'icon_30', mag1: 'icon_20', ext1: 'icon_13' };
   var TECH_ICONS = { hp: 'icon_30', dmg: 'icon_22', flip: 'icon_33', bag: 'icon_10' };
   function renderResearch() {
-    var box = document.getElementById('researchList'); box.innerHTML = '';
+    var box = document.getElementById('researchList'); if (!box) return; box.innerHTML = ''; // 防御：元素缺失不炸整条 renderBase 链
     // === 天梯科技（多级永久升级 · 消耗灵玉+灵矿碎屑）===
     var techHeader = document.createElement('div'); techHeader.className = 'research-section-header';
     techHeader.innerHTML = '<span>天梯科技</span><i>消耗灵玉+灵矿碎屑永久升级，每局生效</i>';
@@ -8182,6 +8230,13 @@
         meta.currency -= costJ; meta.ore = (meta.ore || 0) - costO;
         meta.tech[tk.key] = lv + 1; saveMeta(); renderBase(); AudioSys.sfx.merge();
       };
+      // 不可购/满级也给点击反馈（避免"点了没反应"——Boss 反馈的缺 UI 交互根因之一）
+      else if (maxed) el.onclick = function () { setBanner('该科技已满级', 1.2); };
+      else el.onclick = function () {
+        if (meta.currency < costJ) setBanner('灵玉不足（需 ' + costJ + '）', 1.4);
+        else if ((meta.ore || 0) < costO) setBanner('灵矿碎屑不足（需 ' + costO + '）', 1.4);
+        else setBanner('资源不足，先去深渊搜刮', 1.4);
+      };
       box.appendChild(el);
     });
     // === 基础研究（一次性解锁）===
@@ -8200,6 +8255,10 @@
         '<div class="rc-status">' + (done ? '✓ 已解锁' : reqTxt) + '</div>';
       el.title = r.name + '：' + r.desc;
       if (!done && afford) el.onclick = function () { meta.currency -= r.cost; meta.research[r.key] = true; saveMeta(); renderBase(); };
+      // 不可解锁也给点击反馈
+      else if (done) el.onclick = function () { setBanner('该研究已解锁', 1.2); };
+      else if (!reqOk) el.onclick = function () { setBanner('需先通关第 ' + r.reqTier + ' 层', 1.4); };
+      else el.onclick = function () { setBanner('灵玉不足（需 ' + r.cost + '）', 1.4); };
       box.appendChild(el);
     });
   }
@@ -8302,7 +8361,42 @@
       if (el) el.className = 'tab-pane' + (panes[j] === name ? ' on' : '');
     }
   }
-  function startMission() { if (!meta.unlocked[selectedAircraft]) { return; } forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
+  // 出击加载遮罩（鎏金暗色 · 简易 DOM 遮罩）：图片未全部就绪时先显示，就绪/超时后继续出击并淡出
+  var loadMaskEl = null;
+  function ensureLoadMask() {
+    if (loadMaskEl) return loadMaskEl;
+    try {
+      loadMaskEl = document.createElement('div');
+      loadMaskEl.id = 'loadMask';
+      loadMaskEl.style.cssText = 'position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center;background:rgba(14,11,8,0.94);transition:opacity 0.3s ease;';
+      var t = document.createElement('div');
+      t.style.cssText = 'color:#C9A24B;font-size:18px;font-weight:800;letter-spacing:4px;text-shadow:0 0 14px rgba(201,162,75,.55);';
+      t.textContent = '灵脉加载中…';
+      loadMaskEl.appendChild(t);
+      if (document.body && document.body.appendChild) document.body.appendChild(loadMaskEl);
+    } catch (e) { loadMaskEl = null; }
+    return loadMaskEl;
+  }
+  function showLoadMask() { var m = ensureLoadMask(); if (m) { m.style.display = 'flex'; m.style.opacity = '1'; } }
+  function hideLoadMask() {
+    var m = loadMaskEl; if (!m) return;
+    m.style.opacity = '0';
+    setTimeout(function () { if (loadMaskEl) loadMaskEl.style.display = 'none'; }, 320); // 0.3s 淡出后移除
+  }
+  function doStartMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
+  function startMission() {
+    if (!meta.unlocked[selectedAircraft]) { return; }
+    // 异步图片预加载门：未就绪先显示加载遮罩，就绪（或 3s 超时兜底）后继续出击
+    if (!AssetManager.isReady()) {
+      showLoadMask();
+      AssetManager.waitForAll(function () {
+        doStartMission();
+        hideLoadMask();
+      });
+      return;
+    }
+    doStartMission();
+  }
   function showResult(outcome, kept, lostLoot, killReward, unlockedNew, oreReward) {
     var label = outcome === 'success' ? '撤离成功' : (outcome === 'abandon' ? '主动弃局' : '阵亡');
     document.getElementById('resultTitle').textContent = outcome === 'success' ? '撤离成功！' : (outcome === 'abandon' ? '已弃局撤离' : '机体被击毁…');
@@ -8534,6 +8628,26 @@
       closeForgeDrawer: closeForgeDrawer,
       forgeSelCount: function () { return forgeSel.length; },
       forgeCraftDisabled: function () { var b = document.getElementById('forgeCraft'); return b ? !!b.disabled : null; },
+      // 研究院/熔炼台渲染钩子：供桩断言卡片化链路（renderBase → renderResearch/renderForge 已挂载）
+      renderBase: renderBase,
+      renderResearch: renderResearch,
+      renderForge: renderForge,
+      // AssetManager 钩子：供桩断言异步预加载门（桩内 Image 无 complete → 同步就绪；force/resolve 走 rAF 轮询放行路径）
+      assetReady: function () { return AssetManager.isReady(); },
+      assetTotal: function () { return AssetManager.total; },
+      assetLoaded: function () { return AssetManager.loaded; },
+      forceAssetPending: function () {
+        AssetManager.done = false;
+        var fake = { complete: false, naturalWidth: 0 };
+        AssetManager._imgs.push(fake);
+        AssetManager._pendingFake = fake;
+        return AssetManager._imgs.length;
+      },
+      resolveAssetPending: function () {
+        if (AssetManager._pendingFake) { AssetManager._pendingFake.complete = true; AssetManager._pendingFake = null; }
+        return AssetManager.isReady();
+      },
+      loadMaskVisible: function () { return !!(loadMaskEl && loadMaskEl.style && loadMaskEl.style.display === 'flex'); },
       // 锚点簇 PCG / 视线遮挡：暴露障碍/楼顶/LOS，供 stub_los.js 断言
       obstacles: function () { return obstacles; },
       buildingRooftops: function () { return buildingRooftops; },

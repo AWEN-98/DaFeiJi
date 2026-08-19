@@ -38,7 +38,7 @@ function makeEl(id) {
   const handlers = {};
   const el = {
     id, width: 1280, height: 720, style: { setProperty(k, v) { this[k] = String(v); }, getPropertyValue(k) { return this[k]; }, removeProperty(k) { const v = this[k]; delete this[k]; return v; } }, dataset: {},
-    textContent: '', innerHTML: '', value: '', checked: false, disabled: false,
+    textContent: '', value: '', checked: false, disabled: false, children: [],
     classList: {
       _s: new Set(),
       add(...c) { c.forEach(x => this._s.add(x)); }, remove(...c) { c.forEach(x => this._s.delete(x)); },
@@ -47,13 +47,18 @@ function makeEl(id) {
     getContext() { if (!this._ctx) { this._ctx = makeCtx(); this._ctx.canvas = this; } return this._ctx; },
     addEventListener(type, fn) { (handlers[type] = handlers[type] || []).push(fn); },
     removeEventListener(type, fn) { if (handlers[type]) handlers[type] = handlers[type].filter(f => f !== fn); },
-    appendChild(c) { return c; }, removeChild() {}, remove() {}, setAttribute() {}, getAttribute() { return null; },
+    appendChild(c) { this.children.push(c); c.parentNode = this; c.parentElement = this; return c; },
+    removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); return c; },
+    remove() {}, setAttribute() {}, getAttribute() { return null; },
     focus() {}, blur() {}, click() { this.dispatchEvent('click', { type: 'click', preventDefault() {}, stopPropagation() {} }); },
     querySelector() { return makeEl(this.id + '_q'); }, querySelectorAll() { return []; },
     firstChild: null, parentNode: null, parentElement: null,
     getBoundingClientRect() { return { left: 0, top: 0, width: this.width, height: this.height, right: this.width, bottom: this.height }; },
     dispatchEvent(type, evt) { (handlers[type] || []).forEach(fn => { try { fn.call(el, evt || { type, preventDefault() {}, stopPropagation() {} }); } catch (e) { errors.push('handler ' + this.id + '.' + type + ': ' + (e && e.stack || e)); } }); },
   };
+  // innerHTML 语义对齐浏览器：赋值即清空已 append 的子节点（渲染函数常 innerHTML='' 后重建）
+  let _html = '';
+  Object.defineProperty(el, 'innerHTML', { get() { return _html; }, set(v) { _html = String(v); el.children.length = 0; } });
   el.firstChild = el; el.parentNode = el; el.parentElement = el;
   return el;
 }
@@ -405,13 +410,18 @@ try {
       errors.push('v14: 14a bounty 字段异常 id=' + _bty.id + ' target=' + _bty.target + ' progress=' + _bty.progress);
     else console.log('[14a] 动态悬赏生成 OK：' + _bty.desc + ' (目标=' + _bty.target + ')');
   }
-  // 14b 悬赏追踪：击杀敌人后 progress 应增加（killElite 类型）
+  // 14b 悬赏追踪：击杀敌人后 progress 应增加（killElite/killEmber 类型；确定性化：强制精英/余烬相，杜绝随机敌机不符的 flaky）
   var _btyId = _bty ? _bty.id : '';
   if (_btyId === 'killElite' || _btyId === 'killEmber') {
     var _prog0 = _bty.progress;
-    // 找一个敌人击杀
+    // 确定目标：有敌机用敌机，否则现场生成一只；killElite 强制 elite，killEmber 强制余烬相
     var _enemies = api.enemies();
-    if (_enemies.length > 0) { api.killEnemy(0); }
+    var _target = (_enemies && _enemies.length > 0) ? _enemies[0] : api.spawnArche('ram', api.player().x + 100, api.player().y);
+    _target.elite = (_btyId === 'killElite');
+    if (_btyId === 'killEmber') api.player().phase = api.PHASE_EMBER();
+    _target.wake = 0;
+    var _ti = api.enemies().indexOf(_target);
+    if (_ti >= 0) api.killEnemy(_ti);
     var _bty2 = api.bounty();
     if (_bty2 && _bty2.progress <= _prog0) errors.push('v14: 14b 悬赏追踪 progress 未增加 prog0=' + _prog0 + ' prog1=' + (_bty2 ? _bty2.progress : -1));
     else if (_bty2) console.log('[14b] 悬赏追踪 OK：progress ' + _prog0 + ' → ' + _bty2.progress);
@@ -446,6 +456,80 @@ try {
     else if (_sim.oreAfter < _sim.oreBefore) errors.push('v14: 14e ore 不应减少(成功撤离)');
     else console.log('[14e] 局末结算 OK：maxTier ' + _sim.maxTierBefore + '→' + _sim.maxTierAfter + ' bestLayer ' + _sim.bestLayerBefore + '→' + _sim.bestLayerAfter + ' ore ' + _sim.oreBefore + '→' + _sim.oreAfter);
   }
+
+  // ============================================================
+  // 15) AssetManager 异步预加载门（桩内 Image 无 complete → 同步就绪；force/resolve 走 rAF 轮询放行路径）
+  // ============================================================
+  console.log('---- AssetManager 异步预加载门 ----');
+  if (typeof api.assetReady !== 'function') errors.push('AM: assetReady 钩子缺失');
+  else {
+    var _at = api.assetTotal(), _al = api.assetLoaded();
+    if (!(_at > 50)) errors.push('AM: 应注册 >50 张图片，实际 total=' + _at);
+    if (!(_al === _at)) errors.push('AM: 桩安全路径应同步计满 loaded==total, loaded=' + _al + ' total=' + _at);
+    if (!api.assetReady()) errors.push('AM: 桩环境 isReady 应为 true');
+    else console.log('[15a] AssetManager 桩安全路径 OK：total=' + _at + ' loaded=' + _al + ' isReady=true');
+  }
+  // 加载门：强制一张未就绪图 → startMission 显示遮罩且不进入 mission；就绪后 rAF 轮询放行
+  api.forceAssetPending();
+  if (api.assetReady()) errors.push('AM: forceAssetPending 后 isReady 应为 false');
+  api.startMission();
+  if (api.scene() === 'mission') errors.push('AM: 未就绪时 startMission 不应直接进 mission');
+  if (!api.loadMaskVisible()) errors.push('AM: 未就绪时应显示加载遮罩');
+  api.resolveAssetPending();
+  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → doStartMission + 淡出
+  if (api.scene() !== 'mission') errors.push('AM: 就绪后 rAF 轮询应放行进入 mission, scene=' + api.scene());
+  console.log('[15b] 加载门 OK：pending → 遮罩显示 → resolve → rAF 放行 mission');
+
+  // ============================================================
+  // 16) 研究院/熔炼台 UI 交互链路（代码审计 + 内存 DOM 断言）
+  // ============================================================
+  console.log('---- 研究院/熔炼台 UI 交互链路 ----');
+  function walk(el, fn) { (el.children || []).forEach(c => { fn(c); walk(c, fn); }); }
+  function countByClass(el, cls) { let n = 0; walk(el, c => { const cn = String(c.className || ''); if (cn.indexOf(cls) >= 0) n++; }); return n; }
+  // 16a 研究院卡片化：renderBase → renderResearch 应产出 2 区块标题 + 4 天梯 + 5 基础 = 11 节点
+  try { api.renderBase(); } catch (e) { errors.push('lab: renderBase: ' + (e && e.stack || e)); }
+  const _rl = document.getElementById('researchList');
+  const _rlChildren = (_rl.children || []).length;
+  if (_rlChildren < 9) errors.push('lab: renderResearch 后 researchList 应有 ≥9 子节点(2标题+4科技+5基础)，实际 ' + _rlChildren);
+  const _techCardN = countByClass(_rl, 'research-card');
+  if (_techCardN < 9) errors.push('lab: 应有 9 张 research-card(4天梯+5基础)，实际 ' + _techCardN);
+  let _hasTechHeader = false;
+  walk(_rl, c => { const _t = String(c.textContent || '') + ' ' + String(c.innerHTML || ''); if (_t.indexOf('天梯科技') >= 0) _hasTechHeader = true; });
+  if (!_hasTechHeader) errors.push('lab: 应包含「天梯科技」区块标题');
+  // 16b 科技卡可点击购买：给足资源 → 触发 canbuy 卡 onclick → meta.tech 等级提升
+  var _m16 = api.meta(); _m16.currency = 99999; _m16.ore = 99999;
+  try { api.renderBase(); } catch (e) { errors.push('lab: renderBase(富资源): ' + (e && e.stack || e)); }
+  let _clickedTech = false, _techErr = null;
+  walk(document.getElementById('researchList'), c => {
+    if (_clickedTech) return;
+    const cn = String(c.className || '');
+    if (cn.indexOf('research-card') >= 0 && cn.indexOf('canbuy') >= 0 && typeof c.onclick === 'function') {
+      try { c.onclick(); _clickedTech = true; } catch (e) { _techErr = e; }
+    }
+  });
+  if (_techErr) errors.push('lab: canbuy 科技卡 onclick 抛错: ' + (_techErr && _techErr.stack || _techErr));
+  if (!_clickedTech) errors.push('lab: 资源充足时应存在可点击(canbuy)的科技卡');
+  else {
+    var _tech16 = api.tech();
+    if (!Object.keys(_tech16).some(k => _tech16[k] > 0)) errors.push('lab: 点击 canbuy 科技卡后应出现科技等级提升');
+    else console.log('[16] 研究院卡片化链路 OK：' + _rlChildren + ' 节点 / ' + _techCardN + ' 卡 / 天梯科技标题 / canbuy 点击购买生效');
+  }
+  // 16c 熔炼台：renderForge 产出 3 个 fg-slot 且绑定 onclick；点击槽位 → forgeDrawer .open
+  try { api.renderBase(); } catch (e) { errors.push('forge: renderBase: ' + (e && e.stack || e)); }
+  const _fsEl = document.getElementById('forgeStage');
+  let _slotN = 0, _slotClickable = false, _firstSlot = null;
+  walk(_fsEl, c => {
+    const cn = String(c.className || '');
+    if (cn.indexOf('fg-slot') >= 0) { _slotN++; if (typeof c.onclick === 'function') _slotClickable = true; if (!_firstSlot) _firstSlot = c; }
+  });
+  if (_slotN < 3) errors.push('forge: forgeStage 应有 3 个 fg-slot，实际 ' + _slotN);
+  if (!_slotClickable) errors.push('forge: fg-slot 应绑定 onclick(openForgeDrawer)');
+  if (_firstSlot && typeof _firstSlot.onclick === 'function') {
+    try { _firstSlot.onclick(); } catch (e) { errors.push('forge: 槽位 onclick: ' + (e && e.stack || e)); }
+  }
+  const _fd16 = document.getElementById('forgeDrawer');
+  if (!_fd16 || !_fd16.classList.contains('open')) errors.push('forge: 点击 fg-slot 后 forgeDrawer 应 .open');
+  else console.log('[16c] 熔炼台链路 OK：' + _slotN + ' 槽位 + 点击弹底抽 .open');
 
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
