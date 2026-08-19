@@ -440,13 +440,14 @@ try {
     if (_techAfter.hp !== 1) errors.push('v14: 14c buyTech 后 hp 等级应为1, 实际=' + _techAfter.hp);
     else console.log('[14c] 科技树购买 OK：hp Lv0→1, 花费 jade=' + _buyR.jadeSpent + ' ore=' + _buyR.oreSpent);
   }
-  // 14d tierName 动态层级名称：≤3 用固定名，>3 用"深渊 N"
-  var _tn1 = api.tierName(1), _tn3 = api.tierName(3), _tn4 = api.tierName(4), _tn7 = api.tierName(7);
+  // 14d tierName 动态层级名称：≤2 用固定名（1=入门/2=进阶），>2 用"深渊 N"（B1 修复：口径与 tierTitle 统一，Tier3=深渊1层）
+  var _tn1 = api.tierName(1), _tn2 = api.tierName(2), _tn3 = api.tierName(3), _tn4 = api.tierName(4), _tn7 = api.tierName(7);
   if (_tn1 !== '入门') errors.push('v14: 14d tierName(1) 应=入门, 实际=' + _tn1);
-  else if (_tn3 !== '深渊') errors.push('v14: 14d tierName(3) 应=深渊, 实际=' + _tn3);
-  else if (_tn4 !== '深渊 1') errors.push('v14: 14d tierName(4) 应=深渊 1, 实际=' + _tn4);
-  else if (_tn7 !== '深渊 4') errors.push('v14: 14d tierName(7) 应=深渊 4, 实际=' + _tn7);
-  else console.log('[14d] tierName 动态名称 OK：1→' + _tn1 + ' / 3→' + _tn3 + ' / 4→' + _tn4 + ' / 7→' + _tn7);
+  else if (_tn2 !== '进阶') errors.push('v14: 14d tierName(2) 应=进阶, 实际=' + _tn2);
+  else if (_tn3 !== '深渊 1') errors.push('v14: 14d tierName(3) 应=深渊 1, 实际=' + _tn3);
+  else if (_tn4 !== '深渊 2') errors.push('v14: 14d tierName(4) 应=深渊 2, 实际=' + _tn4);
+  else if (_tn7 !== '深渊 5') errors.push('v14: 14d tierName(7) 应=深渊 5, 实际=' + _tn7);
+  else console.log('[14d] tierName 动态名称 OK（B1 口径统一）：1→' + _tn1 + ' / 2→' + _tn2 + ' / 3→' + _tn3 + ' / 4→' + _tn4 + ' / 7→' + _tn7);
   // 14e 模拟完成本局并结算：成功击杀 Boss + 撤离 → maxTier 推进 + bestLayer 更新 + ore 增加
   var _sim = api.simFinishRun('success', true);
   if (!_sim.ok) errors.push('v14: 14e simFinishRun 应成功');
@@ -641,6 +642,70 @@ try {
   var _r18 = _n18_7 / _n18_5;
   if (!(_r18 > 1.05 && _r18 < 1.35)) errors.push('18e: frenzy 追击位移比(归一)应≈1.2，实际 ' + _r18.toFixed(3) + ' (d3=' + _r18_7.disp.toFixed(1) + ' psm3=' + _r18_7.psm.toFixed(2) + ' d1=' + _r18_5.disp.toFixed(1) + ' psm1=' + _r18_5.psm.toFixed(2) + ')');
   else console.log('[18e] frenzy OK：归一位移比=' + _r18.toFixed(3) + ' ≈1.2（tier3 含极速 vs tier1 无异变）');
+
+  // ============================================================
+  // 19) v15.1 审计修复回归（#366：S1 双重入账 / S2 阵亡锁死 / A1 裂隙自毁冻结 / B2 张力条分母 / C1 裂隙悬赏）
+  // ============================================================
+  console.log('---- v15.1 审计修复回归 ----');
+  // 19a S1：拾取 ore 只累加 run.oreCollected，不写 meta.ore（双重入账修复）
+  api.meta().runs = 5; api.meta().ore = 100; api.meta().currency = 500; // 非首局 + 固定资源基线
+  api.startMission(); for (var _i19 = 0; _i19 < 5; _i19++) tick(16.7); api.cleanState();
+  api.enemies().length = 0; api.obstacles().length = 0; api.loot().length = 0; api.weaverRifts().length = 0; api.gravityRifts().length = 0;
+  var _ore0 = api.meta().ore, _oc0 = api.run().oreCollected || 0;
+  api.loot().push({ x: api.player().x + 8, y: api.player().y, type: 'ore', amount: 20, vx: 0, vy: 0, life: 20, age: 0 });
+  for (var _i19b = 0; _i19b < 12; _i19b++) tick(16.7); // 自动磁吸拾取
+  var _ore1 = api.meta().ore, _oc1 = api.run().oreCollected || 0;
+  if (_ore1 !== _ore0) errors.push('19a(S1): 拾取 ore 不应写 meta.ore（双重入账），ore ' + _ore0 + '→' + _ore1);
+  else if (!(_oc1 >= _oc0 + 20)) errors.push('19a(S1): 拾取 ore 应累加 run.oreCollected +20，实际 +' + (_oc1 - _oc0));
+  else console.log('[19a] S1 拾取路径 OK：meta.ore 不变(' + _ore1 + ')，run.oreCollected +' + (_oc1 - _oc0));
+  // 19b S1 结算：death 只入 15% 采集量（修复前 115%）
+  api.finishRun('death');
+  var _oreAfter = api.meta().ore;
+  if (_oreAfter !== _ore0 + Math.floor(_oc1 * 0.15)) errors.push('19b(S1): 阵亡结算 ore 应=采集×15%（+' + Math.floor(_oc1 * 0.15) + '），实际 +' + (_oreAfter - _ore0));
+  else console.log('[19b] S1 结算入账 OK：death → meta.ore +' + (_oreAfter - _ore0) + '（=20×15%）');
+  // 19c S2：ext1 不破坏阵亡 15% 保底（death=0.15 / abandon=0.45 / success=1.0）
+  api.meta().research = api.meta().research || {}; api.meta().research.ext1 = true;
+  api.startMission(); for (var _i19c = 0; _i19c < 5; _i19c++) tick(16.7); api.cleanState();
+  if (Math.abs(api.lootKeepRate('death') - 0.15) > 1e-9) errors.push('19c(S2): death keep 应=0.15（ext1 不叠加），实际 ' + api.lootKeepRate('death'));
+  else if (Math.abs(api.lootKeepRate('abandon') - 0.45) > 1e-9) errors.push('19c(S2): abandon keep 应=0.45（0.3+ext1 0.15），实际 ' + api.lootKeepRate('abandon'));
+  else if (Math.abs(api.lootKeepRate('success') - 1) > 1e-9) errors.push('19c(S2): success keep 应=1.0，实际 ' + api.lootKeepRate('success'));
+  else console.log('[19c] S2 阵亡锁死 OK：death=' + api.lootKeepRate('death') + ' abandon=' + api.lootKeepRate('abandon') + ' success=' + api.lootKeepRate('success'));
+  // 19d A1：杀 Boss 后 selfDestruct=45 → 进裂隙冻结为 0 → 出裂隙恢复 45
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.spawnBoss(); api.killBoss();
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('19d(A1): 前置 selfDestruct 应=45，实际 ' + api.selfDestruct());
+  api.enterRift();
+  if (api.selfDestruct() !== 0) errors.push('19d(A1): 进裂隙 selfDestruct 应冻结为 0，实际 ' + api.selfDestruct());
+  else if (Math.abs(api.riftSdFrozen() - 45) > 0.001) errors.push('19d(A1): 冻结值 _riftSdFrozen 应=45，实际 ' + api.riftSdFrozen());
+  api.exitRift();
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('19d(A1): 出裂隙 selfDestruct 应恢复 45，实际 ' + api.selfDestruct());
+  else console.log('[19d] A1 裂隙自毁冻结 OK：进裂隙=0(冻结45) → 出裂隙恢复 45');
+  // 19d2 A1 三路径恢复：阵亡弹回（dieInRift）与强制离开（forceExitRift）
+  api.spawnBoss(); api.killBoss(); api.enterRift(); api.dieInRift();
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('19d2(A1): dieInRift 后 selfDestruct 应恢复 45，实际 ' + api.selfDestruct());
+  api.spawnBoss(); api.killBoss(); api.enterRift(); api.forceExitRift();
+  if (Math.abs(api.selfDestruct() - 45) > 0.001) errors.push('19d2(A1): forceExitRift 后 selfDestruct 应恢复 45，实际 ' + api.selfDestruct());
+  else console.log('[19d2] A1 三路径恢复 OK：dieInRift/forceExitRift 均恢复 45');
+  // 19e B2：tide_fast 下 phaseDurNow 应=PHASE_GOLD_DUR×0.6（张力条分母随实际周期）
+  api.setSelectedTier(7); // tier7 含 tide_fast
+  api.startMission();
+  var _pd = api.phaseDurNow(), _gd = api.phaseGoldDur();
+  if (Math.abs(_pd - _gd * 0.6) > 0.001) errors.push('19e(B2): tide_fast 下 phaseDurNow 应=' + (_gd * 0.6).toFixed(2) + '，实际 ' + _pd.toFixed(2));
+  else console.log('[19e] B2 张力条分母 OK：tide_fast phaseDurNow=' + _pd.toFixed(1) + '（=PHASE_GOLD_DUR×0.6）');
+  // 19f C1：裂隙内完成悬赏 → 宝箱入 riftLoot（不落地面丢失），出裂隙并入 run.loot
+  api.startMission(); for (var _i19e = 0; _i19e < 5; _i19e++) tick(16.7); api.cleanState();
+  api.enemies().length = 0; api.setPlayerHp(99999); api.loot().length = 0;
+  api.enterRift(); api.loot().length = 0;
+  api.generateBounty();
+  api.bounty().progress = api.bounty().target - 1;
+  var _rlBefore = api.riftLoot().length;
+  api.bountyProgress(api.bounty().track, 1); // 触发 completeBounty（inRift 分支）
+  var _rlAfter = api.riftLoot().length, _ground = api.loot().length;
+  if (_ground > 0) errors.push('19f(C1): 裂隙内完成悬赏不应掉地面 loot，地面=' + _ground);
+  else if (!(_rlAfter > _rlBefore)) errors.push('19f(C1): 裂隙内完成悬赏宝箱应入 riftLoot，riftLoot ' + _rlBefore + '→' + _rlAfter);
+  api.exitRift();
+  if (api.run().loot.length === 0) errors.push('19f(C1): 出裂隙后 run.loot 应并入裂隙宝箱');
+  else console.log('[19f] C1 裂隙悬赏 OK：地面 loot=0，riftLoot ' + _rlBefore + '→' + _rlAfter + '，出裂隙并入 run.loot=' + api.run().loot.length);
 
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();

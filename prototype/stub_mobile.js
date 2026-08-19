@@ -332,10 +332,10 @@ try {
   var _buyFail = api.buyTech('dmg');
   if (_buyFail.ok) errors.push('v14[移动] 14b 资源为0时 buyTech 不应成功');
   else console.log('[14b-移动] 资源不足安全失败 OK：reason=' + _buyFail.reason);
-  // 14c 移动端 tierName 名称正确
+  // 14c 移动端 tierName 名称正确（B1 修复：口径与 tierTitle 统一，Tier5=深渊3层）
   if (api.tierName(1) !== '入门') errors.push('v14[移动] 14c tierName(1) 应=入门');
-  else if (api.tierName(5) !== '深渊 2') errors.push('v14[移动] 14c tierName(5) 应=深渊 2, 实际=' + api.tierName(5));
-  else console.log('[14c-移动] tierName OK：1→入门 / 5→深渊 2');
+  else if (api.tierName(5) !== '深渊 3') errors.push('v14[移动] 14c tierName(5) 应=深渊 3, 实际=' + api.tierName(5));
+  else console.log('[14c-移动] tierName OK：1→入门 / 5→深渊 3');
 
   // ============================================================
   // 15) 移动端启动加载门（doEnter → enterBase → base 显示；HtmlAssets 桩安全）

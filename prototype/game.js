@@ -58,7 +58,7 @@
   var RARCOL = { white: '#D8D6CE', green: '#4E9A7E', blue: '#4E8FC7', purple: '#8A6FB8', orange: '#D98A3D' };
   var RARVAL = [10, 25, 60, 140, 320];
   var TIERNAME = ['入门', '进阶', '深渊'];
-  function tierName(t) { return t <= 3 ? (TIERNAME[t - 1] || ('第' + t + '层')) : ('深渊 ' + (t - 3)); }
+  function tierName(t) { return t <= 2 ? (TIERNAME[t - 1] || ('第' + t + '层')) : ('深渊 ' + (t - 2)); } // B1 修复：深渊层数口径统一为 tierTitle（Tier3=深渊1层，Tier4=深渊2层…）；t≤2 固定名 1=入门/2=进阶
   // 八卦五行：巽(风) · 震(雷) · 坎(水) · 离(火) · 坤(土)
   var ELEMCOL = { '火': '#C94F3E', '水': '#4E8FC7', '雷': '#D9B64A', '风': '#37C2C9', '土': '#B07D45' };
   var TRIGRAM = { '风': '巽', '雷': '震', '水': '坎', '火': '离', '土': '坤' };
@@ -510,9 +510,13 @@
     // bag: 背包扩容 —— 在 pushToLoot 中读取 meta.tech.bag
   }
   // 结算：战利品按 outcome 比例入库为法器（研究院撤离研究可加成）
-  function bankLoot(outcome) {
+  // S2 修复：ext1「撤离多带出 15% 法器」仅成功/弃局生效；阵亡保底 15% 不被研究加成破坏（避免 0.15+0.15=0.30 翻倍锁死）
+  function lootKeepRate(outcome) {
     var base = outcome === 'success' ? 1 : outcome === 'abandon' ? 0.3 : 0.15;
-    var keep = Math.min(1, base + (player.extractBonus || 0));
+    return outcome === 'death' ? base : Math.min(1, base + (player.extractBonus || 0));
+  }
+  function bankLoot(outcome) {
+    var keep = lootKeepRate(outcome);
     var kept = 0;
     for (var i = 0; i < run.loot.length; i++) {
       var it = run.loot[i];
@@ -570,11 +574,22 @@
     if (!bounty || bounty.completed) return;
     bounty.completed = true;
     // 奖励：天工宝箱（高品质法器掉落）+ 暴击/移速加成
+    // C1 修复：裂隙内完成悬赏 → 宝箱直接入裂隙背包（离场自动并入 run.loot），灵玉/碎屑直接入账（裂隙地面 loot 离场会丢失）
     var dropRar = Math.random() < 0.3 ? 'purple' : 'blue';
-    if (budgetArtifact(dropRar)) dropLoot(player.x + rand(-40, 40), player.y + rand(-40, 40), dropRar, 'artifact');
-    else dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 50 });
-    dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 30 + run.tier * 10 });
-    dropOre(player.x, player.y, 3 + run.tier);
+    if (inRift) {
+      if (budgetArtifact(dropRar)) pushToLoot(riftLoot, { rarity: dropRar, name: pickName(dropRar), slot: pickSlot(), rift: true }, player.x, player.y, run.loot.length);
+      else { meta.currency += 50; floatText(player.x, player.y - 26, '+50 灵玉（预算耗尽折算）', '#C9A24B'); }
+      meta.currency += 30 + run.tier * 10;
+      floatText(player.x, player.y - 40, '+' + (30 + run.tier * 10) + ' 灵玉', '#C9A24B');
+      var _oreAmt = Math.max(1, Math.round((3 + run.tier) * tierOreBonus(run.tier)));
+      run.oreCollected = (run.oreCollected || 0) + _oreAmt;
+      floatText(player.x, player.y - 54, '+' + _oreAmt + ' 灵矿碎屑（结算入账）', '#8FB0C8');
+    } else {
+      if (budgetArtifact(dropRar)) dropLoot(player.x + rand(-40, 40), player.y + rand(-40, 40), dropRar, 'artifact');
+      else dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 50 });
+      dropLoot(player.x, player.y, 'blue', 'jade', null, { amount: 30 + run.tier * 10 });
+      dropOre(player.x, player.y, 3 + run.tier);
+    }
     // 即时增益：暴击+8%、移速+15%，持续整局
     player.critChance = Math.min(0.85, player.critChance + 0.08);
     player.speed += 15;
@@ -2081,15 +2096,17 @@
   function tierMul(tier) { return 1 + (tier - 1) * 0.45; } // 敌人HP倍率：每层 +45%（v14.3 改签名接参数，基地态 run=null 不再崩）
   function tierDmgMul(tier) { return 1 + (tier - 1) * 0.30; } // 敌人攻击倍率：每层 +30%（v14.3 改签名）
   // ====== 深渊异变·词缀系统（确定性分配：按池顺序每 2 层追加 1 条，Tier 3 起生效） ======
-  var AFFIX_POOL = [
+  // ★ 371 修复：更名为 AFFIX_DEFS，避免覆盖 rollMods 依赖的 AFFIX_POOL 装备词缀池（否则任何带战利品结算必崩）
+  var AFFIX_DEFS = [
     { key: 'frenzy',        name: '极速',      icon: '⚡', col: '#C8642A', desc: '敌怪移动速度 +20%' },
     { key: 'volatile_all',  name: '自爆',      icon: '💥', col: '#C94F4F', desc: '杂兵阵亡 30% 概率自爆' },
     { key: 'tide_fast',     name: '潮汐',      icon: '🌊', col: '#4E8FC7', desc: '相位交替周期缩短 40%' },
     { key: 'gravity_surge', name: '引力潮涌',  icon: '🕳', col: '#B06FD0', desc: '引力裂缝吸力与伤害 +50%' }
   ];
   function tierAffixCount(tier) { return tier >= 3 ? Math.min(4, 1 + Math.floor((tier - 3) / 2)) : 0; } // 3-4层1条 5-6层2条 7-8层3条 9+层4条
-  function tierAffixes(tier) { var n = tierAffixCount(tier), arr = []; for (var i = 0; i < n; i++) arr.push(AFFIX_POOL[i].key); return arr; } // 确定性：按池顺序每2层追加1条
+  function tierAffixes(tier) { var n = tierAffixCount(tier), arr = []; for (var i = 0; i < n; i++) arr.push(AFFIX_DEFS[i].key); return arr; } // 确定性：按池顺序每2层追加1条
   function hasAffix(key) { return !!(run && run.affixes && run.affixes.indexOf(key) >= 0); } // 词缀守卫：仅局内且含该词缀时生效（基地态 run=null 恒 false）
+  function phaseDurNow() { return (phase === PHASE.EMBER ? PHASE_EMBER_DUR : PHASE_GOLD_DUR) * (hasAffix('tide_fast') ? 0.6 : 1); } // B2 修复：潮汐词缀周期 ×0.6，张力条分母随实际周期（避免 tide_fast 下分母失真）
   function tierDropBonus(tier) { return Math.min(0.35, (tier - 1) * 0.04); } // 传说/史诗掉落权重：每层 +4%，上限 35%
   function tierOreBonus(tier) { return 1 + (tier - 1) * 0.5; } // 灵矿产出加成：每层 +50%
   function tierTitle(t) { return t === 1 ? 'Tier 1【入门·潜入】' : t === 2 ? 'Tier 2【进阶·蚀空】' : 'Tier ' + t + '【深渊 ' + (t - 2) + ' 层】'; } // 基地出击面板标题（Tier 3+ 深渊层从 1 起，独立于 tierName）
@@ -2434,7 +2451,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _riftSdFrozen: 0 };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）；深渊异变·潮汐：含 tide_fast 时周期 ×0.6
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2461,7 +2478,7 @@
     // ★ 深渊异变·词缀横幅：进入带词缀层级时开局提示（仅 Tier 3+ 有词缀）
     if (run.affixes.length > 0) {
       var _affTxt = run.affixes.map(function (k) {
-        for (var _ai = 0; _ai < AFFIX_POOL.length; _ai++) if (AFFIX_POOL[_ai].key === k) return AFFIX_POOL[_ai].icon + AFFIX_POOL[_ai].name;
+        for (var _ai = 0; _ai < AFFIX_DEFS.length; _ai++) if (AFFIX_DEFS[_ai].key === k) return AFFIX_DEFS[_ai].icon + AFFIX_DEFS[_ai].name;
         return k;
       }).join(' ');
       setBanner('深渊异变：' + _affTxt, 3.2);
@@ -2892,7 +2909,7 @@
     }
   }
   // ============ 掉落分层重构（2026-08-19）：单局整装预算硬控 + 灵矿碎屑材料 ============
-  // 灵矿碎屑（材料）：自动磁吸，不占背包格，累积进 meta.ore（供后续强化/合成系统消耗）
+  // 灵矿碎屑（材料）：自动磁吸，不占背包格；局内仅累加 run.oreCollected，结算时按结局比例统一入 meta.ore（S1 修复：消除双重入账）
   // v15：灵矿产出按层级加成 tierOreBonus（每层+50%）；amount 为调用方传的基础值，仅乘一次；基地态 run=null 按 tier1 算
   function dropOre(x, y, amount) { dropLoot(x, y, 'white', 'ore', null, { amount: Math.max(1, Math.round((amount || 1) * tierOreBonus(run ? run.tier : 1))) }); }
   // 单局整装总产出预算：所有整装掉落（精英/Boss/宝箱）须过此闸；归零后整装降级为灵玉，严格把单局整装锁在 12~20 件
@@ -3184,7 +3201,8 @@
       loot.splice(idx, 1); return;
     }
     if (it.type === 'ore') {
-      var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt;
+      // S1 修复：拾取路径只累加 run.oreCollected，不再写 meta.ore（meta.ore 仅在 finishRun 结算按比例统一入账，杜绝双重入账）
+      var oamt = it.amount || 1;
       floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8');
       AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
       bountyProgress('orePickup', oamt); // 动态悬赏：灵矿碎屑采集
@@ -4924,7 +4942,7 @@
         var _grx = gravityRifts[_eg];
         var _edx = _grx.x - e.x, _edy = _grx.y - e.y, _ed = Math.hypot(_edx, _edy) || 1;
         if (_ed < _grx.pull && _ed > _grx.core) {
-          var _ef = Math.min(GRAV_K / (_ed + 24), 1000);
+          var _ef = Math.min((hasAffix('gravity_surge') ? GRAV_K * 1.5 : GRAV_K) / (_ed + 24), 1000); // B3 修复：词缀「引力裂缝吸力+50%」对敌我双方生效（与玩家吸力 L4507 对称）
           e.x += (_edx / _ed) * _ef * dt; e.y += (_edy / _ed) * _ef * dt;
         }
       }
@@ -5270,7 +5288,7 @@
         loot.splice(l, 1); continue;
       }
       if (it.type === 'ore' && dist2(it.x, it.y, player.x, player.y) < player.pickR * player.pickR) {
-        var oamt = it.amount || 1; meta.ore = (meta.ore || 0) + oamt; floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8'); AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6);
+        var oamt = it.amount || 1; floatText(it.x, it.y, '+' + oamt + ' 灵矿碎屑', '#8FB0C8'); AudioSys.sfx.pickup('green'); burst(it.x, it.y, '#8FB0C8', 6); // S1 修复：不写 meta.ore，仅 run.oreCollected（结算统一入账）
         bountyProgress('orePickup', oamt); // 动态悬赏：灵矿碎屑采集
         run.oreCollected = (run.oreCollected || 0) + oamt; // 局末结算：追踪本局采集量
         loot.splice(l, 1); continue;
@@ -5479,6 +5497,8 @@
     riftReturn = { x: player.x, y: player.y };
     riftSnapshot = snapshotWorld();
     inRift = true; riftLoot = []; riftExit = null; riftHidden = null; riftWaves = null; riftTrapT = 0;
+    // A1 修复：裂隙内冻结战场自毁倒计时（裂隙无自毁 HUD，且竞技房 4 波可能拖过 45s 被 collapseEvac 无预警强杀）
+    if (run) { run._riftSdFrozen = run.selfDestruct || 0; run.selfDestruct = 0; }
     enemies = []; bullets = []; loot = []; nodes = []; obstacles = []; totems = []; vaults = []; extractPoints = []; boss = null; bossSpawned = false;
     var RW = Math.min(WORLD_W * 0.66, 880), RH = Math.min(WORLD_H * 0.66, 620);
     var RX = (WORLD_W - RW) / 2, RY = (WORLD_H - RH) / 2; riftRect = { RX: RX, RY: RY, RW: RW, RH: RH };
@@ -5601,6 +5621,7 @@
     var ret = riftReturn;
     restoreWorld(riftSnapshot);
     inRift = false; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null;
+    if (run && run._riftSdFrozen > 0) { run.selfDestruct = run._riftSdFrozen; run._riftSdFrozen = 0; } // A1：恢复裂隙冻结的自毁倒计时（正常退出路径）
     var ep = riftRandomExitPos();
     player.x = ep.x; player.y = ep.y; player.vx = 0; player.vy = 0; player.iframe = Math.max(player.iframe || 0, 1.0);
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
@@ -5621,6 +5642,7 @@
     for (var i = 0; i < riftLoot.length; i++) pushToLoot(run.loot, riftLoot[i], ep.x, ep.y); // 收益落在随机落点
     for (var k = 0; k < rifts.length; k++) { if (dist2(rifts[k].x, rifts[k].y, ret.x, ret.y) < 80 * 80) { rifts.splice(k, 1); break; } } // 原裂隙消失
     riftLoot = []; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null;
+    if (run && run._riftSdFrozen > 0) { run.selfDestruct = run._riftSdFrozen; run._riftSdFrozen = 0; } // A1：恢复裂隙冻结的自毁倒计时（阵亡弹回路径）
     setBanner('裂隙内阵亡！被随机弹回主图（HP 30%），原裂隙已关闭', 3);
     var _rlb3 = document.getElementById('riftLeaveBtn'); if (_rlb3) _rlb3.style.display = 'none';
   }
@@ -5630,6 +5652,7 @@
     var ret = riftReturn;
     if (riftSnapshot) restoreWorld(riftSnapshot);
     inRift = false; riftRoom = null; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftRect = null; riftReturn = null; riftSnapshot = null;
+    if (run && run._riftSdFrozen > 0) { run.selfDestruct = run._riftSdFrozen; run._riftSdFrozen = 0; } // A1：恢复裂隙冻结的自毁倒计时（强制离开路径）
     var ep = riftRandomExitPos();
     player.x = ep.x; player.y = ep.y; player.vx = 0; player.vy = 0; player.iframe = Math.max(player.iframe || 0, 0.6);
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
@@ -5839,6 +5862,11 @@
     if (riftRoom.done) label += ' · 踏入传送门离开';
     else label += ' · 随时按 Esc / 点「离开裂隙」脱离';
     ctx.save(); ctx.fillStyle = 'rgba(20,12,30,0.72)'; ctx.fillRect(W / 2 - 180, 10, 360, 26); ctx.fillStyle = '#E0C8FF'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, W / 2, 23); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    // A1 修复：裂隙内自毁倒计时提示（进裂隙时已冻结，但玩家需知剩余时间——离场即恢复计时）
+    if (run && (run.selfDestruct > 0 || run._riftSdFrozen > 0)) {
+      var _sd = Math.ceil(run.selfDestruct + (run._riftSdFrozen || 0));
+      ctx.save(); ctx.fillStyle = 'rgba(60,12,12,0.78)'; ctx.fillRect(W / 2 - 150, 42, 300, 24); ctx.fillStyle = '#FF8C7A'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('⚠ 战场自毁 ' + _sd + 's · 尽快撤离', W / 2, 54); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    }
   }
   function drawRift() {
     if (inRift) {
@@ -7245,7 +7273,7 @@
         }
         // 张力微条
         if (phase === PHASE.GOLD) {
-          var _tf2 = clamp(1 - phaseTimer / PHASE_GOLD_DUR, 0, 1), _red2 = phaseTimer <= 6;
+          var _tf2 = clamp(1 - phaseTimer / phaseDurNow(), 0, 1), _red2 = phaseTimer <= 6;
           ctx.fillStyle = 'rgba(255,255,255,0.12)'; hp(_cardX + 66, _cardY + 24, 48, 4, 2);
           ctx.fillStyle = _red2 ? '#E04A4A' : '#7FB069'; hp(_cardX + 66, _cardY + 24, 48 * _tf2, 4, 2);
         }
@@ -7267,7 +7295,7 @@
         }
         ctx.fillStyle = '#C9A24B'; ctx.font = 'bold 10px sans-serif'; ctx.fillText(phaseCore + '/' + CORE_CAP + (isMobile ? '' : ' [F]'), _cx + _cw * 3 + _cg * 2 + 6, _cy + 11);
         if (phase === PHASE.GOLD) {
-          var _tf = clamp(1 - phaseTimer / PHASE_GOLD_DUR, 0, 1), _red = phaseTimer <= 6;
+          var _tf = clamp(1 - phaseTimer / phaseDurNow(), 0, 1), _red = phaseTimer <= 6;
           var _tx = _cardX + 10, _ty = _cardY + 46, _tw = _cardW - 20;
           ctx.fillStyle = 'rgba(255,255,255,0.12)'; hp(_tx, _ty, _tw, 5, 2.5);
           ctx.fillStyle = _red ? '#E04A4A' : '#7FB069'; hp(_tx, _ty, _tw * _tf, 5, 2.5);
@@ -7611,9 +7639,18 @@
 
   // ---------- 界面 ----------
   function hideAllOverlays() { ['title', 'base', 'buffOverlay', 'mergeOverlay', 'pauseOverlay', 'result', 'tutorial'].forEach(function (id) { document.getElementById(id).style.display = 'none'; }); }
+  // B4 修复：首局（meta.runs===0 且未主动关闭过教学）进入基地时自动弹一次新手教学；已有局数或本会话已弹过则不再打扰
+  var _autoTutDone = false;
+  function maybeAutoTutorial() {
+    if (_autoTutDone) return;
+    if (!meta || meta.runs > 0 || meta.seenTutorial) return;
+    _autoTutDone = true;
+    var _t = document.getElementById('tutorial');
+    if (_t) _t.style.display = 'flex';
+  }
   function showScene(name) {
     scene = name; hideAllOverlays();
-    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); }
+    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); maybeAutoTutorial(); }
     else if (name === 'title') { document.getElementById('title').style.display = 'flex'; }
     else if (name === 'result') { document.getElementById('result').style.display = 'flex'; }
     showMobileControls(); checkOrientation();
@@ -7681,8 +7718,8 @@
         affPills = '<span class="affix-none">无异变</span>';
       } else {
         affPills = affKeys.map(function (k) {
-          for (var _ai = 0; _ai < AFFIX_POOL.length; _ai++) if (AFFIX_POOL[_ai].key === k) {
-            var _a = AFFIX_POOL[_ai];
+          for (var _ai = 0; _ai < AFFIX_DEFS.length; _ai++) if (AFFIX_DEFS[_ai].key === k) {
+            var _a = AFFIX_DEFS[_ai];
             return '<span class="affix-pill" style="color:' + _a.col + ';border-color:' + _a.col + ';box-shadow:0 0 10px ' + _a.col + '55">' + _a.icon + ' ' + _a.name + '</span>';
           }
           return '';
@@ -8625,8 +8662,9 @@
     html += '<div class="stat-card big"><span>结局</span><b>' + label + '（第 ' + run.tier + ' 层 · ' + tierName(run.tier) + '）</b></div>';
     html += '<div class="stat-card"><span>本局击杀</span><b>' + run.kills + ' 体</b></div>';
     if (outcome === 'success') html += '<div class="stat-card ok"><span>战利品</span><b>全部入库：+' + kept + ' 件法器</b></div>';
-    else if (outcome === 'abandon') html += '<div class="stat-card bad"><span>弃局带回 30%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
-    else html += '<div class="stat-card bad"><span>阵亡带回 15%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
+    // B5 联动：弃局/阵亡比例按实际保留率动态显示（有 ext1 时弃局 0.3+0.15=45%；阵亡恒 15%）
+    else if (outcome === 'abandon') html += '<div class="stat-card bad"><span>弃局带回 ' + Math.round(lootKeepRate('abandon') * 100) + '%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
+    else html += '<div class="stat-card bad"><span>阵亡带回 ' + Math.round(lootKeepRate('death') * 100) + '%</span><b>+' + kept + ' 件（损失 ' + lostLoot + '）</b></div>';
     // 灵玉 + 灵矿碎屑
     html += '<div class="stat-card"><span>获得灵玉</span><b>+' + killReward + '</b></div>';
     if (oreReward > 0) html += '<div class="stat-card"><span>获得灵矿碎屑</span><b>+' + oreReward + '</b></div>';
@@ -8919,6 +8957,21 @@
       activateEvacBeacon: activateEvacBeacon,
       selfDestruct: function () { return run ? run.selfDestruct : 0; },
       evacBeacon: function () { return run ? !!run.evacBeacon : false; },
+      // === 371 审计修复 · 测试桩钩子（S1/S2/A1/B2/C1 断言用；仅 STUB 环境暴露）===
+      loot: function () { return loot; },
+      riftLoot: function () { return riftLoot; },
+      inRift: function () { return inRift; },
+      bankLoot: bankLoot,
+      lootKeepRate: lootKeepRate,
+      finishRun: finishRun,
+      enterRift: enterRift,
+      exitRift: exitRift,
+      dieInRift: dieInRift,
+      forceExitRift: forceExitRift,
+      dropOre: dropOre,
+      dropLoot: dropLoot,
+      riftSdFrozen: function () { return run ? (run._riftSdFrozen || 0) : 0; },
+      phaseDurNow: phaseDurNow,
       spawnArche: function (arche, x, y) { return spawnEnemy((x == null ? player.x + 300 : x), (y == null ? player.y : y), run.tier || 1, { arche: arche }); },
       PHASE_GOLD: function () { return PHASE.GOLD; },
       PHASE_EMBER: function () { return PHASE.EMBER; },
@@ -9008,7 +9061,7 @@
       // === v15 深渊异变·词缀系统 · 测试桩钩子 ===
       tierAffixes: tierAffixes,
       tierAffixCount: tierAffixCount,
-      affixPool: function () { return AFFIX_POOL; },
+      affixPool: function () { return AFFIX_DEFS; },
       tierDropBonus: tierDropBonus,
       tierOreBonus: tierOreBonus,
       tierTitle: tierTitle,
