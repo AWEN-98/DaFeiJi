@@ -539,6 +539,8 @@
     width: 100% !important;
     max-width: 280px !important;
     height: 44px !important;
+    min-height: 44px !important;
+    aspect-ratio: auto !important;
     margin: 8px auto !important;
     padding: 0 16px !important;
     background-size: 100% 100% !important;
@@ -554,8 +556,9 @@
     box-sizing: border-box !important;
   }
 
-  /* B) 真实在用的弹窗金属按钮：修正底图错缩放 + 文字居中（不改既有尺寸与主题色） */
-  .btn-primary, .btn-secondary, .btn-small, .v3btn,
+  /* B) 真实在用的弹窗金属按钮：底图 100% 铺满 + 文字居中 + 高度防塌陷
+        （.v3btn 熔炼台按钮属机库常驻 UI，已由 L1128 正确铺满，此处不再覆盖以免改动正常界面） */
+  .btn-primary, .btn-secondary, .btn-small,
   .chest-btn, .result-btn {
     display: flex !important;
     align-items: center !important;
@@ -564,7 +567,34 @@
     background-repeat: no-repeat !important;
     background-position: center !important;
     color: #ffeedd !important;
+    min-height: 44px !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
   }
+
+  /* C) 更高特异性：.btn-sprite.btn-* 直接压过 L505 .btn-sprite 的 background-size:400% 300%，
+       强制底图铺满 + 文字居中 + 固定 44px（仅作用于弹窗内按钮） */
+  .btn-sprite.btn-primary,
+  .btn-sprite.btn-secondary,
+  .btn-sprite.btn-small {
+    background-size: 100% 100% !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ffeedd !important;
+    min-height: 44px !important;
+    height: 44px !important;
+    aspect-ratio: auto !important;
+  }
+
+  /* === 保护常驻按钮：标题页 .title-btns / 机库底栏 .hall-bottom 按钮保持原比例与配色 ===
+     热修仅作用于弹窗内 .btn-sprite.btn-*；以下还原常驻按钮的原有高度与文字色，避免外观回退。 */
+  .title-btns .btn-primary   { aspect-ratio: 347 / 154 !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
+  .title-btns .btn-secondary { aspect-ratio: 325 / 137 !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
+  .title-btns .btn-small     { aspect-ratio: 283 / 84  !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
+  .hall-bottom .btn-small    { aspect-ratio: 283 / 84  !important; min-height: auto !important; height: auto !important; color: #E8DCC4 !important; }
 
   /* ============ 非基地 Overlay 样式 ============ */
   /* 标题页 */
