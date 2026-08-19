@@ -6496,7 +6496,17 @@
   }
   function drawMinimap() {
     var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r, my = isMobile ? (78 + SA.t) : 140; // v3：移动端小地图上移至极简相位条下方
-    ctx.fillStyle = 'rgba(16,13,9,0.72)'; ctx.fillRect(mx, my, mw, mh); ctx.strokeStyle = 'rgba(201,162,75,0.35)'; ctx.lineWidth = 1; ctx.strokeRect(mx, my, mw, mh);
+    // 暗金圆角容器（与左侧血条/相位面板同风格：圆角 + 暗金描边 + 外投影 + 内辉光）
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
+    ctx.fillStyle = 'rgba(18,14,10,0.75)';
+    roundRectPath(ctx, mx, my, mw, mh, 8); ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(201,162,75,0.4)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, mx, my, mw, mh, 8); ctx.stroke();
+    ctx.strokeStyle = 'rgba(201,162,75,0.1)'; ctx.lineWidth = 1;
+    roundRectPath(ctx, mx + 1, my + 1, mw - 2, mh - 2, 7); ctx.stroke();
+    roundRectPath(ctx, mx, my, mw, mh, 8); ctx.clip();
     var sx = mw / WORLD_W, sy = mh / WORLD_H;
     // 空域：小地图仅显示节点/撤离点/宝箱（无设施结构）
     for (var i = 0; i < nodes.length; i++) { var nd = nodes[i]; if (nd.collected) continue; ctx.fillStyle = CHESTS[nd.chest].color; ctx.fillRect(mx + nd.x * sx - 2, my + nd.y * sy - 2, 4, 4); }
@@ -6543,6 +6553,7 @@
     for (var li = 0; li < loot.length; li++) { if (loot[li].type === 'bossrelic') { ctx.fillStyle = '#FFE9A8'; ctx.beginPath(); ctx.arc(mx + loot[li].x * sx, my + loot[li].y * sy, 3, 0, 7); ctx.fill(); } }
     ctx.fillStyle = COL.enemy; for (var e = 0; e < enemies.length; e++) ctx.fillRect(mx + enemies[e].x * sx - 1, my + enemies[e].y * sy - 1, 2, 2);
     ctx.fillStyle = COL.player; ctx.beginPath(); ctx.arc(mx + player.x * sx, my + player.y * sy, 3, 0, 7); ctx.fill();
+    ctx.restore(); // 结束圆角裁剪 + 容器上下文
   }
   function drawConsumables() {
     var lpW = isMobile ? 180 : 236, lpH = isMobile ? 52 : 66, lpY = H - lpH - (isMobile ? 10 + SA.b : 14);
@@ -6550,9 +6561,20 @@
     var bx = 10 + SA.l + lpW + (isMobile ? 8 : 12), by = lpY + (lpH - size) / 2;
     for (var i = 0; i < n; i++) {
       var x = bx + i * (size + gap);
-      ctx.fillStyle = 'rgba(16,13,9,0.72)'; ctx.fillRect(x, by, size, size);
-      ctx.strokeStyle = 'rgba(201,162,39,0.6)'; ctx.lineWidth = 1.5; ctx.strokeRect(x, by, size, size);
       var key = player.consumables[i];
+      var active = !!key; // 持有丹药的槽视为 active（亮金描边 + 外微光 + 内辉光）
+      ctx.save();
+      // 暗金圆角卡槽（同血条面板风格）
+      ctx.fillStyle = active ? 'rgba(20,15,9,0.82)' : 'rgba(0,0,0,0.5)';
+      roundRectPath(ctx, x, by, size, size, 6); ctx.fill();
+      if (active) { ctx.shadowColor = 'rgba(255,215,0,0.3)'; ctx.shadowBlur = 6; }
+      ctx.strokeStyle = active ? '#FFD700' : 'rgba(201,162,75,0.35)';
+      ctx.lineWidth = active ? 1.6 : 1;
+      roundRectPath(ctx, x, by, size, size, 6); ctx.stroke();
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+      ctx.strokeStyle = active ? 'rgba(255,215,0,0.2)' : 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 1;
+      roundRectPath(ctx, x + 1, by + 1, size - 2, size - 2, 5); ctx.stroke();
       if (key) {
         var c = CONSUMABLES[key];
         if (!blit('con_' + key, x + size / 2, by + size / 2 - 4, size - 12, size - 12, 0)) {
@@ -6562,6 +6584,7 @@
         ctx.fillStyle = '#E8DCC4'; ctx.font = (isMobile ? 9 : 10) + 'px sans-serif'; ctx.textAlign = 'center';
         ctx.fillText(c.name, x + size / 2, by + size - 5); ctx.textAlign = 'left';
       }
+      ctx.restore();
     }
     if (!isMobile) { ctx.fillStyle = '#8B95A0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Q 键使用丹药', bx + totalW / 2, by - 4); ctx.textAlign = 'left'; }
   }
