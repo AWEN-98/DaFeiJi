@@ -1434,10 +1434,9 @@
     keys[e.key.toLowerCase()] = true;
     if (e.key.toLowerCase() === 'n') { AudioSys.setMuted(!AudioSys.isMuted()); setBanner('声音 ' + (AudioSys.isMuted() ? '已静音' : '已开启') + '（按 N 切换）', 1.4); return; }
     if (scene === 'mission') {
-      // 裂隙内强制离开：优先于暂停/取消（inRift 且非弹窗/非暂停）
-      if (inRift && !riftPrompt && !paused) {
-        if (e.key === 'Escape' || e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'b') { forceExitRift(); e.preventDefault(); return; }
-      }
+      // #381-③ 裂隙出口改回"走到指定出口传送门"：移除 Esc/Q/B 裂隙内强制离场。
+      // 仅保留隐藏防死锁快捷键 Ctrl+Q（不宣传）：极端卡死时玩家可自救脱离（安全阀，见 updateRift 60s 自动兜底）
+      if (inRift && !riftPrompt && !paused && e.ctrlKey && e.key.toLowerCase() === 'q') { forceExitRift(); e.preventDefault(); return; }
       // v12b 拾取列表打开时：拦截所有按键，专用于列表导航/选择（游戏不暂停）
       if (pickupOpen) {
         var _nn = getNearLoot().length;
@@ -1458,7 +1457,8 @@
         if (e.key === 'Escape') { closeVaultPrompt(false); return; }
       }
       if (e.key.toLowerCase() === 'e') {
-        if (secretVault && !secretVault.opened && !vaultPrompt && !paused && !overlaysOpen()) openVaultPrompt();
+        // #381-② 秘库开门同样受距离约束（仅靠近 <150px 才可弹），杜绝全图任意位置按 E 触发
+        if (secretVault && !secretVault.opened && !vaultPrompt && !paused && !overlaysOpen() && Math.hypot(player.x - secretVault.x, player.y - secretVault.y) < VAULT_PROMPT_R) openVaultPrompt();
         else if (!paused && !overlaysOpen()) forcePickupNearest(); // #197 E 键：附近无可开秘库时，强制捡取最近掉落物（无视筛选）
       }
       if (e.key === '1') chooseBuff(0);
@@ -1525,6 +1525,8 @@
     return isTouch || _isMobileUA || Math.min(window.innerWidth, window.innerHeight) < 800;
   }
   var isMobile = _computeMobile();
+  // #381-⑥ 竖屏单摇杆：竖屏判定（窄长屏）。竖屏下禁用左半屏移动摇杆，右下主摇杆兼作移动+开火
+  function portraitNow() { return isMobile && window.innerHeight > window.innerWidth; }
   // 2026-08-18 移动端判定半径同步缩小（机体绘制已 ×0.5）：弹幕/接触判定用 PHB，机身碰撞用 player.r
   var PHB = isMobile ? 7 : 13;
   function recomputeMobile() { isMobile = _computeMobile(); PHB = isMobile ? 7 : 13; }
@@ -1638,7 +1640,8 @@
       }
       if (_tapped) continue;
       // 双摇杆：左半屏→左摇杆(移动)；右半屏→右摇杆(瞄准+开火)；各自追踪 touchId，支持多点触控同时操作
-      if (x < W * 0.45 && !joy.active) {
+      // #381-⑥ 竖屏单摇杆：竖屏下左半屏不再生成移动摇杆（移动整合到右下主摇杆，拖拽=移动+开火）
+      if (x < W * 0.45 && !joy.active && !portraitNow()) {
         joy.active = true; joy.touchId = t.identifier;
         joy.baseX = x; joy.baseY = y;
         joy.dx = 0; joy.dy = 0; joy.mag = 0;
@@ -1863,10 +1866,13 @@
   var pendingSpawns = [], lootArrow = null, edgeArrow = null;
   var exfilChoicePending = null, exfilStarted = false, exfilPoint = null, exfilChoice = null, exfilJadePenalty = 0, exfilAlarmT = 0, exfilCenter = null, exfilAutoT = 0;
   // 裂隙 / 黑洞系统全局状态
-  var rifts = [], inRift = false, riftReturn = null, riftSnapshot = null, riftRoom = null, riftLoot = [], riftPrompt = false, riftExit = null, riftWaves = null, riftTrapT = 0, riftHidden = null, riftRect = null;
+  var rifts = [], inRift = false, riftReturn = null, riftSnapshot = null, riftRoom = null, riftLoot = [], riftPrompt = false, riftExit = null, riftWaves = null, riftTrapT = 0, riftHidden = null, riftRect = null, riftStuckT = 0;
+  var RIFT_DEADLOCK_T = 60; // #381-③ 裂隙防死锁安全阀：房间 60s 无法完成（riftExit 未生成）→ 自动强制脱离，杜绝玩家永久困住
   var riftActive = null; // 当前弹窗绑定的裂缝引用（取消后触发冷却）
   var vaultPrompt = false, vaultCd = 0; // 磁锁秘库·投喂借力开门交互状态
   var VAULT_JADE_COST = 30; // 支付灵玉开门的代价
+  var VAULT_PROMPT_R = 150; // #381-② 磁锁秘库开门弹窗触发半径：仅玩家距秘库中心 <150px 才允许弹（E 键与 update 两处共用）
+  var VAULT_SPAWN_CHANCE = 0.3; // #381-④ 磁锁秘库小概率随机刷新（Boss 拍板：小概率出现，但出现即高概率出好东西）
   var combatTimer = 0;
   var enemiesSlowT = 0, enemiesSlowFactor = 1;
   var lootCap = 22, invMax = 8; // invMax = 背包格子数（§4：有限格子逼出取舍）
@@ -2008,12 +2014,15 @@
   // 相位柱 / 引力裂隙 / 磁锁秘库 布点（随 tier 微调位置密度）
   function spawnPhaseObjects() {
     phasePillars = []; gravityRifts = []; secretVault = null; weaverRifts = [];
+    // #381-⑤ 相位柱 3→5 根：均匀分布地图（上下两排错开），金/余烬亲和交替（金3 余烬2），由分离 pass 兜底间距
     var pAnchors = [
-      { x: WORLD_W * 0.30, y: WORLD_H * 0.36 },
-      { x: WORLD_W * 0.70, y: WORLD_H * 0.30 },
-      { x: WORLD_W * 0.50, y: WORLD_H * 0.62 }
+      { x: WORLD_W * 0.16, y: WORLD_H * 0.20 },
+      { x: WORLD_W * 0.48, y: WORLD_H * 0.14 },
+      { x: WORLD_W * 0.82, y: WORLD_H * 0.22 },
+      { x: WORLD_W * 0.30, y: WORLD_H * 0.66 },
+      { x: WORLD_W * 0.72, y: WORLD_H * 0.62 }
     ];
-    var pillarAff = [PHASE.GOLD, PHASE.EMBER, PHASE.GOLD];
+    var pillarAff = [PHASE.GOLD, PHASE.EMBER, PHASE.GOLD, PHASE.EMBER, PHASE.GOLD];
     for (var i = 0; i < pAnchors.length; i++) phasePillars.push({ x: pAnchors[i].x, y: pAnchors[i].y, r: 26, cd: 0, affinity: pillarAff[i % pillarAff.length], charge: 0, overloadCd: 0, overloadFlash: 0 });
     var gAnchors = [
       { x: WORLD_W * 0.46, y: WORLD_H * 0.20 },
@@ -2021,8 +2030,13 @@
       { x: WORLD_W * 0.78, y: WORLD_H * 0.56 }
     ];
     for (var j = 0; j < gAnchors.length; j++) gravityRifts.push({ x: gAnchors[j].x, y: gAnchors[j].y, r: 70, pull: GRAV_RADIUS, core: GRAV_CORE, tearT: 0, spin: rand(0, 6.28), pulse: 0 });
-    // 磁锁秘库：置于独立锚点（右下开阔区，远离出生点与所有黑洞/相位柱），由分离 pass 兜底最小间距
-    secretVault = { x: WORLD_W * 0.80, y: WORLD_H * 0.78, r: 34, opened: false };
+    // #381-④ 磁锁秘库：小概率随机刷新（30%）+ 随机锚点（偏右下开阔区，避免贴出生点）；
+    // 不生成则本局无秘库（搜刮/熔炼成为主要装备来源，回应 Boss 对"刷装备意义"的质疑）
+    if (Math.random() < VAULT_SPAWN_CHANCE) {
+      secretVault = { x: WORLD_W * (0.66 + Math.random() * 0.24), y: WORLD_H * (0.62 + Math.random() * 0.28), r: 34, opened: false };
+    } else {
+      secretVault = null;
+    }
     // POI 最小间距分离 pass（E）：强制 相位柱 / 引力裂缝 / 秘库 两两间距 ≥ 700px，且均远离出生点（避免开局即触发秘库弹窗）
     (function separatePOIs() {
       var pts = [];
@@ -2061,6 +2075,8 @@
         if (!moved) break;
       }
     })();
+    // #381-⑤ 相位柱存在感：开局 banner 提示布阵（站圈充能→过载清屏，过载有法器奖励）
+    setBanner('相位柱已布阵 ×' + phasePillars.length + '：站圈充能→过载清屏，奖励法器', 3.4);
   }
   // 吞噬借力：把全厅松散战利品吸向玩家 + 触发成就 + 开磁锁秘库
   function triggerDevourBorrow(b) {
@@ -2080,17 +2096,33 @@
     phaseObjectFeedback('rift', player.x, player.y);
   }
   // 磁锁秘库·投喂借力开门（§5：显式交互，玩家需主动投喂装备或支付灵玉）
+  // #381-④ Boss 拍板：从"必出传说武器"改为"高概率高品质"——
+  //   50% 传说武器 + 橙装（传说率随 tierDropBonus 每层 +4% 抬升，封顶 60%）
+  //   40% 橙装双件
+  //   10% 紫装群
   function openSecretVault() {
     if (!secretVault || secretVault.opened) return;
     secretVault.opened = true;
-    // 保底传说：1 件传说武器 + 1 件橙装（代价已在投喂/灵玉时支付）
-    var legKeys = Object.keys(LEGENDARY_WEAPONS);
-    var lw = LEGENDARY_WEAPONS[legKeys[randi(0, legKeys.length - 1)]];
-    dropLoot(secretVault.x, secretVault.y, lw.rarity, 'legendary_weapon', lw);
-    dropLoot(secretVault.x, secretVault.y, 'orange', 'artifact');
-    setBanner('磁锁秘库开启 · 保底传说！（投喂借力成功）', 2.8);
+    var roll = Math.random();
+    var legChance = Math.min(0.6, 0.5 + tierDropBonus(run ? run.tier : 1)); // 保 40% 给橙装分支
+    if (roll < legChance) {
+      var legKeys = Object.keys(LEGENDARY_WEAPONS);
+      var lw = LEGENDARY_WEAPONS[legKeys[randi(0, legKeys.length - 1)]];
+      dropLoot(secretVault.x, secretVault.y, lw.rarity, 'legendary_weapon', lw);
+      dropLoot(secretVault.x + rand(-12, 12), secretVault.y + rand(-12, 12), 'orange', 'artifact');
+      setBanner('磁锁秘库开启 · 传说武器降世！（投喂借力成功）', 2.8);
+      floatText(secretVault.x, secretVault.y - 30, '★★ 传说!', '#FFE9A8', 'crit');
+    } else if (roll < legChance + 0.4) {
+      dropLoot(secretVault.x, secretVault.y, 'orange', 'artifact');
+      dropLoot(secretVault.x + rand(-14, 14), secretVault.y + rand(-14, 14), 'orange', 'artifact');
+      setBanner('磁锁秘库开启 · 双橙法器！（投喂借力成功）', 2.8);
+      floatText(secretVault.x, secretVault.y - 30, '★★ 双橙!', '#FF9A6B', 'crit');
+    } else {
+      for (var _vp = 0; _vp < 4; _vp++) dropLoot(secretVault.x + rand(-18, 18), secretVault.y + rand(-18, 18), 'purple', 'artifact');
+      setBanner('磁锁秘库开启 · 紫装成群！（投喂借力成功）', 2.8);
+      floatText(secretVault.x, secretVault.y - 30, '★★ 紫装群!', '#C79BE8', 'crit');
+    }
     phaseObjectFeedback('vault', secretVault.x, secretVault.y);
-    floatText(secretVault.x, secretVault.y - 30, '★★ 传说保底!', '#FFE9A8', 'crit');
   }
 
   function tierMul(tier) { return 1 + (tier - 1) * 0.45; } // 敌人HP倍率：每层 +45%（v14.3 改签名接参数，基地态 run=null 不再崩）
@@ -3579,6 +3611,8 @@
   var SAFE_SPAWN_MIN = 400;       // 出怪安全区：距机体 ≥ 此值（屏外飞入/定点遭遇均生效）
   var PHASE_SPD = { qi: 0.82, cheng: 0.95, zhuan: 1.0, he: 1.08 }; // 四幕同屏移速系数（起幕限速）
   var ENEMY_CAP = { qi: 10, cheng: 16, zhuan: 22, he: 28 };        // 四幕同屏敌数硬上限（起幕严格控场）
+  // #381-① 常规周期刷怪间隔（秒）：起幕慢→合幕快，配合 gameTime 梯度再缩短；玩家清完预置遭遇后场上仍持续有增援
+  var SPAWN_INT = { qi: 6.0, cheng: 4.5, zhuan: 3.0, he: 2.5 };
   // ===== 机体手感（加速度-阻尼模型 + 冲刺残影）/ 打击感三件套 =====
   var SPRINT_MULT = 1.8;          // 黄金库：冲刺极速 = 基础移速 × 1.8（0.2s ease-out 爬升至此）
   var ACCEL_TAU = 0.05;           // 加速时间常数收窄：~0.12s 即贴满极速（推到多少就是多少速度，消除起步迟滞的“飘”）
@@ -4287,6 +4321,30 @@
     }
   }
 
+  // #381-① 常规周期刷怪（修复：spawnTimer 声明后从未递减/使用 → 玩家清完开局预置敌人后空场）。
+  // 间隔按幕章查表（起 6s / 承 4.5s / 转 3s / 合 2.5s）再随 gameTime 梯度缩短（保底 2.5s）；
+  // 环形屏外安全距离飞入（复用 spawnEnemy 自动入场缓冲 + safeSpawnPos），数量 1~3 随幕章/层数；
+  // canSpawnMore 做 cap 兜底；inRift 不刷主图怪（裂隙有自己的波次）；撤离 beacon/读条中降频，窗口内不堆怪。
+  function updatePeriodicSpawns(dt) {
+    if (scene !== 'mission' || paused || inRift || !run || !player) return;
+    if (typeof spawnTimer !== 'number' || !isFinite(spawnTimer) || spawnTimer < 0) spawnTimer = 2.5;
+    spawnTimer -= dt;
+    if (spawnTimer > 0) return;
+    var base = SPAWN_INT[runPhase] || 4.5;
+    var interval = Math.max(2.5, base - gameTime / 90);
+    var evacuating = run.evacBeacon || exfilStarted;
+    if (evacuating) interval *= 1.8; // 45s 撤离窗口内放缓刷怪，避免终局压力过大
+    spawnTimer = interval;
+    if (evacuating && runPhase !== 'zhuan' && runPhase !== 'he') return; // beacon 下仅转/合幕保留低频增援
+    var n = runPhase === 'qi' ? 1 : (runPhase === 'cheng' ? 2 : (runPhase === 'zhuan' ? 2 + (Math.random() < 0.5 ? 1 : 0) : 3));
+    n = Math.max(1, Math.min(n, 1 + Math.floor((run.tier || 1) / 2)));
+    for (var i = 0; i < n; i++) {
+      if (!canSpawnMore()) break;
+      var en = spawnEnemy(undefined, undefined, clamp(1 + Math.floor(gameTime / 28), 1, 4));
+      if (en) { en.homeX = en.x; en.homeY = en.y; en.patrolAng = rand(0, 6.28); }
+    }
+  }
+
   // ---------- 更新 ----------
   function update(dt) {
     gameTime += dt; run.time += dt;
@@ -4306,6 +4364,7 @@
     }
     // ===== 流程起承转合 + 危机递进（§1：起降落搜刮 → 承积累支线 → 转围猎狂暴 → 合终局Boss）=====
     updateRunPhase(dt);
+    updatePeriodicSpawns(dt); // #381-① 常规周期刷怪：清空预置遭遇后场上持续有增援（spawnTimer 周期触发）
     // 围猎速度平滑缓动（1 → HUNT_AGGRO），避免转幕瞬间暴冲；并刷新四幕移速系数
     huntRamp += ((huntActive ? HUNT_AGGRO : 1.0) - huntRamp) * (1 - Math.exp(-dt * 0.7));
     phaseSpeedMul = (PHASE_SPD[runPhase] || 1) * huntRamp;
@@ -4394,6 +4453,12 @@
       boss.hp -= PILLAR_OVERLOAD_DMG; boss.flash = 0.1;
       if (boss.hp <= 0) killBoss();
     }
+    // #381-⑤ 过载奖励强化：1 件高品质法器（过 budgetArtifact 预算）+ 灵矿 + 灵玉，已有效果（清屏/伤害/冰冻）保留
+    var _pRar = Math.random() < 0.5 ? 'orange' : 'purple';
+    if (budgetArtifact(_pRar)) dropLoot(pp.x + rand(-20, 20), pp.y + rand(-20, 20), _pRar, 'artifact');
+    dropOre(pp.x, pp.y, 2);
+    dropLoot(pp.x + rand(-16, 16), pp.y + rand(-16, 16), 'blue', 'jade', null, { amount: 5 + Math.floor((run ? run.tier : 1) * 2) });
+    floatText(pp.x, pp.y - 48, '过载奖励', '#FFE9A8', 'crit');
   }
     // 保底撤离：超时强制开窗（core-loop §3.3）
     if (gameTime > SAFETY_TIME) {
@@ -4417,7 +4482,10 @@
 
     // 移动
     var dirx = 0, diry = 0, mag = 0;
-    if (isMobile && joy.active) {
+    // #381-⑥ 竖屏单摇杆：右下主摇杆兼作移动+开火（拖拽方向=移动方向，越过死区才移动；轻点=原地盲射不移动）
+    if (isMobile && portraitNow() && aimJoy.active && aimJoy.mag > AIM_DEADZONE) {
+      dirx = aimJoy.dx; diry = aimJoy.dy; mag = aimJoy.mag;
+    } else if (isMobile && joy.active) {
       dirx = joy.dx; diry = joy.dy; mag = joy.mag;
     } else {
       var mx = 0, my = 0;
@@ -4804,8 +4872,8 @@
       }
     }
 
-    // 遭遇制：敌人已在关卡生成时按地点固定布置（宝箱护卫 + 少量游荡机），见 placeEncounters()
-    // 不再无限刷怪 / 不再战斗增援——一个地点的怪清完就没了。
+    // 遭遇制：敌人开局按地点固定布置（宝箱护卫 + 少量游荡机），见 placeEncounters()
+    // 常规周期增援由 updatePeriodicSpawns()（#381-①）驱动——清完一地点后场上仍持续有敌人涌入，杜绝空场。
     if (inRift) { updateRift(dt); }
 
     // 搜刮点（遭遇制：护卫清空前锁定，不再重生）
@@ -4898,7 +4966,8 @@
     // 磁锁秘库·投喂借力开门（§5：靠近即弹出交互，玩家主动投喂/灵玉）→ 可感知
     if (vaultCd > 0) vaultCd -= dt;
     if (secretVault && !secretVault.opened && !vaultPrompt && !paused && scene === 'mission' && vaultCd <= 0) {
-      if (Math.hypot(player.x - secretVault.x, player.y - secretVault.y) < secretVault.r + 80) openVaultPrompt();
+      // #381-② 距离门：仅距秘库中心 < VAULT_PROMPT_R(150px) 才弹（修复"只要秘库存在每帧都弹"）
+      if (Math.hypot(player.x - secretVault.x, player.y - secretVault.y) < VAULT_PROMPT_R) openVaultPrompt();
     }
 
     // 敌人
@@ -5496,7 +5565,7 @@
   function enterRift() {
     riftReturn = { x: player.x, y: player.y };
     riftSnapshot = snapshotWorld();
-    inRift = true; riftLoot = []; riftExit = null; riftHidden = null; riftWaves = null; riftTrapT = 0;
+    inRift = true; riftLoot = []; riftExit = null; riftHidden = null; riftWaves = null; riftTrapT = 0; riftStuckT = 0;
     // A1 修复：裂隙内冻结战场自毁倒计时（裂隙无自毁 HUD，且竞技房 4 波可能拖过 45s 被 collapseEvac 无预警强杀）
     if (run) { run._riftSdFrozen = run.selfDestruct || 0; run.selfDestruct = 0; }
     enemies = []; bullets = []; loot = []; nodes = []; obstacles = []; totems = []; vaults = []; extractPoints = []; boss = null; bossSpawned = false;
@@ -5527,10 +5596,20 @@
       setBanner('☠️ 机关房 · 激活 3 座机关柱解除封锁（当心旋转毒光）', 3.2);
     }
     AudioSys.sfx.extract();
-    var _rlb2 = document.getElementById('riftLeaveBtn'); if (_rlb2) _rlb2.style.display = 'block';
+    // #381-③ 裂隙出口改回"走到指定出口传送门"：不再显示 #riftLeaveBtn（CSS 亦 display:none !important 兜底）
   }
   function updateRift(dt) {
     var RR = riftRect;
+    // #381-③ 防死锁安全阀：房间 60s 未完成（传送门未生成）→ 强制脱离，避免房间卡死永久困住玩家
+    // （正常房间：宝库触碰即完成 / 竞技 4 波 / 机关 3 柱，通常 <45s；仅异常卡死才触发）
+    if (riftRoom && !riftRoom.done) {
+      riftStuckT = (riftStuckT || 0) + dt;
+      if (riftStuckT >= RIFT_DEADLOCK_T) {
+        setBanner('⚠ 裂隙房间异常卡死 · 安全阀强制脱离', 3.2, '#C94F4F');
+        forceExitRift();
+        return;
+      }
+    } else { riftStuckT = 0; }
     if (riftRoom.type === 'treasury') {
       var ch = riftRoom.chest;
       if (!riftRoom.done && dist2(ch.x, ch.y, player.x, player.y) < (ch.r + player.pickR * 0.6) * (ch.r + player.pickR * 0.6)) {
@@ -5860,7 +5939,7 @@
     else if (riftRoom.type === 'arena') label = '⚔️ 竞技房 · 第 ' + riftWaves.wave + ' / 4 波' + (riftRoom.done ? ' · 已清空' : '');
     else if (riftRoom.type === 'trap') { var on = 0; for (var _m = 0; _m < riftRoom.mechs.length; _m++) if (riftRoom.mechs[_m].act) on++; label = '☠️ 机关房 · 激活机关柱 ' + on + '/' + riftRoom.mechs.length + '（躲开旋转毒光）'; }
     if (riftRoom.done) label += ' · 踏入传送门离开';
-    else label += ' · 随时按 Esc / 点「离开裂隙」脱离';
+    else label += ' · 完成房间后走入传送门撤离'; // #381-③ 去"随时按 Esc/点离开裂隙"
     ctx.save(); ctx.fillStyle = 'rgba(20,12,30,0.72)'; ctx.fillRect(W / 2 - 180, 10, 360, 26); ctx.fillStyle = '#E0C8FF'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, W / 2, 23); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     // A1 修复：裂隙内自毁倒计时提示（进裂隙时已冻结，但玩家需知剩余时间——离场即恢复计时）
     if (run && (run.selfDestruct > 0 || run._riftSdFrozen > 0)) {
@@ -6886,6 +6965,13 @@
       ctx.fillStyle = vn.cd <= 0 ? (ELEMCOL[vn.elem] || '#C9A24B') : 'rgba(130,135,140,0.8)';
       ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
     }
+    // #381-⑤ 相位柱小地图标记（金/余烬菱形，未进圈也可见柱位，提升存在感）
+    for (var _pmi = 0; _pmi < phasePillars.length; _pmi++) {
+      var _pm = phasePillars[_pmi];
+      ctx.save(); ctx.translate(mx + _pm.x * sx, my + _pm.y * sy); ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = _pm.affinity === PHASE.EMBER ? 'rgba(200,100,42,0.95)' : 'rgba(201,162,75,0.95)';
+      ctx.fillRect(-2.5, -2.5, 5, 5); ctx.restore();
+    }
     // 撤离惊动圈（小地图红/黄）
     if (exfilCenter) {
       var mfr = EXFIL2.frenzy, mrp = EXFIL2.ripple; if (exfilChoice === 'silent') { mfr *= EXFIL2.silentMul; mrp *= EXFIL2.silentMul; }
@@ -6975,13 +7061,16 @@
       };
       for (var pi = 0; pi < phasePillars.length; pi++) {
         var p = phasePillars[pi], ready = p.overloadCd <= 0;
-        consider('pillar', p, p.x, p.y, ready ? ('相位柱 · ' + (p.affinity === PHASE.EMBER ? '余烬' : '鎏金') + '相站圈充能→过载脉冲') : ('相位柱过载冷却 ' + Math.ceil(p.overloadCd) + 's'), AFFORD_R);
+        // #381-⑤ 充能引导：互动物标签追加实时充能百分比（柱顶进度环之外，HUD 单行提示也可见）
+        var _pLabel = ready ? ('相位柱 · ' + (p.affinity === PHASE.EMBER ? '余烬' : '鎏金') + '相站圈充能→过载脉冲') : ('相位柱过载冷却 ' + Math.ceil(p.overloadCd) + 's');
+        if (ready && p.charge > 0) _pLabel += ' · 充能 ' + Math.floor(p.charge) + '%';
+        consider('pillar', p, p.x, p.y, _pLabel, AFFORD_R);
       }
       for (var gi = 0; gi < gravityRifts.length; gi++) {
         var g = gravityRifts[gi];
         consider('rift', g, g.x, g.y, '引力裂隙 · 站入被吞噬 → 反夺全厅战利品+开秘库（持续受伤）', AFFORD_R);
       }
-      if (secretVault && !secretVault.opened) consider('vault', secretVault, secretVault.x, secretVault.y, '磁锁秘库 · 投喂装备或灵玉借力开门（保底传说）', AFFORD_R);
+      if (secretVault && !secretVault.opened) consider('vault', secretVault, secretVault.x, secretVault.y, '磁锁秘库 · 投喂装备或灵玉借力开门（高概率高品质）', AFFORD_R);
       if (extractPoints) for (var ei = 0; ei < extractPoints.length; ei++) {
         var z = extractPoints[ei];
         if (z.state === 'open' && emberOpenWindow > 0) consider('extract', z, z.x + z.w / 2, z.y + z.h / 2, '撤离点 · 站定读条撤离', AFFORD_R);
@@ -7430,6 +7519,23 @@
       if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(W / 2 - htw / 2 - 16, hY, htw + 32, 26, 13); ctx.fill(); ctx.stroke(); }
       else { ctx.fillRect(W / 2 - htw / 2 - 16, hY, htw + 32, 26); ctx.strokeRect(W / 2 - htw / 2 - 16, hY, htw + 32, 26); }
       ctx.fillStyle = hc; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(htxt, W / 2, hY + 18); ctx.textAlign = 'left';
+    }
+    // #381-⑤ 相位柱充能引导：玩家进入同相充能半径时，屏幕中央横幅显示充能百分比 + 操作提示（柱顶进度环 + 闪电链之外的双重引导）
+    if (!inRift && scene === 'mission' && phasePillars) {
+      for (var _pgi = 0; _pgi < phasePillars.length; _pgi++) {
+        var _pg = phasePillars[_pgi];
+        if (_pg.overloadCd > 0 || phase !== _pg.affinity) continue;
+        if (Math.hypot(player.x - _pg.x, player.y - _pg.y) < PILLAR_CHARGE_R) {
+          var _pgTxt = '站圈充能相位柱 · ' + Math.floor(_pg.charge) + '%';
+          ctx.font = 'bold 13px sans-serif'; var _pgw = ctx.measureText(_pgTxt).width;
+          ctx.fillStyle = 'rgba(16,13,9,0.82)'; ctx.strokeStyle = _pg.affinity === PHASE.EMBER ? '#C8642A' : '#C9A24B'; ctx.lineWidth = 1.5;
+          var _pgY = isMobile ? H - 244 - SA.b : H - 176;
+          if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26, 13); ctx.fill(); ctx.stroke(); }
+          else { ctx.fillRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26); ctx.strokeRect(W / 2 - _pgw / 2 - 16, _pgY, _pgw + 32, 26); }
+          ctx.fillStyle = _pg.affinity === PHASE.EMBER ? '#FF9A6B' : '#FFE9A8'; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(_pgTxt, W / 2, _pgY + 18); ctx.textAlign = 'left';
+          break;
+        }
+      }
     }
     // 底部提示行（胶囊底）
     if (hintTimer > 0 && !isMobile) {
@@ -8740,7 +8846,7 @@
   // 裂隙确认按钮
   var rb1 = document.getElementById('riftEnter'); if (rb1) rb1.onclick = function () { commitRift(true); };
   var rb2 = document.getElementById('riftCancel'); if (rb2) rb2.onclick = function () { commitRift(false); };
-  var rlb = document.getElementById('riftLeaveBtn'); if (rlb) rlb.onclick = function () { forceExitRift(); };
+  // #381-③ #riftLeaveBtn 已移除离场交互（改传送门出口），不再绑定 onclick（防死锁走 updateRift 60s 自动安全阀 / Ctrl+Q 隐藏键）
   // 磁锁秘库按钮
   var vf1 = document.getElementById('vaultFeedBtn'); if (vf1) vf1.onclick = function () { vaultFeed(); };
   var vf2 = document.getElementById('vaultJadeBtn'); if (vf2) vf2.onclick = function () { vaultJade(); };
@@ -8971,6 +9077,18 @@
       dropOre: dropOre,
       dropLoot: dropLoot,
       riftSdFrozen: function () { return run ? (run._riftSdFrozen || 0) : 0; },
+      // === #381 Boss 反馈 6 项修复 · 测试桩钩子（周期刷怪/秘库距离/裂隙出口/秘库概率/相位柱5根/单摇杆 断言用）===
+      spawnTimerState: function () { return { t: spawnTimer, int: SPAWN_INT[runPhase] }; },
+      phasePillars: function () { return phasePillars; },
+      secretVault: function () { return secretVault; },
+      riftExit: function () { return riftExit; },
+      riftRoom: function () { return riftRoom; },
+      riftWaves: function () { return riftWaves; },
+      vaultState: function () { return { exists: !!secretVault, opened: secretVault ? !!secretVault.opened : null, prompt: vaultPrompt }; },
+      forceVault: function (x, y) { secretVault = { x: (x == null ? player.x + 500 : x), y: (y == null ? player.y : y), r: 34, opened: false }; vaultCd = 0; },
+      movePlayer: function (x, y) { player.x = x; player.y = y; },
+      closeVaultPrompt: closeVaultPrompt,
+      portraitNow: portraitNow,
       phaseDurNow: phaseDurNow,
       spawnArche: function (arche, x, y) { return spawnEnemy((x == null ? player.x + 300 : x), (y == null ? player.y : y), run.tier || 1, { arche: arche }); },
       PHASE_GOLD: function () { return PHASE.GOLD; },

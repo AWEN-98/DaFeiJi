@@ -820,7 +820,10 @@
   body[data-orient="portrait"] .dash-btn { width: 48px; height: 48px; right: calc(143px + var(--sa-r)); bottom: calc(128px + var(--sa-b)); }
   body[data-orient="portrait"] .cons-btn { width: 40px; height: 40px; left: calc(20px + var(--sa-l)); bottom: calc(170px + var(--sa-b)); }
   body[data-orient="portrait"] .mbtn.pause-btn { left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
-  body[data-orient="portrait"] .mbtn.bp-btn { left: calc(50px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
+  /* #381-⑥ 竖屏单摇杆：背包移到绝技键上方紧邻（原左上→右下战斗簇），并禁用左半屏浮动移动摇杆 */
+  body[data-orient="portrait"] .mbtn.bp-btn { right: calc(78px + var(--sa-r)); bottom: calc(223px + var(--sa-b)); width: 38px; height: 38px; font-size: 15px; }
+  body[data-orient="portrait"] .joy-base { display: none !important; }
+  body[data-orient="portrait"] .joy-knob { display: none !important; }
   body[data-orient="portrait"] .mbtn.phase-btn { right: calc(170px + var(--sa-r)); bottom: calc(64px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
   /* 竖屏合成键已移除：合成入口迁入战利品储物舱 */
   body[data-orient="portrait"] .mbtn.pick-btn { right: calc(225px + var(--sa-r)); bottom: calc(144px + var(--sa-b)); width: 42px; height: 42px; font-size: 17px; }
@@ -847,6 +850,8 @@
   #riftLeaveBtn { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 8; display: none; pointer-events: auto; padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(232,220,196,0.5); background: rgba(28,20,44,0.92); color: #E8DCC4; cursor: pointer; font-size: 13px; font-weight: 700; box-shadow: 0 0 18px rgba(120,60,200,0.35); }
   #riftLeaveBtn:hover { background: rgba(48,36,72,0.95); }
   #riftLeaveBtn:active { transform: translateX(-50%) scale(0.96); }
+  /* #381-③ 裂隙出口改回"走到指定出口传送门"：离场按钮永久隐藏（防死锁走 updateRift 60s 自动安全阀 / Ctrl+Q 隐藏键） */
+  #riftLeaveBtn { display: none !important; pointer-events: none; }
 
   /* 磁锁秘库·投喂借力开门 */
   #vaultPrompt { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9; display: none; flex-direction: column; align-items: center; gap: 12px; width: min(92vw, 540px); pointer-events: auto; background: rgba(26,16,6,0.94); border: 1px solid rgba(201,162,75,0.55); border-radius: 14px; padding: 20px; box-shadow: 0 0 46px rgba(201,162,75,0.45); }
@@ -2141,7 +2146,7 @@
 <div id="tutorial" class="overlay">
   <div class="panel" style="max-width:600px;">
     <h2>新手教学</h2>
-    <div class="tut-step"><span class="n">1</span><b>电脑：</b>WASD 移动，鼠标瞄准，左键开火，Shift 冲刺，N 静音。<b>手机（双摇杆）：</b>左半屏拖动=移动；右半屏拖动=瞄准并自动开火，松手停火保朝向；轻点右半屏=盲射一轮；⚡冲刺贴右摇杆上弧，☯绝技 / 💊丹药在右上方。</div>
+    <div class="tut-step"><span class="n">1</span><b>电脑：</b>WASD 移动，鼠标瞄准，左键开火，Shift 冲刺，N 静音。<b>手机：</b>横屏双摇杆（左半屏拖动=移动；右摇杆拖动=瞄准并自动开火，松手停火保朝向）；<b>竖屏单摇杆</b>（右下摇杆拖动=移动+开火一体，轻点=原地盲射）；⚡冲刺 / ☯绝技 / 💊丹药 / 🎒背包在右侧战斗簇。</div>
     <div class="tut-step"><span class="n">2</span>地图上有<b>宝箱</b>（木/银/金/紫秘宝 4 种），<b>撞上去即开箱</b>爆出多件<b>命名战利品</b>（灵玉砂/玄铁/梼杌鳞…按稀有度命名，金/紫宝箱必出稀有！会惊动远处守卫）。</div>
     <div class="tut-step"><span class="n">3</span>左下<b>小地图</b>：灰点=木箱，浅蓝=银箱，金点=金箱，紫点=秘宝；<b>绿块=撤离点</b>，红点=敌人，紫点圆=BOSS。底部 3 格=<b>丹药</b>。</div>
     <div class="tut-step"><span class="n">4</span>每击杀若干敌人，弹出<b>3 选 1 符文</b>（火/水/雷/风/煞 5 系共 28 枚）。<b>集齐同系符文解锁羁绊</b>：每系 2/3/4 阶阶梯质变（如火系：灼烧→烈焰增伤→焚尽爆炸），屏幕底部左侧<b>羁绊条</b>实时显示各系进度与最高阶。凑齐交叉系（如火3+雷3=过载）触发更强组合。</div>

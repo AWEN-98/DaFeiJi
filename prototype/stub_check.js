@@ -707,6 +707,47 @@ try {
   if (api.run().loot.length === 0) errors.push('19f(C1): 出裂隙后 run.loot 应并入裂隙宝箱');
   else console.log('[19f] C1 裂隙悬赏 OK：地面 loot=0，riftLoot ' + _rlBefore + '→' + _rlAfter + '，出裂隙并入 run.loot=' + api.run().loot.length);
 
+  // ============================================================
+  // 20) #381 Boss 反馈 6 项修复 · 桌面桩确定性回归
+  // ============================================================
+  console.log('---- #381 Boss 反馈回归[桌面] ----');
+  // 20a ② 磁锁秘库开门距离门：远距(>150px)不弹，靠近(<150px)才弹（E 键/update 共用 VAULT_PROMPT_R）
+  api.startMission(); for (var _i20 = 0; _i20 < 5; _i20++) tick(16.7); api.cleanState();
+  api.enemies().length = 0; api.setPlayerHp(99999);
+  api.forceVault(api.player().x + 500, api.player().y); // 距玩家 500px（远离）
+  api.tick(1);
+  if (api.vaultState().prompt) errors.push('20a(#381-②): 远离秘库(500px)不应弹 vaultPrompt');
+  api.movePlayer(api.player().x + 480, api.player().y); // 移到距秘库 20px
+  api.tick(1);
+  if (!api.vaultState().prompt) errors.push('20a(#381-②): 靠近秘库(<150px)应弹 vaultPrompt');
+  else console.log('[20a] 秘库距离门 OK：远距不弹 → 靠近弹');
+  if (api.vaultState().prompt) { api.closeVaultPrompt(false); api.cleanState(); }
+  // 20b ⑤ 相位柱 3→5 根：newRun 后 phasePillars.length 应为 5，亲和交替（金/余烬）
+  api.startMission(); for (var _i20b = 0; _i20b < 5; _i20b++) tick(16.7); api.cleanState();
+  var _pill = api.phasePillars();
+  if (!_pill || _pill.length !== 5) errors.push('20b(#381-⑤): 相位柱应 5 根，实际 ' + (_pill ? _pill.length : 'null'));
+  else {
+    var _aff = _pill.map(function (p) { return p.affinity; }).join(',');
+    var _gold = _pill.filter(function (p) { return p.affinity === api.PHASE_GOLD(); }).length;
+    var _ember = _pill.filter(function (p) { return p.affinity === api.PHASE_EMBER(); }).length;
+    if (_gold !== 3 || _ember !== 2) errors.push('20b(#381-⑤): 相位柱金/余烬应为 3/2，实际 ' + _gold + '/' + _ember + '（' + _aff + '）');
+    else console.log('[20b] 相位柱 5 根 OK：金/余烬=' + _gold + '/' + _ember + '（' + _aff + '）');
+  }
+  // 20c ① 周期刷怪：spawnTimer 应随时间递减并到期触发刷怪（清空敌人后等待 >1 周期，enemies 回升）
+  api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.obstacles().length = 0; api.gravityRifts().length = 0; api.weaverRifts().length = 0;
+  api.player().x = 1600; api.player().y = 1100;
+  var _st0 = api.spawnTimerState();
+  if (!(_st0.t > 0)) errors.push('20c(#381-①): 初始 spawnTimer 应 >0（开局倒计时），实际 ' + _st0.t);
+  // 前进 8s（qi 幕间隔 6s → 至少触发 1 次），清掉每帧可能刷出的怪前先记录是否有生成
+  var _spawned = 0;
+  for (var _i20c = 0; _i20c < 8 * 60; _i20c++) { api.tick(1); _spawned += api.enemies().length; if (api.enemies().length > 0) api.enemies().length = 0; }
+  var _st1 = api.spawnTimerState();
+  if (_spawned === 0) errors.push('20c(#381-①): 8s 内应至少刷出 1 波敌人（spawnTimer 周期生效），实际 0');
+  else if (!(_st1.t >= 0 && _st1.t < _st0.t)) errors.push('20c(#381-①): spawnTimer 应递减（' + _st0.t + '→' + _st1.t + '）');
+  else console.log('[20c] 周期刷怪 OK：8s 内刷出 ' + _spawned + ' 只敌人（spawnTimer ' + _st0.t.toFixed(2) + '→' + _st1.t.toFixed(2) + '）');
+  api.cleanState();
+
   // 10) NaN / 无限扫描：玩家与全部敌人坐标/速度/状态必须为有限数值
   scanNaN();
 } catch (e) {
