@@ -6472,9 +6472,9 @@
   function drawBackpack() {
     bpSlotRects = [];
     if (isMobile) return; // 移动端减负：战利品数量已在右上状态面板显示，背包详情由 🎒 按钮浮层查看
-    // 桌面：4×2 竖排于左上相位卡下方
+    // 桌面：4×2 竖排于右侧（红line：背包移至右侧，解放左上与左下空间）
     var cols = isMobile ? 8 : 4, s = isMobile ? 22 : 26, g = isMobile ? 3 : 5;
-    var bx = 10, by = isMobile ? H - 124 : 104;
+    var bx = W - cols * (s + g) - 14 - SA.r, by = 300 + SA.t;
     ctx.fillStyle = '#C9A24B'; ctx.font = 'bold ' + (isMobile ? 10 : 12) + 'px sans-serif'; ctx.textAlign = 'left';
     ctx.fillText('背包 ' + run.loot.length + '/' + invMax, bx, by - 5);
     for (var i = 0; i < invMax; i++) {
@@ -6556,9 +6556,11 @@
     ctx.restore(); // 结束圆角裁剪 + 容器上下文
   }
   function drawConsumables() {
-    var lpW = isMobile ? 180 : 236, lpH = isMobile ? 52 : 66, lpY = H - lpH - (isMobile ? 10 + SA.b : 14);
     var n = 3, size = isMobile ? 30 : 38, gap = isMobile ? 6 : 10, totalW = n * size + (n - 1) * gap;
-    var bx = 10 + SA.l + lpW + (isMobile ? 8 : 12), by = lpY + (lpH - size) / 2;
+    // 红line：左下角彻底清空（留给虚拟摇杆）；丹药槽迁至右下，紧贴开火摇杆左侧，与 consBtn 同簇
+    var bx, by;
+    if (isMobile) { bx = W - totalW - 194 - SA.r; by = H - size - 30 - SA.b; }
+    else { bx = W - totalW - 16 - SA.r; by = H - size - 14; }
     for (var i = 0; i < n; i++) {
       var x = bx + i * (size + gap);
       var key = player.consumables[i];
@@ -6842,6 +6844,10 @@
     // 竖屏（窄长屏）适配：收窄右上信息列各卡片，避免占满窄屏宽度
     var P = isMobile && window.innerHeight > window.innerWidth;
     var lootVal = run.loot.reduce(function (s, it) { return s + RARVAL[RAR.indexOf(it.rarity)]; }, 0);
+    // 机体状态面板定位（2026-08-19 红line：左上角统一堆叠，左下角彻底清空留给虚拟摇杆）
+    var lpW = isMobile ? 176 : 200, lpH = 92;
+    var lpX = 16 + SA.l;
+    var lpY = (isMobile ? 46 : 16) + SA.t; // 移动端让出最左上角暂停微按钮的 6~38px 区
     // 顶部信息堆栈：Boss条→撤离点→灵潮连击→幕章→banner队列，自 y=12 动态依序排布，消灭固定坐标互相重叠
     var _sy = 12 + SA.t;
     function _slot(h) { var y = _sy; _sy += h + 8; return y; }
@@ -6899,9 +6905,9 @@
       var plabel = phase === PHASE.EMBER ? '余烬相' : '鎏金相';
       var _cardW, _cardH, _cardX, _cardY, _cx, _cy, _cw = 14, _cg = 4;
       if (isMobile) {
-        // 移动端：单行极简条（相位 + 计时 + 核心点 + 张力微条），位于顶部状态条下方
+        // 移动端：单行极简条（相位 + 计时 + 核心点 + 张力微条），归并到左上角机体面板正下方
         _cardW = 152; _cardH = 34;
-        _cardX = W - _cardW - 8 - SA.r; _cardY = 38 + SA.t;
+        _cardX = lpX; _cardY = lpY + lpH + 6;
         ctx.fillStyle = 'rgba(16,13,9,0.45)'; ctx.strokeStyle = pcol; ctx.lineWidth = 1;
         hp(_cardX, _cardY, _cardW, _cardH, 8);
         var _ms = Math.ceil(Math.max(phaseTransT, phaseTimer));
@@ -6921,10 +6927,10 @@
           ctx.fillStyle = _red2 ? '#E04A4A' : '#7FB069'; hp(_cardX + 66, _cardY + 24, 48 * _tf2, 4, 2);
         }
       } else {
-        // 桌面：保留左上卡片布局
+        // 桌面：左上卡片，归并到机体状态面板正下方（紧凑垂直堆叠）
         var ptxt = plabel + ' ' + Math.ceil(Math.max(phaseTransT, phaseTimer)) + 's' + (phase === PHASE.EMBER ? (' · 撤窗 ' + Math.ceil(Math.max(0, emberOpenWindow)) + 's') : ' · 蓄能');
         _cardW = 184; _cardH = 58;
-        _cardX = 10; _cardY = 10;
+        _cardX = lpX; _cardY = lpY + lpH + 6;
         _cx = _cardX + 10; _cy = _cardY + 24;
         ctx.fillStyle = 'rgba(16,13,9,0.74)'; ctx.strokeStyle = pcol; ctx.lineWidth = 1;
         hp(_cardX, _cardY, _cardW, _cardH, 9);
@@ -6949,9 +6955,7 @@
       }
       ctx.textAlign = 'left';
     }
-    // 左下：机体状态面板 —— v3：移动端加高容纳元素标签行（92），与右下战斗轮盘物理隔离
-    var lpW = isMobile ? 176 : 200, lpH = isMobile ? 92 : 92;
-    var lpX = 10 + SA.l, lpY = H - lpH - (isMobile ? 10 + SA.b : 14);
+    // 左上：机体状态面板（lpX/lpY/lpW/lpH 已在 drawHUD 顶部定义为左上角堆叠起点）
     ctx.fillStyle = 'rgba(16,13,9,0.74)'; ctx.strokeStyle = 'rgba(201,162,75,0.4)'; ctx.lineWidth = 1;
     hp(lpX, lpY, lpW, lpH, 10);
     var hpBarW = lpW - 20;

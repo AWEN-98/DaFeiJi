@@ -278,6 +278,7 @@ try {
 
   // 11c) 翻相 0.35s 免伤（狙击/维度撕裂共用 player.iframe<=0 闸门）
   api.cleanState(); api.enemies().length = 0; api.setPlayerHp(99999);
+  api.setIframe(0); // 清零残影无敌帧，确保翻相授予的 0.35s 可被确定性观测（翻相语义：授予≥0.35s，不覆盖更长既有无敌）
   api.flip(api.PHASE_GOLD());
   const ifr = api.iframe();
   if (!(ifr > 0.3 && ifr <= api.FLIP_IFRAME())) errors.push('v12.6: 翻相应置 iframe≈0.35，实际 ' + ifr);
