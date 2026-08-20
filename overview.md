@@ -85,3 +85,26 @@
 
 ## 交付 / 部署
 - 提交 `d32b1a0` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+
+---
+
+# 机库右栏防堆叠（纵向可滚 + 横滑）· 2026-08-21
+
+## 完成情况
+用户二度反馈"还是会堆叠"，定位真因：**不是宽度（350px 下限已生效），而是矮横屏下右栏 4 个区块在有限高度内纵向互相挤压，叠加 `.r-area{overflow:hidden}` 裁切，导致强化卡片文字与资产重叠**。
+
+仅改 `prototype/index.html` CSS（保持右栏在右侧格局）：
+1. **纵向防堆叠**：横屏断点给 `.right-col` 加 `overflow-y:auto`（内容多可纵向滚动，不裁切）；`.r-area` 的 `overflow:hidden` 改为 `visible`（纵向不裁，由 right-col 滚动管理）。
+2. **内部横滑**：窄横屏 `.shop-grid`/`.loadout-row` 加 `overflow-x:auto`（极窄不再压扁标签，改为横向滑动）。
+3. **资产再缩一档**：strict-symmetry 区 `shop-card` 46→42px、`eq-slot` 50→46px；窄横屏 `eq-slot` 48→44px（与强化卡 40px 协调）。
+4. 保留 350px 宽度下限与 `.main` 的 `minmax(350px,1fr)` 不变。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+- 浏览器视觉验收（812×375 / 667×375 / 896×414 横屏）需用户在真机/浏览器确认：右栏 ≥350px、4 区块可读不重叠（可纵滚）、强化/法器标签在资产下方可见。
+
+## 交付 / 部署
+- 提交 `a11ef11` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 教训：机库"堆叠"主因是矮视口纵向挤压 + overflow 裁切，不能只锁宽度；需让右栏可纵滚 + 内部网格可横滑。
