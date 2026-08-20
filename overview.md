@@ -197,3 +197,27 @@
 ## 交付 / 部署
 - 提交 `2ab31d4` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
 - 用户可刷新在横屏 / 窄竖屏验收：强化/法器卡片定宽不拉伸、完整展示、左右贴边对齐、标签居下；顶部导航 tab 在窄屏横向滚动而非压扁裁切。
+
+---
+
+# 删「灵脉加载中」遮罩 · 2026-08-21
+
+## 用户反馈
+"灵脉加载中删除掉，那是什么玩意儿，多此一举。" —— 出击/开场时弹出的鎏金黑遮罩中央那句主题化文案「灵脉加载中…」被认为多余。
+
+## 本次改法（仅 `prototype/game.js` + `prototype/stub_check.js`）
+1. **删除整个 loadMask 遮罩块**：`ensureLoadMask` / `showLoadMask` / `hideLoadMask` / `var loadMaskEl` + DOM 创建（含中央文案「灵脉加载中…」）。
+2. **`enterBase` / `startMission` 去掉遮罩调用**：只剩 `waitForAllAssets` / `AssetManager.waitForAll` 的**资产就绪门控**。
+   - 关键：保留门控 = 保留当初修"首刷白屏/破图"的真修复；删掉的只是"遮罩视觉 + 文案"，不是功能逻辑。
+3. **移除 `loadMaskVisible` stub 接口**；`stub_check.js` 的 15b（出击加载门）/ 17b（启动加载门）断言由"未就绪应显示遮罩"改为"仅校验资产门控"（不进场景 → 就绪后放行），避免验证门报红。
+4. **顺手清理** `prototype/` 下 `game.js.bak`、`index.html.bak` 两个未入库冗余备份。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+- grep 确认无任何 `loadMaskVisible` / `showLoadMask` / `hideLoadMask` / `灵脉加载中` 代码残留（仅剩一行说明性注释）。
+
+## 交付 / 部署
+- 提交 `7bfa50f` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 注意：加载期间不再有任何遮罩；资产未就绪时屏幕停留/直接进基地，靠门控保证不白屏。
