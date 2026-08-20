@@ -1856,6 +1856,12 @@
     #tab-hangar .loadout-row .eq-slot { width: 48px !important; height: 48px !important; max-width: 48px !important; }
     #tab-hangar .tier-area { flex: 0 0 auto !important; min-height: 0; max-height: 118px; overflow: hidden; }
     #tab-hangar .tier-area .r-title { display: none; }
+    /* v16.2 资源条横排紧凑：357px右栏塞4个item, 不堆叠 */
+    .hall-brand .nav-res { gap: 4px !important; }
+    .hall-brand .res-item { padding: 3px 7px !important; gap: 4px !important; }
+    .hall-brand .res-item .icon-sprite-sm { width: 14px !important; height: 14px !important; }
+    .hall-brand .res-item b { font-size: 13px !important; }
+    .hall-brand .res-item .res-lab { font-size: 9px !important; }
     /* v15 异变面板紧凑化：横屏矮视口下确保 deploy-area 有 44px 空间不被挤出 */
     #tab-hangar .tier-navigator { gap: 4px !important; min-height: 56px; }
     #tab-hangar .tier-card { padding: 4px 8px !important; gap: 1px !important; border-radius: 6px !important; box-shadow: inset 0 0 14px rgba(201,162,75,.05), 0 0 8px rgba(201,162,75,.10) !important; }
@@ -1890,6 +1896,15 @@
     /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
+    /* v16.2 强化/法器横屏优化：取消二级压缩的 max-height 挤压, 让自然高度, 字号缩小 */
+    #tab-hangar .shop-area { max-height: none !important; min-height: 70px !important; }
+    #tab-hangar .shop-card .name { font-size: 10px !important; }
+    #tab-hangar .shop-card .lv { font-size: 9px !important; }
+    #tab-hangar .loadout-area { min-height: 78px !important; }
+    #tab-hangar .loadout-row .eq-slot { width: 52px !important; height: 62px !important; max-width: 52px !important; }
+    #tab-hangar .eq-slot .en { font-size: 9px !important; gap: 2px !important; }
+    #tab-hangar .eq-slot .en .rarity-badge { width: 10px !important; height: 10px !important; }
+    #tab-hangar .r-area { padding: 4px 6px !important; gap: 4px !important; }
   }
   /* ===== 机库右侧：永久强化 ↔ 已装法器 严格横向对称对齐（2026-08-19 Boss 指令）=====
      两区外层 frame 同宽同 padding（已继承自 .r-area，right-col 竖排全宽）；
