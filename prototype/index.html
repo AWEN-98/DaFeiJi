@@ -1112,14 +1112,16 @@
     #tab-hangar .right-col {
       min-height:0;min-width:350px;
       display:flex;flex-direction:column;gap:var(--gap);
-      justify-content:space-between;
-    }#tab-hangar .r-area {
-      flex:1 1 0;min-height:0;
+      justify-content:flex-start;
+      overflow-y:auto;overflow-x:hidden;
+      padding-right:2px;
+    }    #tab-hangar .r-area {
+      flex:0 0 auto;min-height:0;
       padding:clamp(6px,1cqw,16px);
       display:flex;flex-direction:column;
       gap:clamp(4px,0.8cqw,10px);
-      overflow:hidden;
-    }#tab-hangar .shop-area {flex:0.9 1 0;}#tab-hangar .loadout-area {flex:1.5 1 0;}#tab-hangar .tier-area {flex:1 1 0;}#tab-hangar .shop-area, #tab-hangar .loadout-area, #tab-hangar .tier-area {min-height:0}#tab-hangar .r-area .r-title {
+      overflow:visible;
+    }#tab-hangar .shop-area {flex:0 0 auto;}#tab-hangar .loadout-area {flex:0 0 auto;}#tab-hangar .tier-area {flex:0 0 auto;}#tab-hangar .shop-area, #tab-hangar .loadout-area, #tab-hangar .tier-area {min-height:0}#tab-hangar .r-area .r-title {
       flex:0 0 auto;
       font-size:clamp(12px,2.2cqw,18px);
       color:var(--gold);letter-spacing:1px;
@@ -1688,7 +1690,7 @@
     #tab-hangar .ap-info .label, #tab-hangar .ap-info .iname { font-size: clamp(15px,4.6vw,22px); }
     #tab-hangar .ap-info .itype { font-size: clamp(11px,3vw,15px); }
     /* 释放垂直空间：下方模块自然舒展，不挤压成扁平细线 */
-    #tab-hangar .right-col { min-height: 0; gap: clamp(8px,1.4vh,16px); }
+    #tab-hangar .right-col { min-height: 0; min-width: 0; gap: clamp(8px,1.4vh,16px); }
     #tab-hangar .shop-area, #tab-hangar .loadout-area, #tab-hangar .tier-area { flex: 0 0 auto; }
     #tab-hangar .deploy-area {
       position: sticky; bottom: 0; margin-top: auto;
@@ -1968,16 +1970,18 @@
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     align-items: center !important;
     width: 100% !important;
     min-width: 0 !important;
     flex: 1 1 auto !important;
     min-height: 0 !important;
-    gap: 0 !important;
+    gap: clamp(4px,0.8cqw,10px) !important;
     padding: 0 !important;
     margin: 0 !important;
-    overflow: visible !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
   }
   #tab-hangar .shop-card {
     flex: 0 1 auto !important;
