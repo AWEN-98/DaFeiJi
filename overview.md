@@ -108,3 +108,30 @@
 ## 交付 / 部署
 - 提交 `a11ef11` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
 - 教训：机库"堆叠"主因是矮视口纵向挤压 + overflow 裁切，不能只锁宽度；需让右栏可纵滚 + 内部网格可横滑。
+
+---
+
+# 机库右栏堆叠 · 根除（root-cause 级）· 2026-08-21
+
+## 真因（前三轮都没打到）
+用户三度反馈"还是会堆叠/被资产遮挡"。最终定位到 **`prototype/index.html` 1959 行那块全局"严格对称"CSS** 才是元凶：它对 `.shop-grid` / `.loadout-row` 强行写了
+`display:flex !important; flex-wrap:nowrap !important; justify-content:space-between !important; overflow:visible !important;`
+（带 `!important`，出现在所有断点规则**之后**）。它盖过了各断点里 `overflow-x:auto` 的设定，导致窄右栏（350px）内 6 张强化卡排不下时，`overflow:visible` 让它们直接画到相邻的"法器/难度/出击"区块上 —— 即"强化的字被资产遮挡 / 堆叠"。前面几轮的 `overflow-y:auto`、`minmax(350px)` 都只治标，这块 `overflow:visible` 始终是漏网之鱼。
+
+## 本次改法（用户授权"可以大胆调整"，一次性根除）
+仅改 `prototype/index.html`，不动 DOM 结构、不动桌面双栏格局：
+1. **全局对称块**：`.shop-grid`/`.loadout-row` 的 `justify-content:space-between!important` → `flex-start!important`；`overflow:visible!important` → `overflow-x:auto!important; overflow-y:hidden!important`（单行横滑，绝不横向溢出压邻区）。
+2. **基础 `.right-col`**：`justify-content:space-between` → `flex-start`，并加 `overflow-y:auto; overflow-x:hidden`（内容多纵向滚动，不再裁切）。
+3. **基础 `.r-area`**：`flex:1 1 0` → `flex:0 0 auto`（自然高度不压扁）、`overflow:hidden` → `visible`（裁切交给右栏滚动）。
+4. **三个区块 flex**：`.shop-area/.loadout-area/.tier-area` 各自的 `flex:0.9/1.5/1` → `0 0 auto`（防止桌面双栏高度受限时把区块压扁后内容溢出画到下一块）。
+5. **竖屏 `.right-col`**：加 `min-width:0`（避免 320px 等极窄机横向溢出整页）。
+6. 保留 350px 设计下限与桌面双栏格局。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+
+## 交付 / 部署
+- 提交 `a623e72` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 这次是结构性根除，不是补丁叠加；若真机/浏览器横屏仍见局部重叠，请发截图 + 大致屏幕宽高，我针对性收紧对应断点。
