@@ -1954,80 +1954,68 @@
     #tab-hangar .eq-slot .en .rarity-badge { width: 10px !important; height: 10px !important; }
     #tab-hangar .r-area { padding: 4px 6px !important; gap: 4px !important; }
   }
-  /* ===== 机库右侧：永久强化 ↔ 已装法器 严格横向对称对齐（2026-08-19 Boss 指令）=====
-     两区外层 frame 同宽同 padding（已继承自 .r-area，right-col 竖排全宽）；
-     内层网格统一 display:flex + justify-content:space-between，
-     图标/槽位固定宽度 → 两区「左端第1项」与「右端末项」均垂直平齐、呼吸感一致。 */
+  /* ===== 机库右侧：强化/法器 自适应网格（左右对齐·不裁剪·等比）=====
+     旧版强制 flex nowrap + 横向滚动（即“贴左 + 裁剪”元凶）；
+     改 auto-fit 网格：自动铺满整宽（左右对齐）、空间不足自动换行、
+     每个资产盒锁定 1:1 等比、img object-fit:contain 绝不拉伸/裁切。 */
   #tab-hangar .shop-area,
-  #tab-hangar .loadout-area {
+  #tab-hangar .loadout-area,
+  #tab-hangar .tier-area {
     width: 100%;
     box-sizing: border-box;
-    padding-left: 4px;
-    padding-right: 4px;
+    max-height: none !important;   /* 禁用任何 max-height 裁切 */
+    overflow: visible !important;  /* 区域层绝不裁切资产 */
   }
   #tab-hangar .shop-grid,
   #tab-hangar .loadout-row {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    justify-content: flex-start !important;
-    align-items: center !important;
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)) !important;
+    gap: clamp(5px, 1.2cqw, 10px) !important;
+    align-items: start !important;
+    justify-content: stretch !important;
     width: 100% !important;
     min-width: 0 !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    gap: clamp(4px,0.8cqw,10px) !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;  /* 不裁剪资产，多则整列换行 */
     padding: 0 !important;
     margin: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
   }
-  #tab-hangar .shop-card {
-    flex: 0 1 auto !important;
-    width: 42px !important;
-    min-width: 42px !important;
-    max-width: 42px !important;
-    height: auto !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    overflow: visible !important;
-  }
-  #tab-hangar .shop-card .box {
-    width: 100% !important;
-    height: 42px !important;
-    aspect-ratio: 1 / 1 !important;
-    flex: 0 0 auto !important;
-  }
+  #tab-hangar .shop-card,
   #tab-hangar .loadout-row .eq-slot,
   #tab-hangar .eq-slot {
-    flex: 0 1 auto !important;
-    width: 46px !important;
-    min-width: 46px !important;
-    max-width: 46px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
     height: auto !important;
     min-height: 0 !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: flex-start !important;
-    overflow: visible !important;
+    overflow: visible !important;  /* 文字/资产都不被裁 */
   }
+  #tab-hangar .shop-card .box,
   #tab-hangar .eq-slot .box {
     width: 100% !important;
-    height: 46px !important;
-    aspect-ratio: 1 / 1 !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1 !important;  /* 锁定等比，绝不拉伸 */
     flex: 0 0 auto !important;
+    overflow: visible !important;    /* 资产完整展示，不裁切 */
   }
-  /* 窄屏安全：手机竖屏右栏偏窄时图标/槽位按比例微缩，仍保持 space-between 两端严格对齐 */
+  #tab-hangar .shop-card .name,
+  #tab-hangar .shop-card .lv,
+  #tab-hangar .eq-slot .en,
+  #tab-hangar .hangar-slot-name {
+    margin-top: 4px !important;     /* 文字始终在资产下方，不被遮挡 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  /* 窄屏：网格下限 40px，仍 auto-fit 铺满（不退回 nowrap 贴左横滑） */
   @media (max-width: 520px) {
-    #tab-hangar .shop-card { width: 40px !important; min-width: 40px !important; max-width: 40px !important; }
-    #tab-hangar .shop-card .box { height: 40px !important; }
-    #tab-hangar .eq-slot { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
-    #tab-hangar .eq-slot .box { height: 44px !important; }
+    #tab-hangar .shop-grid,
+    #tab-hangar .loadout-row { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)) !important; }
   }
 
   /* ============ v15 深渊异变·出击面板（tierRow 重构：◀▶ 导航器 + 信息卡 + 阶梯点） ============ */
@@ -2049,6 +2037,7 @@
   #tab-hangar .tier-prev,
   #tab-hangar .tier-next {
     flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
     width: clamp(34px,5.4cqw,46px);
     min-height: clamp(52px,8.5cqw,76px);
     border-radius: 10px;
@@ -2295,8 +2284,8 @@
             <div class="ap-title">选择机体 / 机体档案</div>
             <div class="ap-body">
               <div class="ap-visual">
-                <div class="ap-arrow l" id="acPrev">‹</div>
-                <div class="ap-arrow r" id="acNext">›</div>
+                <div class="ap-arrow l" id="acPrev"><svg viewBox="0 0 24 24" width="56%" height="56%" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="ap-arrow r" id="acNext"><svg viewBox="0 0 24 24" width="56%" height="56%" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
                 <div class="ap-carousel">
                   <div class="ap-track" id="acTrack"></div>
                 </div>

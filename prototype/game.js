@@ -7921,7 +7921,7 @@
       }
       tr.innerHTML =
         '<div class="tier-navigator">' +
-          '<button class="tier-prev" data-ti-prev="1"' + (selectedTier <= 1 ? ' disabled' : '') + ' aria-label="上一层">◀</button>' +
+          '<button class="tier-prev" data-ti-prev="1"' + (selectedTier <= 1 ? ' disabled' : '') + ' aria-label="上一层"><svg viewBox="0 0 24 24" width="46%" height="46%" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
           '<div class="tier-card">' +
             bestBadge +
             '<div class="tier-card-title">' + tierTitle(selectedTier) + '</div>' +
@@ -7929,7 +7929,7 @@
             '<div class="tier-rewards">装备品质 +' + dropPct + '% · 灵矿产出 ×' + oreMul + '</div>' +
             '<div class="tier-muls">敌HP ' + hpMulTxt + ' · 敌ATK ' + dmgMulTxt + '</div>' +
           '</div>' +
-          '<button class="tier-next" data-ti-next="1"' + (selectedTier >= meta.maxTier ? ' disabled' : '') + ' aria-label="下一层">▶</button>' +
+          '<button class="tier-next" data-ti-next="1"' + (selectedTier >= meta.maxTier ? ' disabled' : '') + ' aria-label="下一层"><svg viewBox="0 0 24 24" width="46%" height="46%" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
         '</div>' +
         '<div class="tier-dots">' + dots + '</div>';
       var prevBtn = tr.querySelector('.tier-prev');
