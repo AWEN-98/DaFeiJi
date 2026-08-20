@@ -8522,24 +8522,25 @@
       }
       stage.appendChild(output);
     }
-    // === 右：合成按钮提示 / 结果 ===
+    // === 右：合成按钮提示 / 结果 — 同步写入 ops-status（操作标题下，按钮上）和 forgeHint（隐藏保留）===
+    var status = document.getElementById('forgeStatus');
     var hint = document.getElementById('forgeHint');
-    if (hint) {
-      if (forgeResult) {
-        var h = '<span style="color:' + forgeResult.color + ';font-weight:800">' + forgeResult.title + '：</span>' + forgeResult.sub;
-        if (forgeResult.kind === 'success' && forgeOutputArt) h += '<br><span style="font-size:10px;color:#E8DCC4">' + modsText(forgeOutputArt.mods) + '</span>';
-        hint.innerHTML = h;
-      } else {
-        var arts = forgeSel.map(getArt).filter(Boolean);
-        if (forgeSel.length === 0) hint.innerHTML = '请选择 2 件（同槽同质安全升阶）或 3 件（跨部位·跨品质自由合成）';
-        else if (forgeSel.length === 1) hint.innerHTML = '再选 1 件同槽同质 → 安全升阶<br>或再选 2 件任意部位品质 → 自由合成';
-        else {
-          var pv = forgePreview(arts);
-          if (pv.ready) hint.innerHTML = '<span style="color:' + (pv.color || 'var(--paper)') + '">可合成：' + pv.sub + '</span>';
-          else hint.innerHTML = pv.sub;
-        }
+    var _stTxt = '', _stCls = '';
+    if (forgeResult) {
+      _stTxt = '<span style="color:' + forgeResult.color + ';font-weight:800">' + forgeResult.title + '</span> ' + forgeResult.sub;
+      _stCls = forgeResult.kind || '';
+    } else {
+      var arts2 = forgeSel.map(getArt).filter(Boolean);
+      if (forgeSel.length === 0) _stTxt = '点击下方槽位或列表选择 2~3 件法宝投料';
+      else if (forgeSel.length === 1) _stTxt = '已选 1 件 · 再选 1~2 件即可合成';
+      else {
+        var pv = forgePreview(arts2);
+        _stTxt = pv.sub;
+        _stCls = pv.ready ? 'glow' : '';
       }
     }
+    if (status) { status.innerHTML = _stTxt; status.className = 'ops-status ' + _stCls; }
+    if (hint) { hint.innerHTML = _stTxt; }
     // 合成按钮激活门槛：投满 2~3 件材料才可执行（不足 2 件禁用置灰）
     var _fcBtn = document.getElementById('forgeCraft'); if (_fcBtn) _fcBtn.disabled = !(forgeSel.length >= 2);
   }

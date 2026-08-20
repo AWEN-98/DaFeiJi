@@ -1024,9 +1024,12 @@
   /* 品牌区：左标题（固定宽）+ 中Tab（flex:1）+ 右资源（固定宽） */
   .hall-brand .nav-brand { margin: 0; flex: 0 0 auto; }
   .hall-brand .nav-brand h1 { font-size: clamp(20px, 3.2vh, 30px); color: #C9A24B; -webkit-text-fill-color: #C9A24B; background: none; -webkit-background-clip: border-box; background-clip: border-box; text-shadow: 0 0 18px rgba(201,162,75,0.5); }
-  .hall-brand .nav-res { margin: 0; flex: 0 1 auto; display: flex; align-items: center; gap: 8px; color: #E8E4D8; min-width: 0; }
-  .hall-brand .res-item { padding: 4px 12px; display: flex; align-items: center; gap: 6px; color: #E8E4D8; opacity: 1; visibility: visible; flex-shrink: 1; min-width: 0; }
-  .hall-brand .res-item b { font-size: clamp(14px, 2.2vh, 20px); color: #E8E4D8; }
+  /* v16.10：资源条紧凑化（不再超出红框宽度，不堆叠） */
+  .hall-brand .nav-res { margin: 0; flex: 0 1 auto; display: flex; align-items: center; gap: 4px; color: #E8E4D8; min-width: 0; }
+  .hall-brand .res-item { padding: 2px 6px; display: flex; align-items: center; gap: 3px; color: #E8E4D8; opacity: 1; visibility: visible; flex-shrink: 1; min-width: 0; }
+  .hall-brand .res-item .icon-sprite-sm { width: 12px !important; height: 12px !important; }
+  .hall-brand .res-item b { font-size: 12px; color: #E8DCC4; }
+  .hall-brand .res-item .res-lab { font-size: 9px; color: #A79B8A; letter-spacing: 0; }
 
   /* Tab 导航：精灵图标 + 文字标签（已嵌入 hall-brand 中段） */
   .hall-brand .hall-nav .tab { height: 46px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 1; min-width: 0; }
@@ -1362,9 +1365,16 @@
   #tab-forge .mf-mats { flex:0 0 340px; }
   #tab-forge .mf-stage { flex:1 1 auto; min-width:0; }
   #tab-forge .mf-ops { flex:0 0 220px; }
-  #tab-forge .mf-ops .ops-body { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 4px 0; }
-  #tab-forge .mf-ops .v3btn { width: 100%; min-height: 36px; font-size: 13px; padding: 4px 6px; letter-spacing: 1px; }
-  #tab-forge .mf-ops .ops-hint { font-size: 11px; line-height: 1.45; padding: 4px 2px; word-break: break-all; }
+  #tab-forge .mf-ops .ops-body { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 6px 4px 4px; }
+  /* v16.10：操作按钮不拉伸，固定原 v3btn 尺寸（背景图为固定精灵图）*/
+  #tab-forge .mf-ops .v3btn { width: 200px !important; min-height: 56px; font-size: 13px; padding: 0 0 4px; letter-spacing: 1px; margin: 0 auto; }
+  /* 合成信息移到操作标题下方（按钮上）：作为状态行展示 */
+  #tab-forge .mf-ops .ops-status { width: 100%; font-size: 11px; line-height: 1.5; padding: 6px 4px; color: var(--muted); text-align: center; min-height: 28px; border-bottom: 1px dashed rgba(201,162,75,.25); margin-bottom: 2px; }
+  #tab-forge .mf-ops .ops-status.glow { color: var(--gold); }
+  #tab-forge .mf-ops .ops-status.success { color: #7FB069; }
+  #tab-forge .mf-ops .ops-status.fail { color: #E84A6A; }
+  /* 旧的 ops-hint 隐藏（保留 DOM 给 game.js 用，CSS 隐藏避免双显示） */
+  #tab-forge .mf-ops .ops-hint { display: none; }
   #tab-forge .stage-body { display:flex; align-items:center; justify-content:center; overflow:hidden; }
   /* 熔炉：放大原资产图，槽位直接显示法器图标 */
   #forgeStage {
@@ -1488,6 +1498,8 @@
     z-index: 5;
     pointer-events: none;
   }
+  /* v16.10：空状态预览（未投料）不显示文字，只保留圆盘布局；文字搬去操作模块顶部 */
+  .forge-result-preview:not(.show):not(.glow) { display: none; }
   .forge-result-title { font-size: 13px; font-weight: bold; color: #4da6ff; line-height: 1.25; text-shadow: 0 1px 3px rgba(0,0,0,.95); }
   .forge-result-attrs { font-size: 11px; color: #ffcc66; white-space: normal; line-height: 1.3; text-shadow: 0 1px 3px rgba(0,0,0,.95); }
   /* 状态染色：成功/湮灭/失败/不允许覆盖默认蓝色品阶标题 */
@@ -2336,9 +2348,10 @@
         </section>
         <section class="mframe mf-ops">
           <div class="mf-title">操作</div>
+          <div class="ops-status" id="forgeStatus">点击下方槽位或列表选择 2~3 件法宝投料</div>
           <div class="mf-body ops-body">
             <button class="v3btn" id="forgeCraft">合成</button>
-            <button class="v3btn" id="forgeClear" style="margin-top:10px;">清空已填入</button>
+            <button class="v3btn" id="forgeClear">清空已填入</button>
             <div class="ops-hint" id="forgeHint">请选择 2 或 3 件材料</div>
           </div>
         </section>
