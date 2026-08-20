@@ -2176,6 +2176,19 @@
     #tab-hangar .tier-prev, #tab-hangar .tier-next { width: clamp(40px,11vw,52px); min-height: clamp(60px,15vw,76px); font-size: 20px; }
   }
 
+  /* 窄屏竖屏：顶部资源栏极限压缩，防止右侧溢出屏幕 */
+  @media (orientation: portrait) and (max-width: 480px) {
+    .hall-brand { padding: 4px 8px; gap: 6px; }
+    .hall-brand .nav-brand { flex: 0 0 auto; }
+    .hall-brand .nav-brand h1 { font-size: 16px; letter-spacing: 1px; }
+    .hall-brand .base-sub { font-size: 6px; letter-spacing: 1px; }
+    .hall-brand .nav-res { gap: 3px; flex: 1 1 auto; justify-content: flex-end; min-width: 0; }
+    .hall-brand .res-item { padding: 2px 4px; gap: 2px; min-width: 0; flex-shrink: 1; }
+    .hall-brand .res-item .icon-sprite-sm { width: 12px !important; height: 12px !important; }
+    .hall-brand .res-item b { font-size: 11px; max-width: 58px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hall-brand .res-item .res-lab { display: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -2269,7 +2282,7 @@
         <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-jade"></span><b id="resJade">0</b><span class="res-lab">灵玉</span></div>
         <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-ore"></span><b id="resOre">0</b><span class="res-lab">灵矿碎屑</span></div>
         <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-warehouse"></span><b id="resArsenal">0</b><span class="res-lab">法器</span></div>
-        <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-tier"></span><b id="resProgress">1/3</b><span class="res-lab">层</span></div>
+        <div class="res-item"><span class="icon-sprite icon-sprite-sm icon-tier"></span><b id="resProgress">1/3</b><span class="res-lab">最高层</span></div>
       </div>
     </div>
 

@@ -7986,7 +7986,7 @@
     var resArsenal = document.getElementById('resArsenal');
     if (resArsenal) resArsenal.textContent = meta.arsenal.length;
     var resProgress = document.getElementById('resProgress');
-    if (resProgress) resProgress.textContent = '最高 ' + meta.bestLayer + ' 层';
+    if (resProgress) resProgress.textContent = String(meta.bestLayer || 1);
     renderArsenal(); renderForge(); renderResearch(); renderCodex();
   }
 
