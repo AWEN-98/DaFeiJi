@@ -1,25 +1,46 @@
-# 移动端 / 微信 H5 布局重构（单一动态布局引擎）
+# 布局修复 · 回退重改（保留原始格局）
 
-## 做了什么
-针对「布局在不同手机、不同浏览器出现堆叠/重叠」的根因，把原本散落在各处的硬编码像素坐标，统一收口到一个 **运行时布局引擎 `computeLayout()` + `applyDOMLayout()`**：
-- 所有触控键（开火/绝技/冲刺/背包/相位/拾取/丹药/暂停）位置由 `computeLayout` 依据 `屏幕尺寸 + 安全区(JS bridge/Safe Area) + 微信顶栏 inset` 实时推算；
-- Canvas HUD（血条/相位面板/悬赏/拾取/丹药槽/小地图）全部改读 `LAYOUT`，移动端与桌面端分区不同、互不打架；
-- 移动端右侧战术键改为「开火轮盘左侧竖向栈」，结构上不可能压到轮盘或左侧信息列；拾取面板移到左列信息流、底部按 `consSlots/consBtn/pause` 上沿截断，杜绝越界重叠；
-- 微信 H5 顶栏（`MicroMessenger`）额外内缩 40px，避免被微信 ✕/··· 遮挡；
-- 小地图 `drawMinimap` 对齐 `LAYOUT.minimap`，消除跨设备顶部漂移。
+## 完成情况
+按用户要求「退回去重改」，本次已：
+1. **回退大改**：`git checkout 80c86bb` 撤销了 `74d2142` 的「动态布局引擎」重构（原布局是：左上·机体状态 / 右上·情报雷达 / 左下·机动走位 / 右下·战斗操作 / 底部居中·战术道具），恢复原始五区格局，元素位置完全不动。
+2. **按原格局做最小化修复**（净增 ~9 行，非重构）：
+   - 微信顶栏（✕/···）额外 inset 46px 并入 `SA.t` + `wechat-h5` 类，顶部触控键不再被遮挡（`updateSafeArea`）。
+   - 拾取面板 `drawPickup,List` 宽度钳制为「视口 − 左右安全区」，窄屏不再溢出/压到左侧轮盘。
+   - 机库装备名 `.hangar-slot-name` 加 `text-overflow: ellipsis`，防边框溢出。
+   - 底部 `#base` 加 `safe-area-inset-bottom` padding，出击按钮不再被系统底栏截断。
 
-## 关键决策
-- 触控键用「固定人体工学尺寸」（不随屏缩放），避免小屏缩成蚂蚁、大屏撑爆；位置按「屏幕分区」分配，从结构上杜绝跨设备堆叠。
-- 「single source of truth」：`LAYOUT` 是唯一布局真相，DOM 与 Canvas 都读它。
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+- 与回退基 `80c86bb` 的 diff 仅 9 行增 / 2 行删，确认是「保留原布局」而非「全改」。
 
-## 校验
-- `node --check` 通过；桌面桩 `stub_check.js` 0 错误；移动桩 `stub_mobile.js` 0 错误。
+## 交付 / 部署
+- 提交：`48bf336` → 已 push 到 `git@github.com:AWEN-98/DaFeiJi.git` 的 `main`。
+- 实时预览：`https://6ae4e56d81cb4c3baa7052adbdc5e8b7.app.workbuddy.link`
+- 已清理我之前生成的冗余备份 `prototype/game.js.bak_layout`，并重新同步 `playtest/` 后重新部署。
 
-## 产物
-- `prototype/game.js`、`prototype/index.html` —— 布局引擎落地。
-- 线上预览（已部署）：https://6ae4e56d81cb4c3baa7052adbdc5e8b7.app.workbuddy.link
-- 辅助脚本：`_fix_mobile_ui.py`、`_layout_unify.py`、`_real_smoke.js`（几何体断言，待装 puppeteer-core 后可用）。
+## 需注意
+- `prototype/` 下仍残留若干历史 `.bak` / `_verify_*` / `mockup_*` 文件（非本次生成，未改动），不影响预览；如需彻底清理请单独确认。
+- 若后续仍有某机型/浏览器出现局部重叠，请直接截图给我，仍以「原格局 + 局部修」的方式处理，不再整体重构。
 
-## 后续
-- 真机/真浏览器多视口几何断言（`_real_smoke.js`）需在隔离 Node 工作区装 `puppeteer-core` 后跑，当前未执行（上次安装被中断）。
-- 若仍有个别机型边缘问题，优先在 `computeLayout()` 调参，不要在各自函数再加硬编码。
+---
+
+# 删新手教学（弹窗）· 2026-08-21
+
+## 完成情况
+按用户「删掉新手教学」+ 澄清范围「只删弹窗教学」，本次已移除：
+1. **tutorial 弹层本体**：`index.html` 的 `<div id="tutorial">` 整块 + `.tut-step` CSS。
+2. **自动弹出逻辑**：`maybeAutoTutorial()`（`game.js` 7836–7844）及 `showScene` 里的调用。
+3. **入口按钮**：基地 `hall-bottom` 的「怎么玩」(`launch-help`)、暂停页「怎么玩」(`pauseHelp`)、`tutorialClose` 处理器，`helpBtns` 绑定块。
+4. **桩引用**：`hideAllOverlays` / `cleanState` 桩数组移除 `tutorial`。
+
+**保留**（未触碰）：游戏内情境提示 `showTip` / `updateInteractHints` / `hintTimer` / 结算页引导文案 / 竖屏旋转提示 — 这些是「辅助提示」而非「教学弹窗」。
+
+## 验证
+- `node --check` OK / `stub_check` 0 / `stub_mobile` 0 / grep 无残留引用。
+- 修复了 `stub_mobile.js` #396 断言对 `pauseHelp` 的硬编码预期（否则 1 error）—— 删除 UI 元素必须同步测试断言。
+
+## 交付 / 部署
+- 提交 `e0354b1` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 若后续要连带删「新手期常驻操作提示 / 全部引导」，再走一轮「原格局 + 局部修」。
