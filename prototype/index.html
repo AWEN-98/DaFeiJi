@@ -1104,7 +1104,7 @@
       padding-top:clamp(4px,0.8cqw,8px);
     }#tab-hangar .r-area.deploy-area {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1cqw,12px);flex:0.55 1 0;min-height:0;padding-top:clamp(4px,0.6cqw,8px);padding-bottom:clamp(4px,0.6cqw,8px);overflow:hidden}#tab-hangar .launch{position:relative;width:100%;height:clamp(50px,8cqw,78px);border:1.5px solid rgba(201,162,75,.6);border-radius:12px;background:linear-gradient(180deg, rgba(201,162,75,.22), rgba(201,162,75,.05));box-shadow:0 0 16px rgba(201,162,75,.18), inset 0 0 12px rgba(201,162,75,.10);cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:filter .15s, box-shadow .15s, border-color .15s;animation:launchPulse 2.6s ease-in-out infinite;}
     @keyframes launchPulse{0%,100%{border-color:rgba(201,162,75,.55);box-shadow:0 0 14px rgba(201,162,75,.16), inset 0 0 10px rgba(201,162,75,.08)}50%{border-color:rgba(200,100,42,.85);box-shadow:0 0 24px rgba(200,100,42,.42), inset 0 0 14px rgba(200,100,42,.14)}}
-    #tab-hangar .launch .main{position:relative;z-index:3;font-size:clamp(15px,2.6cqw,24px);font-weight:900;letter-spacing:10px;padding-left:10px;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.85);pointer-events:none;white-space:nowrap}
+    #tab-hangar .launch .main{position:relative;z-index:3;font-size:clamp(15px,2.6cqw,24px);font-weight:900;letter-spacing:10px;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.85);pointer-events:none;white-space:nowrap;text-align:center}
     #tab-hangar .launch:hover{filter:brightness(1.12);animation:none;border-color:rgba(200,100,42,.95);box-shadow:0 0 28px rgba(200,100,42,.5)}
     #tab-hangar .launch:active{filter:brightness(.92)}
     #tab-hangar .right-col {
@@ -1900,6 +1900,21 @@
     /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
+    /* v16.4 强化/法器紧凑化: 高度收窄到与tier-area一致, 字号缩小, 不重叠 */
+    #tab-hangar .shop-area { max-height: 110px !important; min-height: 70px !important; padding: 4px 6px !important; gap: 2px !important; }
+    #tab-hangar .shop-area .r-title { font-size: 10px !important; margin: 0 !important; }
+    #tab-hangar .shop-card .box { aspect-ratio: 1/1 !important; max-height: 56px !important; }
+    #tab-hangar .shop-card { gap: 1px !important; }
+    #tab-hangar .shop-card .name { font-size: 9px !important; line-height: 1 !important; }
+    #tab-hangar .shop-card .lv { font-size: 8px !important; line-height: 1 !important; }
+    #tab-hangar .loadout-area { max-height: 110px !important; min-height: 78px !important; padding: 4px 6px !important; gap: 2px !important; }
+    #tab-hangar .loadout-area .r-title { font-size: 10px !important; margin: 0 !important; }
+    #tab-hangar .loadout-row { gap: 4px !important; }
+    #tab-hangar .eq-slot { gap: 1px !important; }
+    #tab-hangar .loadout-row .eq-slot { width: 56px !important; height: 56px !important; max-width: 56px !important; }
+    #tab-hangar .eq-slot .box { max-height: 56px !important; }
+    #tab-hangar .eq-slot .en { font-size: 8px !important; line-height: 1 !important; gap: 2px !important; }
+    #tab-hangar .eq-slot .en .rarity-badge { width: 8px !important; height: 8px !important; }
     /* v16.2 强化/法器横屏优化：取消二级压缩的 max-height 挤压, 让自然高度, 字号缩小 */
     #tab-hangar .shop-area { max-height: none !important; min-height: 70px !important; }
     #tab-hangar .shop-card .name { font-size: 10px !important; }
