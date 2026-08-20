@@ -6929,8 +6929,10 @@
     // 桌面：4×2 竖排于右侧（红line：背包移至右侧，解放左上与左下空间）
     var cols = isMobile ? 8 : 4, s = isMobile ? 22 : 26, g = isMobile ? 3 : 5;
     // 紧跟小地图底部：小地图顶(78+SA.t)+高(mh,镜像drawMinimap)+8px间隙
+    var _lpH2 = isMobile ? 92 : 92;
+    var _phaseH2 = isMobile ? 34 : 58;
     var _mmw = 150, _mmh = Math.round(_mmw * WORLD_H / WORLD_W);
-    var bx = W - cols * (s + g) - 14 - SA.r, by = (78 + SA.t) + _mmh + 8;
+    var bx = W - cols * (s + g) - 14 - SA.r, by = (16 + SA.t) + _lpH2 + 6 + _phaseH2 + 6 + _mmh + 8; // 紧跟小地图底部(贴近拾取信息区下方的小地图+8)
     ctx.fillStyle = '#C9A24B'; ctx.font = 'bold ' + (isMobile ? 10 : 12) + 'px sans-serif'; ctx.textAlign = 'left';
     ctx.fillText('背包 ' + run.loot.length + '/' + invMax, bx, by - 5);
     for (var i = 0; i < invMax; i++) {
@@ -6951,7 +6953,12 @@
     }
   }
   function drawMinimap() {
-    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r, my = 78 + SA.t; // 紧跟战利品面板底部(10+SA.t+60)+8px间隙；移动端同位（v3上移至极简相位条下方）
+    // v16.11：小地图贴近左上拾取信息区（紧跟 lp 面板+相位卡底部），解决竖屏右上半区元素堆叠重叠
+    var _lpH = isMobile ? 92 : 92;
+    var _phaseH = isMobile ? 34 : 58;
+    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W);
+    var mx = 16 + SA.l; // 左上贴近拾取信息区
+    var my = (16 + SA.t) + _lpH + 6 + _phaseH + 6; // 机体状态面板+相位卡下方
     // 暗金圆角容器（与左侧血条/相位面板同风格：圆角 + 暗金描边 + 外投影 + 内辉光）
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
