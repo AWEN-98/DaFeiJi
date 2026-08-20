@@ -1015,7 +1015,8 @@
   .hall-brand .nav-brand { margin-left: 0; }
   .hall-brand .nav-res { margin-right: 0; }
   /* 中段 Tab 容器：占满剩余空间，内容居中（导航绝对屏幕居中） */
-  .hall-brand .hall-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+  .hall-brand .hall-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: safe center; gap: 8px; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .hall-brand .hall-nav::-webkit-scrollbar { display: none; }
   /* 内容区：弹性撑满品牌栏以下全部空间（砸碎固定 1840×810 死框） */
   .hall-content { position: relative; width: 100%; flex: 1 1 auto; min-height: 0; z-index: 3; padding: 0; overflow: hidden; }
   .hall-bottom  { display: none; }
@@ -1031,7 +1032,7 @@
   .hall-brand .res-item .res-lab { font-size: 9px; color: #A79B8A; letter-spacing: 0; }
 
   /* Tab 导航：精灵图标 + 文字标签（已嵌入 hall-brand 中段） */
-  .hall-brand .hall-nav .tab { height: 46px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 1; min-width: 0; }
+  .hall-brand .hall-nav .tab { height: 46px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 0; min-width: 0; white-space: nowrap; }
   .tab-label { position: relative; z-index: 1; color: #F2E8CE; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); pointer-events: none; white-space: nowrap; }
   .tab.on .tab-label { color: #FFF4D6; text-shadow: 0 0 12px rgba(201,162,75,0.8); }
 
@@ -1707,16 +1708,17 @@
       flex: 0 0 auto !important;
     }
     #tab-hangar .loadout-row .eq-slot {
-      flex: 1 1 0 !important;
-      max-width: 72px !important;
+      flex: 0 0 auto !important;
+      width: 46px !important;
+      min-width: 46px !important;
+      max-width: 46px !important;
       aspect-ratio: 1 / 1 !important;
       height: auto !important;
       min-height: 0 !important;
-      width: auto !important;
     }
     #tab-hangar .loadout-row .eq-slot .box {
-      width: 100% !important; height: 100% !important;
-      aspect-ratio: 1 / 1 !important; flex: 1 1 auto !important;
+      width: 46px !important; height: 46px !important;
+      aspect-ratio: 1 / 1 !important; flex: 0 0 auto !important;
     }
     /* 出击按钮：吸底 + 防压缩，永远饱满 48px（破“按钮被挤成一条线”） */
     #tab-hangar .r-area.deploy-area { flex: 0 0 auto !important; }
@@ -1737,8 +1739,9 @@
     .hall-brand { flex-wrap: wrap; padding: 6px 12px; gap: 8px; align-items: center; }
     .hall-brand .nav-brand { flex: 1 1 auto; min-width: 0; order: 1; }
     .hall-brand .nav-res { order: 2; margin-left: auto; flex: 0 0 auto; gap: 6px; }
-    .hall-brand .hall-nav { order: 3; flex-basis: 100%; display: flex; gap: 4px; margin: 0; }
-    .hall-brand .hall-nav .tab { flex: 1 1 0; height: 30px; font-size: 11px; aspect-ratio: auto; }
+    .hall-brand .hall-nav { order: 3; flex-basis: 100%; display: flex; gap: 4px; margin: 0; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .hall-brand .hall-nav::-webkit-scrollbar { display: none; }
+    .hall-brand .hall-nav .tab { flex: 0 0 auto; height: 30px; font-size: 11px; aspect-ratio: auto; white-space: nowrap; }
     .hall-brand .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
     /* 军械库竖屏：装备槽改顶部横排 4 等分 · 左右对称；仓库在下（底部操作栏 DOM 已移除，卸下改为槽内 ✕ 角标） */
@@ -1968,11 +1971,12 @@
   }
   #tab-hangar .shop-grid,
   #tab-hangar .loadout-row {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(46px, 1fr)) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;                /* 空间不足自动换行，绝不裁切 */
+    justify-content: space-between !important; /* 左右对齐：首末项贴边，不被拉伸 */
+    align-items: flex-start !important;
     gap: clamp(5px, 1.2cqw, 10px) !important;
-    align-items: start !important;
-    justify-content: stretch !important;
     width: 100% !important;
     min-width: 0 !important;
     flex: 0 0 auto !important;
@@ -1983,9 +1987,10 @@
   #tab-hangar .shop-card,
   #tab-hangar .loadout-row .eq-slot,
   #tab-hangar .eq-slot {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
+    flex: 0 0 auto !important;          /* 不拉伸：保持定宽 */
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
     height: auto !important;
     min-height: 0 !important;
     display: flex !important;
@@ -1996,8 +2001,8 @@
   }
   #tab-hangar .shop-card .box,
   #tab-hangar .eq-slot .box {
-    width: 100% !important;
-    height: auto !important;
+    width: 46px !important;           /* 定宽等比，绝不拉伸 */
+    height: 46px !important;
     aspect-ratio: 1 / 1 !important;  /* 锁定等比，绝不拉伸 */
     flex: 0 0 auto !important;
     overflow: visible !important;    /* 资产完整展示，不裁切 */
@@ -2012,10 +2017,13 @@
     text-overflow: ellipsis;
     max-width: 100%;
   }
-  /* 窄屏：网格下限 40px，仍 auto-fit 铺满（不退回 nowrap 贴左横滑） */
+  /* 窄屏：卡片 46 -> 40px（仍定宽不拉伸，空间不足自动换行，不退回 nowrap 横滑） */
   @media (max-width: 520px) {
-    #tab-hangar .shop-grid,
-    #tab-hangar .loadout-row { grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)) !important; }
+    #tab-hangar .shop-card,
+    #tab-hangar .loadout-row .eq-slot,
+    #tab-hangar .eq-slot { width: 40px !important; min-width: 40px !important; max-width: 40px !important; }
+    #tab-hangar .shop-card .box,
+    #tab-hangar .eq-slot .box { width: 40px !important; height: 40px !important; }
   }
 
   /* ============ v15 深渊异变·出击面板（tierRow 重构：◀▶ 导航器 + 信息卡 + 阶梯点） ============ */
