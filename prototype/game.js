@@ -7832,19 +7832,10 @@
   requestAnimationFrame(loop);
 
   // ---------- 界面 ----------
-  function hideAllOverlays() { ['title', 'base', 'buffOverlay', 'mergeOverlay', 'pauseOverlay', 'result', 'tutorial'].forEach(function (id) { document.getElementById(id).style.display = 'none'; }); }
-  // B4 修复：首局（meta.runs===0 且未主动关闭过教学）进入基地时自动弹一次新手教学；已有局数或本会话已弹过则不再打扰
-  var _autoTutDone = false;
-  function maybeAutoTutorial() {
-    if (_autoTutDone) return;
-    if (!meta || meta.runs > 0 || meta.seenTutorial) return;
-    _autoTutDone = true;
-    var _t = document.getElementById('tutorial');
-    if (_t) _t.style.display = 'flex';
-  }
+  function hideAllOverlays() { ['title', 'base', 'buffOverlay', 'mergeOverlay', 'pauseOverlay', 'result'].forEach(function (id) { document.getElementById(id).style.display = 'none'; }); }
   function showScene(name) {
     scene = name; hideAllOverlays();
-    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); maybeAutoTutorial(); }
+    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); }
     else if (name === 'title') { document.getElementById('title').style.display = 'flex'; }
     else if (name === 'result') { document.getElementById('result').style.display = 'flex'; }
     showMobileControls(); checkOrientation();
@@ -8898,13 +8889,9 @@
     })(baseTabs[ti]);
   }
   document.getElementById('titleStart').onclick = function () { if (isMobile) enterImmersive(true); enterBase(); };
-  document.getElementById('tutorialClose').onclick = function () { meta.seenTutorial = true; saveMeta(); document.getElementById('tutorial').style.display = 'none'; };
   // 出击按钮：机库用 id，其他标签页用 .launch-start 类
   var startBtns = document.querySelectorAll('#startBtn, .launch-start');
   for (var si = 0; si < startBtns.length; si++) startBtns[si].onclick = startMission;
-  // 帮助按钮：机库用 id，其他标签页用 .launch-help 类
-  var helpBtns = document.querySelectorAll('#helpBtn, .launch-help');
-  for (var hi = 0; hi < helpBtns.length; hi++) helpBtns[hi].onclick = function () { document.getElementById('tutorial').style.display = 'flex'; };
   // 移动端弹层文案去 PC 键位：合成层关闭键 / 三选一提示（移动端纯图标/点按语义）
   if (isMobile) {
     var _mc2 = document.getElementById('mergeClose'); if (_mc2) _mc2.textContent = '关闭';
@@ -8922,7 +8909,6 @@
   document.getElementById('backBtn').onclick = function () { showScene('base'); };
   document.getElementById('pauseResume').onclick = closePause;
   document.getElementById('pauseQuit').onclick = function () { closePause(); finishRun('abandon'); };
-  document.getElementById('pauseHelp').onclick = function () { document.getElementById('tutorial').style.display = 'flex'; };
   var pauseAutoFireBtn = document.getElementById('pauseAutoFire');
   if (pauseAutoFireBtn) { pauseAutoFireBtn.onclick = function () { autoFire = !autoFire; this.textContent = '自动开火：' + (autoFire ? '开' : '关'); }; }
   var rotDismissBtn = document.getElementById('rotDismiss');
@@ -9159,7 +9145,7 @@
       // 测试桩：强制清场到纯净 mission 态（关掉所有弹层/提示，复位 paused/keys/pickupOpen），
       // 供桩回归测试在随机模拟后获得确定性起点，避免升级/buff/裂隙/秘库等干扰开关断言。
       cleanState: function () {
-        ['buffOverlay', 'mergeOverlay', 'pauseOverlay', 'pickupFilterOverlay', 'backpackOverlay', 'riftChoice', 'vaultPrompt', 'title', 'result', 'tutorial'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
+        ['buffOverlay', 'mergeOverlay', 'pauseOverlay', 'pickupFilterOverlay', 'backpackOverlay', 'riftChoice', 'vaultPrompt', 'title', 'result'].forEach(function (id) { var el = document.getElementById(id); if (el) el.style.display = 'none'; });
         paused = false; riftPrompt = false; vaultPrompt = false; buffChoices = []; pickupOpen = false;
         for (var kk in keys) keys[kk] = false;
         joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0;

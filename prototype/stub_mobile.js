@@ -425,7 +425,7 @@ try {
   console.log('---- #396 暂停按钮等宽[移动] ----');
   api.cleanState();
   api.togglePause(); // 打开暂停面板（竖屏 390px 命中 max-width:768px 单列规则）
-  const _pb396 = ['pauseResume', 'pauseAutoFire', 'pauseHelp', 'pauseQuit'].map(id => elements[id]);
+  const _pb396 = ['pauseResume', 'pauseAutoFire', 'pauseQuit'].map(id => elements[id]);
   if (_pb396.some(b => !b)) errors.push('#396[移动]: 暂停按钮 DOM 缺失');
   else {
     // 桩无 CSS 布局引擎 → 静态 CSS 断言：所有 .pause-actions .btn-sprite 规则必须 flex: 0 0（禁 grow/shrink 拉伸）
