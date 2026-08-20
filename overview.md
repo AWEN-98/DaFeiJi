@@ -44,3 +44,44 @@
 ## 交付 / 部署
 - 提交 `e0354b1` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
 - 若后续要连带删「新手期常驻操作提示 / 全部引导」，再走一轮「原格局 + 局部修」。
+
+---
+
+# 机库右栏最低宽度锁 350px · 2026-08-21
+
+## 完成情况
+按用户截图反馈「屏幕宽度过低时右侧面板被压缩」，仅改 3 处 CSS（`prototype/index.html`），不动原布局：
+1. `#tab-hangar .right-col`：`min-width` 从 `0` 改为 `350px`。
+2. `#tab-hangar .main` 默认 grid：`grid-template-columns` 改为 `1.27fr minmax(350px,1fr)`。
+3. `@media (max-width: 1180px)` 内 `.main`：同步改为 `1.25fr minmax(350px,1fr)`。
+4. `@media (max-width: 980px)` 以下仍维持单列响应格局，不做改动。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+
+## 交付 / 部署
+- 提交 `f41dead` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+
+---
+
+# 机库右栏横屏防压缩 + 资产缩小 · 2026-08-21
+
+## 完成情况
+用户反馈「强化的字完全被资产遮挡」，定位到横屏 breakpoint 把右栏 grid 列又改回了 `1fr`，`min-width:350px` 没真正守住。本次仅改 `prototype/index.html` CSS：
+1. **补上 350px 下限**：
+   - 通用横屏 `@media(orientation: landscape)` `.main`：`1.3fr 1fr` → `1.3fr minmax(350px, 1fr)`。
+   - 窄横屏 `@media(max-width:980px + landscape)` `.main`：`1.4fr 1fr` → `1.4fr minmax(350px, 1fr)`。
+2. **缩小右栏资产**：
+   - strict-symmetry 区 `shop-card` 50px → 46px，`eq-slot` 56px → 50px。
+   - `@media(max-width:520px)` `shop-card` 44px → 40px，`eq-slot` 48px → 44px。
+3. **标签防遮挡**：横屏 + 竖屏 `.slot-label` / `.hangar-slot-name` 加 `margin-top:3px`，字号略降（11→10 / 10→9），让文字与资产框之间留间隙。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+
+## 交付 / 部署
+- 提交 `d32b1a0` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
