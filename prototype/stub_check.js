@@ -470,16 +470,15 @@ try {
     if (!api.assetReady()) errors.push('AM: 桩环境 isReady 应为 true');
     else console.log('[15a] AssetManager 桩安全路径 OK：total=' + _at + ' loaded=' + _al + ' isReady=true');
   }
-  // 加载门：强制一张未就绪图 → startMission 显示遮罩且不进入 mission；就绪后 rAF 轮询放行
+  // 加载门：强制一张未就绪图 → startMission 不进入 mission（等待资产）；就绪后 rAF 轮询放行
   api.forceAssetPending();
   if (api.assetReady()) errors.push('AM: forceAssetPending 后 isReady 应为 false');
   api.startMission();
   if (api.scene() === 'mission') errors.push('AM: 未就绪时 startMission 不应直接进 mission');
-  if (!api.loadMaskVisible()) errors.push('AM: 未就绪时应显示加载遮罩');
   api.resolveAssetPending();
-  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → doStartMission + 淡出
+  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → doStartMission
   if (api.scene() !== 'mission') errors.push('AM: 就绪后 rAF 轮询应放行进入 mission, scene=' + api.scene());
-  console.log('[15b] 加载门 OK：pending → 遮罩显示 → resolve → rAF 放行 mission');
+  console.log('[15b] 加载门 OK：pending → 不进 mission（等待资产）→ resolve → rAF 放行 mission');
 
   // ============================================================
   // 16) 研究院/熔炼台 UI 交互链路（代码审计 + 内存 DOM 断言）
@@ -558,16 +557,15 @@ try {
     if (_miss.length) errors.push('HA: 关键路径缺失 ' + _miss.join(','));
     else console.log('[17a] HtmlAssets 桩安全路径 OK：total=' + _ht + ' loaded=' + _hl + ' isReady=true 关键路径覆盖 ' + _need.length + '/' + _need.length);
   }
-  // 17b 启动加载门：未就绪时不显示 base（遮罩显示、base 隐藏）→ 就绪后 rAF 轮询放行显示 base
+  // 17b 启动加载门：未就绪时不显示 base（等待资产）→ 就绪后 rAF 轮询放行显示 base
   api.forceHtmlAssetPending();
   if (api.htmlAssetsReady()) errors.push('HA: forceHtmlAssetPending 后 htmlAssetsReady 应为 false');
   api.enterBase();
   if (api.baseVisible()) errors.push('HA: 未就绪时启动门不应显示 base');
-  if (!api.loadMaskVisible()) errors.push('HA: 未就绪时应显示加载遮罩');
   api.resolveHtmlAssetPending();
-  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → 淡出遮罩 + showScene('base')
+  for (let i = 0; i < 5; i++) tick(16.7); // rAF 轮询 → isReady → showScene('base')
   if (!api.baseVisible()) errors.push('HA: 就绪后 rAF 轮询应放行显示 base, display=' + document.getElementById('base').style.display);
-  console.log('[17b] 启动加载门 OK：pending → 遮罩显示+base隐藏 → resolve → rAF 放行 base');
+  console.log('[17b] 启动加载门 OK：pending → 不显示 base（等待资产）→ resolve → rAF 放行 base');
 
   // ============================================================
   // 18) v15 深渊异变·词缀系统（确定性分配 / 收益函数 / newRun 匹配 / 出击面板 / 局内生效守卫）

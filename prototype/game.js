@@ -8772,28 +8772,8 @@
       if (el) el.className = 'tab-pane' + (panes[j] === name ? ' on' : '');
     }
   }
-  // 出击加载遮罩（鎏金暗色 · 简易 DOM 遮罩）：图片未全部就绪时先显示，就绪/超时后继续出击并淡出
-  var loadMaskEl = null;
-  function ensureLoadMask() {
-    if (loadMaskEl) return loadMaskEl;
-    try {
-      loadMaskEl = document.createElement('div');
-      loadMaskEl.id = 'loadMask';
-      loadMaskEl.style.cssText = 'position:fixed;inset:0;z-index:999;display:none;align-items:center;justify-content:center;background:rgba(14,11,8,0.94);transition:opacity 0.3s ease;';
-      var t = document.createElement('div');
-      t.style.cssText = 'color:#C9A24B;font-size:18px;font-weight:800;letter-spacing:4px;text-shadow:0 0 14px rgba(201,162,75,.55);';
-      t.textContent = '灵脉加载中…';
-      loadMaskEl.appendChild(t);
-      if (document.body && document.body.appendChild) document.body.appendChild(loadMaskEl);
-    } catch (e) { loadMaskEl = null; }
-    return loadMaskEl;
-  }
-  function showLoadMask() { var m = ensureLoadMask(); if (m) { m.style.display = 'flex'; m.style.opacity = '1'; } }
-  function hideLoadMask() {
-    var m = loadMaskEl; if (!m) return;
-    m.style.opacity = '0';
-    setTimeout(function () { if (loadMaskEl) loadMaskEl.style.display = 'none'; }, 320); // 0.3s 淡出后移除
-  }
+  // 启动/出击加载门：保留「资产就绪前不进场景」的等待逻辑（防首刷白屏/破图）；
+  // 原鎏金黑遮罩与「灵脉加载中」文案已移除（Boss 2026-08-21 指令：多余）。
   // 统一就绪判定：Canvas 资产（AssetManager）+ HTML UI 资产（HtmlAssets）双轨全就绪
   function AllAssetsReady() {
     return AssetManager.isReady() && HtmlAssets.isReady();
@@ -8814,23 +8794,18 @@
   // 未等 HTML <img>/CSS background-image 从网络加载完，导致首刷闪空白/破图。
   function enterBase() {
     if (AllAssetsReady()) { showScene('base'); return; }
-    showLoadMask();
-    // 遮罩显示期间确保 base 不显示（防首刷白屏残留，即使此前已渲染过）
-    var b = document.getElementById('base'); if (b) b.style.display = 'none';
+    // 资产未就绪：等待（rAF 轮询 + 超时兜底）后再进基地，期间不显示任何遮罩
     waitForAllAssets(function () {
-      hideLoadMask();
       showScene('base');
     });
   }
   function doStartMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
   function startMission() {
     if (!meta.unlocked[selectedAircraft]) { return; }
-    // 异步图片预加载门：未就绪先显示加载遮罩，就绪（或 3s 超时兜底）后继续出击
+    // 异步图片预加载门：未就绪时等待（不弹遮罩），就绪后出击
     if (!AssetManager.isReady()) {
-      showLoadMask();
       AssetManager.waitForAll(function () {
         doStartMission();
-        hideLoadMask();
       });
       return;
     }
@@ -9114,7 +9089,6 @@
         if (AssetManager._pendingFake) { AssetManager._pendingFake.complete = true; AssetManager._pendingFake = null; }
         return AssetManager.isReady();
       },
-      loadMaskVisible: function () { return !!(loadMaskEl && loadMaskEl.style && loadMaskEl.style.display === 'flex'); },
       // HtmlAssets 双轨预加载器 + 启动级全局加载门钩子：供桩断言（桩内 Image 无 complete → 同步就绪；
       // force/resolve 走 rAF 轮询放行路径，与 AssetManager 15a/15b 同构）
       htmlAssetTotal: function () { return HtmlAssets.total; },
