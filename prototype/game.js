@@ -2881,7 +2881,8 @@
       }
     } else if (e.arche === 'sniper' || e.arche === 'phaseSniper') {
       var _losS = checkLineOfSight(e.x, e.y, player.x, player.y); // 视线被建筑墙体阻断则断线重索
-      if (!_losS) { e.sniperCharge = 0; e.sniperBeamFlash = 0; e.sniperAim = Math.atan2(dy, dx); }
+      // v16.10：怪物未入画（屏幕外）不得开火/蓄能——杜绝屏外贯穿光束遥射
+      if (!_losS || !onScreen) { e.sniperCharge = 0; e.sniperBeamFlash = 0; e.sniperAim = Math.atan2(dy, dx); }
       else if (e.arche === 'phaseSniper') {
         // 相位狙击手：1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
         if (e.sniperBeamFlash > 0) {
@@ -2913,9 +2914,21 @@
     }
   }
   function nearestEnemy(x, y) {
+    // v16.10：只返回「入画」的敌人（屏幕视野内）——玩家看不到的目标不可被锁定/攻击
     var best = null, bd = Infinity;
-    for (var i = 0; i < enemies.length; i++) { var d = dist2(x, y, enemies[i].x, enemies[i].y); if (d < bd) { bd = d; best = enemies[i]; } }
-    if (boss && boss.wake <= 0) { var db = dist2(x, y, boss.x, boss.y); if (db < bd) best = boss; }
+    for (var i = 0; i < enemies.length; i++) {
+      var en = enemies[i];
+      if (!en || en.dead) continue;
+      var _ex = en.x - cam.x, _ey = en.y - cam.y;
+      if (_ex < -40 || _ex > W + 40 || _ey < -40 || _ey > H + 40) continue; // 屏外跳过
+      var d = dist2(x, y, en.x, en.y); if (d < bd) { bd = d; best = en; }
+    }
+    if (boss && boss.wake <= 0) {
+      var _bx = boss.x - cam.x, _by = boss.y - cam.y;
+      if (_bx >= -80 && _bx <= W + 80 && _by >= -80 && _by <= H + 80) {
+        var db = dist2(x, y, boss.x, boss.y); if (db < bd) best = boss;
+      }
+    }
     return best;
   }
   function fireBullet(x, y, ang, from, dmg, speed, opts) {
