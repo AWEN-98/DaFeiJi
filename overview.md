@@ -251,3 +251,33 @@
 
 ## 设计原则延续
 - 仍守「原格局 + 局部修」与「功能按钮/资产卡 flex:0 0 auto 定宽 + object-fit:contain，禁止拉伸/裁切」铁律；本轮为纯 CSS 定点修复，未触碰 DOM 生成逻辑。
+
+---
+
+# 机库/熔炼台移动 UI 残留修复（Boss 实机 4 项）· 2026-08-21 (#421)
+
+## Boss 实机反馈（微信浏览器截图 4 项）
+1. 机库强化/法器卡片下方文本（名称/等级/法器槽名）看不到。
+2. 左侧机体信息没显示完整，且左侧机体板块占用空间太多。
+3. 熔炼台熔炉资产图顶部被裁掉一部分。
+4. 熔炼台右侧操作区按钮可以小一些；上半部分要显示合成属性。
+
+## 本次改法（仅 `prototype/index.html`，10 处 CSS/HTML Edit，未动 game.js 结构与 DOM 生成）
+- **全局严格对称文本块**（`.shop-card .name/.lv`、`.eq-slot .en`、`.hangar-slot-name`）：`white-space:nowrap + overflow:hidden + text-overflow:ellipsis + font-size:8px` → `white-space:normal + word-break:break-all + overflow:visible + line-height:1.3 + font-size:10px + min-height:1.4em`；卡片 `overflow:visible + height:auto`；区块 `max-height:none`；`.eq-slot .en` 由 `inline-flex` → `flex column 居中 + min-height:2.8em`。→ 解决反馈 1（文字完整可见、不裁切、可换行）。
+- **横屏 980px 断点补强**：`.shop-area/.loadout-area` 去 `max-height` 锁；`.shop-card` 锁 `min-height:0 + height:auto + overflow:visible`；`.box aspect-ratio:1/1 + max-height:42px`；`.name/.lv font-size:10px + white-space:normal`；`.eq-slot` 定宽 52px + `overflow:visible`；`.en font-size:9px + min-height:2.8em`。→ 复保反馈 1 在横屏也成立。
+- **左侧机体信息紧凑**（`.ap-info`）：`min-width:150px + justify-content:center + gap:clamp(4px,0.65cqw,10px) + padding:clamp(4px,0.8cqw,10px)` → `min-width:0 + flex-start + 更小 gap/padding`；`.ap-bars` min-height 120→80px；`.ap-visual` 立绘容器 48vh/260px → 40vh/220px。→ 解决反馈 2（信息紧凑、占空间减少、仍完整不堆叠）。
+- **熔炉顶部裁切修复**：`#forgeStage` 背景 `center/contain` → `center top / contain`；`#stage-body` `overflow:hidden + align-items:center` → `overflow:visible + padding-top:10px + align-items:flex-start`。→ 解决反馈 3（熔炉顶部完整显示、不裁切）。
+- **熔炼台操作按钮缩小**：桌面 `min-height:56px` → `height:40px + font-size:13px`；横屏 `height:38px + font-size:12px`；竖屏 `min-height:40px + font-size:14px`。→ 解决反馈 4a（按钮更紧凑、显示全、不挤压属性区）。
+- **新增「合成属性区」DOM + CSS**：`#forgeAttrs` 置于操作区状态行上方，`min-height:clamp(56px,6.5cqw,80px)`，鎏金渐变描边卡片，显示投料后的合成属性（属性名 + 加成明细）。→ 解决反馈 4b（上半部分显示合成属性）。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ total errors: 0
+- `stub_mobile.js`（390×844）→ total errors: 0
+- 注：所有修改集中 `index.html`，未触碰 `game.js`、未改 DOM 生成逻辑、未引入 `1fr`/`flex:1 1 0` 拉伸、未删除功能代码，符合既定禁止事项。
+
+## 交付 / 部署
+- 待提交（本轮尚未 push main）；CloudStudio 重新部署（链接同上）。
+
+## 设计原则延续
+- 仍守「原格局 + 局部修」与「功能按钮/资产卡 flex:0 0 auto 定宽 + object-fit:contain，禁止拉伸/裁切」铁律；本轮为纯 CSS/HTML 定点修复，未触碰 DOM 生成逻辑。

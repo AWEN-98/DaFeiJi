@@ -8544,6 +8544,29 @@
     }
     if (status) { status.innerHTML = _stTxt; status.className = 'ops-status ' + _stCls; }
     if (hint) { hint.innerHTML = _stTxt; }
+    // #421 v2 操作区上半部分·合成属性卡：把预计产出/结果属性写到 #forgeAttrs
+    var attrsEl = document.getElementById('forgeAttrs');
+    if (attrsEl) {
+      var _attrHtml = '';
+      if (forgeResult) {
+        var _aTitle = forgeResult.title || '';
+        var _aMods = (forgeResult.kind === 'success' && forgeOutputArt) ? modsText(forgeOutputArt.mods) : (forgeResult.sub || '');
+        _attrHtml = '<div class="attr-name" style="color:' + (forgeResult.color || 'var(--gold)') + '">' + _aTitle + '</div>' +
+                    (_aMods ? '<div class="attr-mods">' + _aMods + '</div>' : '');
+      } else {
+        var arts2 = forgeSel.map(getArt).filter(Boolean);
+        if (arts2.length === 0) {
+          _attrHtml = '<span class="ops-attrs-hint">投料后显示合成属性</span>';
+        } else if (arts2.length === 1) {
+          _attrHtml = '<div class="attr-name">' + arts2[0].name + '</div><div class="attr-mods">' + modsText(arts2[0].mods) + '</div>';
+        } else {
+          var pv = forgePreview(arts2);
+          _attrHtml = '<div class="attr-name" style="color:' + (pv.color || 'var(--gold)') + '">' + pv.title + '</div>' +
+                      (pv.previewMods ? '<div class="attr-mods">预计：' + modsText(pv.previewMods) + '</div>' : '');
+        }
+      }
+      attrsEl.innerHTML = _attrHtml;
+    }
     // 合成按钮激活门槛：投满 2~3 件材料才可执行（不足 2 件禁用置灰）
     var _fcBtn = document.getElementById('forgeCraft'); if (_fcBtn) _fcBtn.disabled = !(forgeSel.length >= 2);
   }
