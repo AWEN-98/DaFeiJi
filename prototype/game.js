@@ -6951,7 +6951,9 @@
     }
   }
   function drawMinimap() {
-    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r, my = 78 + SA.t; // 紧跟战利品面板底部(10+SA.t+60)+8px间隙；移动端同位（v3上移至极简相位条下方）
+    // v16.13：地图向上贴近右上「拾0/10·值0·刮0/4」简报（移动端简报 y=8+SA.t 高22 → 底30+SA.t + 8px 间距）
+    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r;
+    var my = isMobile ? (38 + SA.t) : (78 + SA.t); // 移动端贴简报下方8px；桌面贴战利品面板下方8px（保持原样）
     // 暗金圆角容器（与左侧血条/相位面板同风格：圆角 + 暗金描边 + 外投影 + 内辉光）
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
@@ -7330,7 +7332,8 @@
     // #389 调整：top banner 槽独立占据 12+SA.t ~ 12+SA.t+64 区，
     // 已有顶部信息堆栈（boss/extract/combo/act）整体下移到 12+SA.t+64 后开始，
     // 避免与战局重要 top banner 互压
-    var _sy = 12 + SA.t + 64;
+    // v16.13：竖屏中央堆栈整体下移 14px，避开上移到右上简报下方的小地图（38~83+SA.t 区）
+    var _sy = 12 + SA.t + 64 + (P ? 14 : 0);
     function _slot(h) { var y = _sy; _sy += h + 8; return y; }
     var _bossY = boss ? _slot(30) : -1;
     var _extOpen = [], _extWarn = [];
