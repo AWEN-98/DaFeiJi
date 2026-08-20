@@ -2145,10 +2145,10 @@
   // ====== 深渊异变·词缀系统（确定性分配：按池顺序每 2 层追加 1 条，Tier 3 起生效） ======
   // ★ 371 修复：更名为 AFFIX_DEFS，避免覆盖 rollMods 依赖的 AFFIX_POOL 装备词缀池（否则任何带战利品结算必崩）
   var AFFIX_DEFS = [
-    { key: 'frenzy',        name: '极速',      icon: '⚡', col: '#C8642A', desc: '敌怪移动速度 +20%' },
-    { key: 'volatile_all',  name: '自爆',      icon: '💥', col: '#C94F4F', desc: '杂兵阵亡 30% 概率自爆' },
-    { key: 'tide_fast',     name: '潮汐',      icon: '🌊', col: '#4E8FC7', desc: '相位交替周期缩短 40%' },
-    { key: 'gravity_surge', name: '引力潮涌',  icon: '🕳', col: '#B06FD0', desc: '引力裂缝吸力与伤害 +50%' }
+    { key: 'frenzy',        name: '极速',      icon: '', col: '#C8642A', desc: '敌怪移动速度 +20%' },
+    { key: 'volatile_all',  name: '自爆',      icon: '', col: '#C94F4F', desc: '杂兵阵亡 30% 概率自爆' },
+    { key: 'tide_fast',     name: '潮汐',      icon: '', col: '#4E8FC7', desc: '相位交替周期缩短 40%' },
+    { key: 'gravity_surge', name: '引力潮涌',  icon: '', col: '#B06FD0', desc: '引力裂缝吸力与伤害 +50%' }
   ];
   function tierAffixCount(tier) { return tier >= 3 ? Math.min(4, 1 + Math.floor((tier - 3) / 2)) : 0; } // 3-4层1条 5-6层2条 7-8层3条 9+层4条
   function tierAffixes(tier) { var n = tierAffixCount(tier), arr = []; for (var i = 0; i < n; i++) arr.push(AFFIX_DEFS[i].key); return arr; } // 确定性：按池顺序每2层追加1条
@@ -2525,7 +2525,7 @@
     // ★ 深渊异变·词缀横幅：进入带词缀层级时开局提示（仅 Tier 3+ 有词缀）
     if (run.affixes.length > 0) {
       var _affTxt = run.affixes.map(function (k) {
-        for (var _ai = 0; _ai < AFFIX_DEFS.length; _ai++) if (AFFIX_DEFS[_ai].key === k) return AFFIX_DEFS[_ai].icon + AFFIX_DEFS[_ai].name;
+        for (var _ai = 0; _ai < AFFIX_DEFS.length; _ai++) if (AFFIX_DEFS[_ai].key === k) return AFFIX_DEFS[_ai].name;
         return k;
       }).join(' ');
       setBanner('深渊异变：' + _affTxt, 3.2);
@@ -2594,7 +2594,7 @@
       for (var s = 0; s < 2; s++) { var ne = spawnEnemy(v.x + rand(-30, 30), v.y + rand(-30, 30), clamp(1 + Math.floor(gameTime / 28), 1, 4)); if (ne) { ne.hunt = true; ne.wake = 0; } }
       addShake(2.5, 140, 60);
     }
-    if (!run._veinTip) { run._veinTip = true; setBanner('☯ 灵脉共振：+' + gain + ' 点' + v.elem + '系灵韵（喂羁绊/觉醒）· 灵脉圈内战斗有增伤光环', 3.0, ELEMCOL[v.elem]); }
+    if (!run._veinTip) { run._veinTip = true; setBanner('灵脉共振：+' + gain + ' 点' + v.elem + '系灵韵（喂羁绊/觉醒）· 灵脉圈内战斗有增伤光环', 3.0, ELEMCOL[v.elem]); }
   }
   function updateVeins(dt) {
     if (inRift) return;
@@ -2782,13 +2782,13 @@
         enemies.push(se);
       }
     }
-    if (arche === 'looter' && !run.looterWarned) { run.looterWarned = true; setBanner('⚠ 劫掠者出现！它会偷走你已捡的战利品，快击落它夺回！', 3.2); AudioSys.sfx.stolen(); }
-    if (arche === 'sniper' && !run.sniperWarned) { run.sniperWarned = true; setBanner('⚠ 狙击手出现！注意躲避红色激光瞄准线！', 2.8); }
-    if (arche === 'shielder' && !run.shielderWarned) { run.shielderWarned = true; setBanner('⚠ 护盾兵出现！优先击破它以解除友军护盾！', 2.8); }
-    if (arche === 'kamikaze' && !run.kamikazeWarned) { run.kamikazeWarned = true; setBanner('⚠ 自爆突进蜂出现！见红光前摇立即冲刺/翻相甩尾，别硬接冲撞！', 3.0); }
-    if (arche === 'phaseSniper' && !run.phaseSniperWarned) { run.phaseSniperWarned = true; setBanner('⚠ 相位狙击手！细激光跟踪瞄准后闪 0.2s 即贯穿全屏——冲刺或翻相 0.35s 无敌帧反打！', 3.4); }
-    if (arche === 'weaver' && !run.weaverWarned) { run.weaverWarned = true; setBanner('⚠ 引力编织者！微型引力奇点球会拖拽你，注意 8 向螺旋余烬飞刃', 3.2); }
-    if (arche === 'bastion' && !run.bastionWarned) { run.bastionWarned = true; setBanner('⚠ 鎏金重盾巨舰！正面 120° 金盾无敌，绕后或切余烬相破盾！', 3.4); }
+    if (arche === 'looter' && !run.looterWarned) { run.looterWarned = true; setBanner('劫疒者出现！它会偷走你已捡的战利品，快击落它夺回！', 3.2); AudioSys.sfx.stolen(); }
+    if (arche === 'sniper' && !run.sniperWarned) { run.sniperWarned = true; setBanner('狙击手出现！注意躲避红色激光瞄准线！', 2.8); }
+    if (arche === 'shielder' && !run.shielderWarned) { run.shielderWarned = true; setBanner('护盾兵出现！优先击破它以解除友军护盾！', 2.8); }
+    if (arche === 'kamikaze' && !run.kamikazeWarned) { run.kamikazeWarned = true; setBanner('自爆突进蜂出现！见红光前摇立即冲刺/翻相甩尾，别硬接冲撞！', 3.0); }
+    if (arche === 'phaseSniper' && !run.phaseSniperWarned) { run.phaseSniperWarned = true; setBanner('相位狙击手！细激光跟踪瞄准后闪 0.2s 即贯穿全屏——冲刺或翻相 0.35s 无敌帧反打！', 3.4); }
+    if (arche === 'weaver' && !run.weaverWarned) { run.weaverWarned = true; setBanner('引力编织者！微型引力奇点球会拖拽你，注意 8 向螺旋余烬飞刃', 3.2); }
+    if (arche === 'bastion' && !run.bastionWarned) { run.bastionWarned = true; setBanner('鎏金重盾巨舰！正面 120° 金盾无敌，绕后或切余烬相破盾！', 3.4); }
     if (huntActive) { e.dmgMul *= HUNT_DMG; e.maxhp = Math.round(e.maxhp * HUNT_HP); e.hp = e.maxhp; e.hunt = true; }
     enemies.push(e); return e;
   }
@@ -3137,7 +3137,7 @@
     });
     document.getElementById('mergeLegend').innerHTML =
       '白10 · 绿25 · 蓝60 · 紫140 · 橙320（越稀有越值钱，撤离带回越多）<br>' +
-      '点 2 个同色 → 2合1 <b>必升一阶（安全）</b>；凑齐 3 个同色 → ⚡3合1 <b>赌博</b>：大概率升1阶 / 小概率跳2阶 / 极小概率跳3阶，但 <b>15% 湮灭（三件全失）</b>，最高只到紫（金不可熔）';
+      '点 2 个同色 → 2合1 <b>必升一阶（安全）</b>；凑齐 3 个同色 → 3合1 <b>赌博</b>：大概率升1阶 / 小概率跳2阶 / 极小概率跳3阶，但 <b>15% 湮灭（三件全失）</b>，最高只到紫（金不可熔）';
     // 3合1 按钮可用状态
     var can3 = false;
     for (var ri = 0; ri < 4; ri++) { if (run.loot.filter(function (it) { return it.rarity === RAR[ri]; }).length >= 3) { can3 = true; break; } }
@@ -3190,7 +3190,7 @@
     if (roll.state === 'destroy') {
       burst(player.x, player.y, '#C94F4F', 16);
       try { tone(110, 0.32, 'sawtooth', 0.14); } catch (e) {}
-      setBanner('⚡三合失败·湮灭！', 1.6);
+      setBanner('三合失败·湮灭！', 1.6);
       return;
     }
     run.loot.push({ rarity: roll.out, name: pickName(roll.out), slot: sl3 });
@@ -3202,7 +3202,7 @@
     else player.bulletSpeed *= 1.05;
     burst(player.x, player.y, RARCOL[roll.out], 14);
     try { AudioSys.sfx.merge(); } catch (e) {}
-    setBanner('⚡3合1 → ' + RARNAME[roll.out] + (roll.out !== baseRar ? '（跳阶！+词条）' : ' (+词条)'), 1.6);
+    setBanner('3合1 → ' + RARNAME[roll.out] + (roll.out !== baseRar ? '（跳阶！+词条）' : ' (+词条)'), 1.6);
   }
   function doThreeMerge() {
     for (var ri = 0; ri < 4; ri++) {
@@ -3380,9 +3380,9 @@
       '</div>' + affixHtml + cmpHtml +
       '<div class="bp-detail-actions">' +
         (equipped ? '<button class="btn btn-sprite btn-bp-back" disabled style="opacity:.6">已装配·本局生效</button>'
-                  : '<button class="btn btn-sprite btn-bp-equip" id="bpEquipBtn">⌁ 立即替换</button>') +
-        '<button class="btn btn-sprite btn-bp-jade" id="bpJadeBtn">⚒ 折价熔解·换灵玉</button>' +
-        '<button class="btn btn-sprite btn-bp-armor" id="bpArmorBtn">🛡 紧急熔解·回装甲</button>' +
+                  : '<button class="btn btn-sprite btn-bp-equip" id="bpEquipBtn">立即替换</button>') +
+        '<button class="btn btn-sprite btn-bp-jade" id="bpJadeBtn">折价熔解·换灵玉</button>' +
+        '<button class="btn btn-sprite btn-bp-armor" id="bpArmorBtn">紧急熔解·回装甲</button>' +
         '<button class="btn btn-sprite btn-bp-drop" id="bpDropBtn">✕ 丢弃</button>' +
         '<button class="btn btn-sprite btn-bp-back" id="bpBackBtn">← 返回</button>' +
       '</div>';
@@ -3835,7 +3835,7 @@
   // v12.6：战场自毁坍塌（45s 内未撤离 → 强制结算失败）
   function collapseEvac() {
     if (scene !== 'mission') return;
-    setBanner('⚠ 战场自毁！撤离失败！', 3, null, 'top');
+    setBanner('战场自毁！撤离失败！', 3, null, 'top');
     addShake(9, 700, 240, true); addTint('#B03A3A', 0.4); screenFlash = { color: '#B03A3A', a: 0.4 };
     AudioSys.sfx.bossDie();
     finishRun('death');
@@ -3888,10 +3888,10 @@
     var hp = (4000 + progBonus + Math.min(gameTime, 240) * 5) * (1 + (run.tier - 1) * 1.35) * tierMul(run.tier) * hpMul[kind];
     var names = { taowu: '梼杌', qiongqi: '穷奇', taotie: '饕餮', hundun: '混沌' };
     var tips = {
-      taowu: '⚠ 梼杌·重甲堡垒 来袭！（弹幕+阶段强化）',
-      qiongqi: '⚠ 穷奇·高速掠食 来袭！（突进+召唤）',
-      taotie: '⚠ 饕餮·吞噬熔炉 来袭！（扇形火柱+吸引）',
-      hundun: '⚠ 混沌·终焉虚空 来袭！（螺旋弹幕+旋转甲胄）'
+      taowu: '梼杌·重甲堡垒 来袭！（弹幕+阶段强化）',
+      qiongqi: '穷奇·高速掠食 来袭！（突进+召唤）',
+      taotie: '饕餮·吞噬熔炉 来袭！（扇形火柱+吸引）',
+      hundun: '混沌·终焉虚空 来袭！（螺旋弹幕+旋转甲胄）'
     };
     boss = { kind: kind, x: WORLD_W / 2, y: -60, hp: hp, maxhp: hp, r: radius[kind], phase: 1, atkCd: 2.6, burstCd: 4.0, devourCd: 5, flash: 0, wake: 1.2, ang: 0,
       summonCd: 6, dashCd: 4, dashing: 0, dashWarn: 0, summonWarn: 0, invuln: 0, hitT: 0, hitMag: 0,
@@ -3914,7 +3914,7 @@
     if (b.hp <= 0) { killBoss(); return; }
     // v12.6：半血维度撕裂大招（叠加在 4 种 Boss 现有弹幕之上）
     if (b.dimTear || (!b.dimTearDone && b.hp <= b.maxhp * 0.5)) {
-      if (!b.dimTear) { b.dimTear = 'charge'; b.dimTearT = 1.4; setBanner('⚠ 维度撕裂蓄能！领主正在撕开相位壁——准备按颜色翻相！', 2.6, null, 'top'); addShake(4, 240, 120, true); }
+      if (!b.dimTear) { b.dimTear = 'charge'; b.dimTearT = 1.4; setBanner('维度撕裂蓄能！领主正在撕开相位壁——准备按颜色翻相！', 2.6, null, 'top'); addShake(4, 240, 120, true); }
       b.dimTearT -= dt;
       if (b.dimTear === 'charge') {
         b.x += (WORLD_W / 2 - b.x) * Math.min(1, dt * 2.2);
@@ -3930,7 +3930,7 @@
             burst(_drx, _dry, '#B06FD0', 14, { ring: true, ringR: 36 });
           }
           addShake(6, 360, 150, true); addTint('#B06FD0', 0.3); AudioSys.sfx.bossRoar();
-          setBanner('⚠ 维度撕裂！红束致命于鎏金相 / 金束致命于余烬相——按光阵颜色即时翻相规避！', 3.4, null, 'top');
+          setBanner('维度撕裂！红束致命于鎏金相 / 金束致命于余烬相——按光阵颜色即时翻相规避！', 3.4, null, 'top');
         }
       } else if (b.dimTear === 'active') {
         b.dimRot += dt * 1.6;
@@ -4159,7 +4159,7 @@
     player.ultCharge = 0;
     var el = dominantElem(), col = el ? ELEMCOL[el] : '#D9B64A';
     var nm = ULT_NAMES[el] || '天诛';
-    setBanner('☯ 绝技「' + nm + '」！', 2.2, col);
+    setBanner('绝技「' + nm + '」！', 2.2, col);
     addFreeze(160); addShake(5, 280, 120); screenFlash = { color: col, a: 0.3 };
     burst(player.x, player.y, col, 26, { ring: true, ringR: 130 });
     AudioSys.sfx.eliteDie();
@@ -4284,7 +4284,7 @@
     }
     player.ultCharge = Math.min(ULT_MAX, player.ultCharge + ULT_KILL_GAIN + player.combo * ULT_COMBO_GAIN);
     if (player.ultCharge >= ULT_MAX && player.ultCharge - (ULT_KILL_GAIN + player.combo * ULT_COMBO_GAIN) < ULT_MAX) {
-      floatText(player.x, player.y - 46, '☯ 绝技就绪 [J]', '#D9B64A', 'crit');
+      floatText(player.x, player.y - 46, '绝技就绪 [J]', '#D9B64A', 'crit');
     }
     run.kills++;
     // 动态悬赏进度追踪
@@ -4312,7 +4312,7 @@
       huntWarnT -= dt;
       if (huntWarnT <= 0) {
         huntWarnT = HUNT_WARN_INT;
-        setBanner('⚠ 猎杀预警！敌机增援自四面涌来（狂暴·速攻）', 2.4, '#C8642A', 'top');
+        setBanner('猎杀预警！敌机增援自四面涌来（狂暴·速攻）', 2.4, '#C8642A', 'top');
         floatText(player.x, player.y - 36, '猎杀预警·增援', '#C94F4F');
         var reach = Math.max(W, H) * 0.62 + 160;
         for (var h = 0; h < 4; h++) {
@@ -4494,7 +4494,7 @@
       if (phase !== PHASE.EMBER) doFlip(PHASE.EMBER, { active: false, source: 'safety', openWindow: 9999 });
       else { emberOpenWindow = Math.max(emberOpenWindow, 9999); openExtractPoints(); }
       // #389 SAFETY_TIME 触发：顶部横幅通知玩家（一次性）
-      if (!run._safetyBannerShown) { run._safetyBannerShown = true; setBanner('⚠ 超时保底撤离：余烬相强制开启撤离窗口！', 3.6, '#C94F4F', 'top'); }
+      if (!run._safetyBannerShown) { run._safetyBannerShown = true; setBanner('超时保底撤离：余烬相强制开启撤离窗口！', 3.6, '#C94F4F', 'top'); }
     }
     if (tipTimer > 0) { tipTimer -= dt; if (tipTimer <= 0 && tipEl) tipEl.style.display = 'none'; }
     // 天罚（雷系4阶）：每 skyCd 秒全屏闪电
@@ -4914,7 +4914,7 @@
       if (nd.locked) {
         var gAlive = nd.guards.some(function (g) { return enemies.indexOf(g) >= 0; });
         if (!gAlive) { nd.locked = false; floatText(nd.x, nd.y - 26, '护卫已清！可开箱', CHESTS[nd.chest].color, 'crit'); }
-        else if (dist2(nd.x, nd.y, player.x, player.y) < (nd.r + player.pickR * 0.6) * (nd.r + player.pickR * 0.6)) setBanner('⚠ 先清除护卫机再开箱', 1.0);
+        else if (dist2(nd.x, nd.y, player.x, player.y) < (nd.r + player.pickR * 0.6) * (nd.r + player.pickR * 0.6)) setBanner('先清除护卫机再开箱', 1.0);
         continue;
       }
       if (dist2(nd.x, nd.y, player.x, player.y) < (nd.r + player.pickR * 0.6) * (nd.r + player.pickR * 0.6)) collectNode(nd);
@@ -5567,7 +5567,7 @@
         var gy = clamp(cy + Math.sin(aa) * 120, RR.RY + 40, RR.RY + RR.RH - 40);
         var ge = spawnEnemy(gx, gy, run.tier); ge.wake = 0; ge.alert = 2; ge.homeX = gx; ge.homeY = gy; ge.elite = true; ge.hp = ge.maxhp = Math.round(ge.maxhp * 2);
       }
-      setBanner('⚔️ 竞技统领降临！', 2.4);
+      setBanner('竞技统领降临！', 2.4);
       addShake(5, 160, 60);
       return;
     }
@@ -5607,12 +5607,12 @@
     var r = Math.random();
     if (r < 0.4) {
       riftRoom = { type: 'treasury', done: false, chest: { x: WORLD_W / 2, y: RY + RH * 0.38, r: 20, chest: 'secret' } };
-      setBanner('🎁 宝库房 · 安全（触碰中央秘宝获取战利品）', 2.6);
+      setBanner('宝物库 · 安全（触碰中央秘宝获取战利品）', 2.6);
     } else if (r < 0.8) {
       addRiftWalls(RX, RY, RW, RH);
       riftRoom = { type: 'arena', done: false }; riftWaves = { wave: 1, gap: 0 };
       spawnArenaWave(1);
-      setBanner('⚔️ 竞技房 · 第 1 / 4 波（清完才能离开）', 2.6);
+      setBanner('竞技房 · 第 1 / 4 波（清完才能离开）', 2.6);
     } else {
       addRiftWalls(RX, RY, RW, RH);
       var cxm = WORLD_W / 2;
@@ -5624,7 +5624,7 @@
         ],
         beamAng: 0, beamSpd: 0.95, beamN: 3, poisonT: 0.4
       };
-      setBanner('☠️ 机关房 · 激活 3 座机关柱解除封锁（当心旋转毒光）', 3.2);
+      setBanner('机关房 · 激活 3 座机关柱解除封锁（当心旋转毒光）', 3.2);
     }
     AudioSys.sfx.extract();
     // #381-③ 裂隙出口改回"走到指定出口传送门"：不再显示 #riftLeaveBtn（CSS 亦 display:none !important 兜底）
@@ -5636,7 +5636,7 @@
     if (riftRoom && !riftRoom.done) {
       riftStuckT = (riftStuckT || 0) + dt;
       if (riftStuckT >= RIFT_DEADLOCK_T) {
-        setBanner('⚠ 裂隙房间异常卡死 · 安全阀强制脱离', 3.2, '#C94F4F');
+        setBanner('裂隙房间异常卡死 · 安全阀强制脱离', 3.2, '#C94F4F');
         forceExitRift();
         return;
       }
@@ -5669,7 +5669,7 @@
       if (!riftRoom.done && enemies.length === 0 && !boss) {
         if (riftWaves.wave < 4) {
           riftWaves.gap -= dt;
-          if (riftWaves.gap <= 0) { riftWaves.wave++; spawnArenaWave(riftWaves.wave); riftWaves.gap = 3; setBanner('⚔️ 竞技房 · 第 ' + riftWaves.wave + ' / 4 波', 2.2); }
+          if (riftWaves.gap <= 0) { riftWaves.wave++; spawnArenaWave(riftWaves.wave); riftWaves.gap = 3; setBanner('竞技房 · 第 ' + riftWaves.wave + ' / 4 波', 2.2); }
         } else { riftRoom.done = true; spawnRiftDrops(); riftExit = { x: WORLD_W / 2, y: RR.RY + 60, r: 30 }; setBanner('✓ 竞技房清空！传送门已开启', 2.6); }
       }
     } else if (riftRoom.type === 'trap') {
@@ -5966,16 +5966,16 @@
   }
   function drawRiftHud() {
     var label = '';
-    if (riftRoom.type === 'treasury') label = '🎁 宝库房 · 安全（触碰中央秘宝）';
-    else if (riftRoom.type === 'arena') label = '⚔️ 竞技房 · 第 ' + riftWaves.wave + ' / 4 波' + (riftRoom.done ? ' · 已清空' : '');
-    else if (riftRoom.type === 'trap') { var on = 0; for (var _m = 0; _m < riftRoom.mechs.length; _m++) if (riftRoom.mechs[_m].act) on++; label = '☠️ 机关房 · 激活机关柱 ' + on + '/' + riftRoom.mechs.length + '（躲开旋转毒光）'; }
+    if (riftRoom.type === 'treasury') label = '宝库房 · 安全（触碰中央秘宝）';
+    else if (riftRoom.type === 'arena') label = '竞技房 · 第 ' + riftWaves.wave + ' / 4 波' + (riftRoom.done ? ' · 已清空' : '');
+    else if (riftRoom.type === 'trap') { var on = 0; for (var _m = 0; _m < riftRoom.mechs.length; _m++) if (riftRoom.mechs[_m].act) on++; label = '机关房 · 激活机关柱 ' + on + '/' + riftRoom.mechs.length + '（躲开旋转毒光）'; }
     if (riftRoom.done) label += ' · 踏入传送门离开';
     else label += ' · 完成房间后走入传送门撤离'; // #381-③ 去"随时按 Esc/点离开裂隙"
     ctx.save(); ctx.fillStyle = 'rgba(20,12,30,0.72)'; ctx.fillRect(W / 2 - 180, 10, 360, 26); ctx.fillStyle = '#E0C8FF'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, W / 2, 23); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     // A1 修复：裂隙内自毁倒计时提示（进裂隙时已冻结，但玩家需知剩余时间——离场即恢复计时）
     if (run && (run.selfDestruct > 0 || run._riftSdFrozen > 0)) {
       var _sd = Math.ceil(run.selfDestruct + (run._riftSdFrozen || 0));
-      ctx.save(); ctx.fillStyle = 'rgba(60,12,12,0.78)'; ctx.fillRect(W / 2 - 150, 42, 300, 24); ctx.fillStyle = '#FF8C7A'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('⚠ 战场自毁 ' + _sd + 's · 尽快撤离', W / 2, 54); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      ctx.save(); ctx.fillStyle = 'rgba(60,12,12,0.78)'; ctx.fillRect(W / 2 - 150, 42, 300, 24); ctx.fillStyle = '#FF8C7A'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('战场自毁 ' + _sd + 's · 尽快撤离', W / 2, 54); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     }
   }
   function drawRift() {
@@ -6925,7 +6925,7 @@
   // 背包槽位（左上·相位卡下方）：显示当前携带的战利品，桌面可点选丢弃
   function drawBackpack() {
     bpSlotRects = [];
-    if (isMobile) return; // 移动端减负：战利品数量已在右上状态面板显示，背包详情由 🎒 按钮浮层查看
+    if (isMobile) return; // 移动端减负：战利品数量已在右上状态面板显示，背包详情由背包按钮浮层查看
     // 桌面：4×2 竖排于右侧（红line：背包移至右侧，解放左上与左下空间）
     var cols = isMobile ? 8 : 4, s = isMobile ? 22 : 26, g = isMobile ? 3 : 5;
     // 紧跟小地图底部：小地图顶(78+SA.t)+高(mh,镜像drawMinimap)+8px间隙
@@ -6968,9 +6968,9 @@
     var sx = mw / WORLD_W, sy = mh / WORLD_H;
     // 空域：小地图仅显示节点/撤离点/宝箱（无设施结构）
     for (var i = 0; i < nodes.length; i++) { var nd = nodes[i]; if (nd.collected) continue; ctx.fillStyle = CHESTS[nd.chest].color; ctx.fillRect(mx + nd.x * sx - 2, my + nd.y * sy - 2, 4, 4); }
-    // 裂隙入口（主图紫色❓）/ 子图房间缩略
+    // 裂隙入口（主图紫色）/ 子图房间缩略
     if (!inRift) {
-      for (var ri2 = 0; ri2 < rifts.length; ri2++) { var rf2 = rifts[ri2]; if (rf2.state !== 'idle') continue; ctx.fillStyle = '#B06FD0'; ctx.fillRect(mx + rf2.x * sx - 2, my + rf2.y * sy - 2, 4, 4); ctx.fillStyle = '#E0C8FF'; ctx.font = (isMobile ? 7 : 10) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('❓', mx + rf2.x * sx, my + rf2.y * sy - 4); ctx.textAlign = 'left'; }
+      for (var ri2 = 0; ri2 < rifts.length; ri2++) { var rf2 = rifts[ri2]; if (rf2.state !== 'idle') continue; ctx.fillStyle = '#B06FD0'; ctx.fillRect(mx + rf2.x * sx - 2, my + rf2.y * sy - 2, 4, 4); ctx.fillStyle = '#E0C8FF'; ctx.font = (isMobile ? 7 : 10) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('', mx + rf2.x * sx, my + rf2.y * sy - 4); ctx.textAlign = 'left'; }
     } else if (riftRect) {
       var RR = riftRect;
       ctx.strokeStyle = 'rgba(176,111,208,0.7)'; ctx.strokeRect(mx + RR.RX * sx, my + RR.RY * sy, RR.RW * sx, RR.RH * sy);
@@ -7346,7 +7346,7 @@
     if (_extY >= 0) {
       var openZ = _extOpen, warnZ = _extWarn;
       if (openZ.length) {
-        var ot = openZ.map(function (q) { var t = q.beacon ? Math.ceil(run.selfDestruct) : Math.ceil(q.timer); return (q.beacon ? '⚠ 战场自毁 ' + t + 's · 冲入光柱撤离' : '撤离点' + q.label + ' 开放 ' + t + 's'); }).join('   ·   ');
+        var ot = openZ.map(function (q) { var t = q.beacon ? Math.ceil(run.selfDestruct) : Math.ceil(q.timer); return (q.beacon ? '战场自毁 ' + t + 's · 冲入光柱撤离' : '撤离点' + q.label + ' 开放 ' + t + 's'); }).join('   ·   ');
         ctx.font = 'bold 12px sans-serif'; var ow = ctx.measureText(ot).width;
         ctx.fillStyle = 'rgba(16,13,9,0.72)'; ctx.strokeStyle = 'rgba(127,176,105,0.55)'; ctx.lineWidth = 1;
         hp(W / 2 - ow / 2 - 12, _extY, ow + 24, 22, 11);
@@ -7436,7 +7436,7 @@
           var _tx = _cardX + 10, _ty = _cardY + 46, _tw = _cardW - 20;
           ctx.fillStyle = 'rgba(255,255,255,0.12)'; hp(_tx, _ty, _tw, 5, 2.5);
           ctx.fillStyle = _red ? '#E04A4A' : '#7FB069'; hp(_tx, _ty, _tw * _tf, 5, 2.5);
-          if (_red) { ctx.fillStyle = (Math.sin(gameTime * 10) > 0 ? '#E04A4A' : '#fff'); ctx.font = 'bold 9px sans-serif'; ctx.fillText('⚠ 主动翻否则失控', _tx + 2, _ty - 2); }
+          if (_red) { ctx.fillStyle = (Math.sin(gameTime * 10) > 0 ? '#E04A4A' : '#fff'); ctx.font = 'bold 9px sans-serif'; ctx.fillText('主动翻否则失控', _tx + 2, _ty - 2); }
         } else {
           ctx.fillStyle = '#C8642A'; ctx.font = 'bold 9px sans-serif'; ctx.fillText(activeEmber ? '主动余烬·狂暴' : '余烬·失控', _cardX + 10, _cardY + 50);
         }
@@ -7491,7 +7491,7 @@
       ctx.fillStyle = _ready ? ((0.5 + 0.5 * Math.sin(gameTime * 6)) > 0.6 ? '#F2D98A' : _ucol) : _ucol;
       hp(lpX + 10, _uY, Math.max(2, _uw), isMobile ? 6 : 7, 3.5);
       ctx.fillStyle = _ready ? '#F2D98A' : '#C9A24B'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'right'; ctx.strokeStyle = 'transparent';
-      ctx.fillText(_ready ? ('☯ ' + (ULT_NAMES[_uel] || '天诛') + (isMobile ? '' : ' [J]')) : ('绝技 ' + Math.floor(player.ultCharge) + '%'), lpX + lpW - 10, _uY + (isMobile ? 5 : 6));
+      ctx.fillText(_ready ? ('' + (ULT_NAMES[_uel] || '天诛') + (isMobile ? '' : ' [J]')) : ('绝技 ' + Math.floor(player.ultCharge) + '%'), lpX + lpW - 10, _uY + (isMobile ? 5 : 6));
       ctx.textAlign = 'left';
     }
     // 行4：数值与层数击杀（移动端收紧在面板内，不出框）
@@ -7667,7 +7667,7 @@
       // 提示挪到背包标题行下方：y = 背包顶(by)+14，避开小地图下半区；by 镜像 drawBackpack
       var _bpTop = (78 + SA.t) + Math.round(150 * WORLD_H / WORLD_W) + 8;
       ctx.fillStyle = '#D9B64A'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'right';
-      ctx.fillText('💡 按 M 可合成', W - 22, _bpTop + 14); ctx.textAlign = 'left';
+      ctx.fillText('按 M 可合成', W - 22, _bpTop + 14); ctx.textAlign = 'left';
     }
     drawBounty(); // 动态悬赏面板（右侧小地图下方；桌面背包整块下方）
   }
@@ -7787,7 +7787,7 @@
     if (lastError && performance.now() - lastError.t < 5000) {
       ctx.fillStyle = 'rgba(140,0,0,0.88)'; ctx.fillRect(0, 0, W, 26);
       ctx.fillStyle = '#fff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('⚠ 运行异常已捕获（截图反馈即可）: ' + lastError.msg, W / 2, 17); ctx.textAlign = 'left';
+      ctx.fillText('运行异常已捕获（截图反馈即可）: ' + lastError.msg, W / 2, 17); ctx.textAlign = 'left';
     }
   }
   var last = performance.now();
@@ -7909,7 +7909,7 @@
         affPills = affKeys.map(function (k) {
           for (var _ai = 0; _ai < AFFIX_DEFS.length; _ai++) if (AFFIX_DEFS[_ai].key === k) {
             var _a = AFFIX_DEFS[_ai];
-            return '<span class="affix-pill" style="color:' + _a.col + ';border-color:' + _a.col + ';box-shadow:0 0 10px ' + _a.col + '55">' + _a.icon + ' ' + _a.name + '</span>';
+            return '<span class="affix-pill" style="color:' + _a.col + ';border-color:' + _a.col + ';box-shadow:0 0 10px ' + _a.col + '55">' + _a.name + '</span>';
           }
           return '';
         }).join('');
@@ -7918,7 +7918,7 @@
       var oreMul = tierOreBonus(selectedTier).toFixed(1);
       var hpMulTxt = '+' + Math.round((tierMul(selectedTier) - 1) * 100) + '%';
       var dmgMulTxt = '+' + Math.round((tierDmgMul(selectedTier) - 1) * 100) + '%';
-      var bestBadge = '<div class="tier-best-badge">👑 历史最高通关：第 ' + (meta.bestLayer || 1) + ' 层</div>';
+      var bestBadge = '<div class="tier-best-badge">历史最高通关：第 ' + (meta.bestLayer || 1) + ' 层</div>';
       var dots = '';
       for (var t = 1; t <= meta.maxTier; t++) {
         dots += '<div class="tier-dot' + (selectedTier === t ? ' on' : '') + '" data-ti="' + t + '">' + t + '</div>';
@@ -8403,7 +8403,7 @@
         var row = document.createElement('div'); row.className = 'inv-row' + (on ? ' on' : '');
         var iconBox = document.createElement('div'); iconBox.className = 'inv-icon';
         iconBox.innerHTML = a.slot === 'weapon' ? weaponIconHtml(a, 'wpn-icon-row') : gearIconHtml(a, 'gear-icon-row');
-        var pow = document.createElement('span'); pow.className = 'inv-pow'; pow.textContent = '⚔' + artifactScore(a); iconBox.appendChild(pow);
+        var pow = document.createElement('span'); pow.className = 'inv-pow'; pow.textContent = '' + artifactScore(a); iconBox.appendChild(pow);
         var txt = document.createElement('div'); txt.className = 'inv-txt';
         txt.innerHTML = '<div class="inv-1"><span class="an" style="color:' + RARCOL[a.rarity] + '">' + a.name + '</span><span class="rar">' + RARNAME[a.rarity] + '</span></div><div class="mods">' + modsText(a.mods) + '</div>';
         var act = document.createElement('div'); act.className = 'inv-act';
@@ -8857,7 +8857,7 @@
     html += '<div class="stat-card ' + (outcome === 'success' ? 'ok' : 'bad') + '"><span>本局收获</span><b>' + earned + '</b></div>';
     // 合并层级进度：当前层 + 新层解锁 + 历史最高（一行）
     var tierLine = '当前 ' + run.tier + ' 层';
-    if (unlockedNew) tierLine += ' 🆕解锁 ' + meta.maxTier + ' 层';
+    if (unlockedNew) tierLine += ' 解锁 ' + meta.maxTier + ' 层';
     tierLine += ' · 历史最高 ' + meta.bestLayer + ' 层';
     html += '<div class="stat-card' + (unlockedNew ? ' ok' : '') + '"><span>层级进度</span><b>' + tierLine + '</b></div>';
     // 合并战利品清单为一行：件数 + 稀有度徽章 + 遗物名
@@ -8953,7 +8953,7 @@
     } else if (res.kind === 'success') {
       burst(W / 2, H / 2, res.color, 16);
       try { AudioSys.sfx.merge(); } catch (e) {}
-      setBanner('⚡' + res.title + ' → ' + res.sub, 1.6);
+      setBanner(res.title + ' → ' + res.sub, 1.6);
     }
     saveMeta(); renderBase();
   }
