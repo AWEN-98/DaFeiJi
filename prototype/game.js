@@ -8132,7 +8132,7 @@
   }
   var forgeSel = [];
   var forgeFilterSlot = 'all'; // 'all' | weapon | armor | core | ammo
-  var forgeFilterRarity = 'all'; // 'all' | white | green | blue | purple | orange
+  var forgeSort = 'pow'; // 'pow' | 'rarity' | 'name'
   var forgeResult = null; // 合成结果显示：{kind:'success'|'destroy'|'disallowed'|'fail', title, sub, color}
   var forgeProcess = false; // 是否正在播放合成过程动画
   var forgeOutputArt = null; // 合成最终产出的法器（成功时）
@@ -8407,7 +8407,7 @@
     return gearIconHtml(art, c + ' gear-forge');
   }
   function renderForge() {
-    // === 左：材料列表 + 筛选 ===
+    // === 左：材料列表 + 筛选 (与军械库一致: 类型+排序两行) ===
     var filtersEl = document.getElementById('forgeFilters');
     if (filtersEl) {
       filtersEl.innerHTML = '';
@@ -8423,18 +8423,17 @@
         slotRow.appendChild(c);
       });
       wrap.appendChild(slotRow);
-      // 品质筛选
-      var rarRow = document.createElement('div'); rarRow.className = 'forge-filter-row';
-      var rarLab = document.createElement('div'); rarLab.className = 'flabel'; rarLab.textContent = '品质';
-      rarRow.appendChild(rarLab);
-      [['all', '全部']].concat(RAR.map(function (r) { return [r, RARNAME[r]]; })).forEach(function (o) {
-        var c = document.createElement('span'); c.className = 'fchip' + (forgeFilterRarity === o[0] ? ' on' : '') + (o[0] === 'all' ? ' all' : '');
+      // 排序筛选 (与军械库一致: 战力/稀有度/名称)
+      var sortRow = document.createElement('div'); sortRow.className = 'forge-filter-row';
+      var sortLab = document.createElement('div'); sortLab.className = 'flabel'; sortLab.textContent = '排序';
+      sortRow.appendChild(sortLab);
+      [['pow', '战力'], ['rarity', '稀有度'], ['name', '名称']].forEach(function (o) {
+        var c = document.createElement('span'); c.className = 'fchip' + (forgeSort === o[0] ? ' on' : '') + (o[0] === 'pow' ? ' all' : '');
         c.textContent = o[1];
-        if (o[0] !== 'all') c.style.color = forgeFilterRarity === o[0] ? '#0c0a08' : RARCOL[o[0]];
-        c.onclick = function () { forgeFilterRarity = o[0]; renderForge(); };
-        rarRow.appendChild(c);
+        c.onclick = function () { forgeSort = o[0]; renderForge(); };
+        sortRow.appendChild(c);
       });
-      wrap.appendChild(rarRow);
+      wrap.appendChild(sortRow);
       filtersEl.appendChild(wrap);
     }
     var box = document.getElementById('forgeList');
@@ -8443,8 +8442,15 @@
       var listEls = box.querySelectorAll('.forge-mat-list, .forge-tip');
       listEls.forEach(function (el) { el.remove(); });
       var shown = meta.arsenal.filter(function (a) {
-        return (forgeFilterSlot === 'all' || a.slot === forgeFilterSlot) &&
-               (forgeFilterRarity === 'all' || a.rarity === forgeFilterRarity);
+        return forgeFilterSlot === 'all' || a.slot === forgeFilterSlot;
+      });
+      // 按 forgeSort 排序
+      var RAR_ORDER = { white: 0, green: 1, blue: 2, purple: 3, orange: 4 };
+      shown.sort(function (a, b) {
+        if (forgeSort === 'pow') return (b.pow || 0) - (a.pow || 0);
+        if (forgeSort === 'rarity') return (RAR_ORDER[b.rarity] || 0) - (RAR_ORDER[a.rarity] || 0);
+        if (forgeSort === 'name') return (a.name || '').localeCompare(b.name || '', 'zh');
+        return 0;
       });
       if (shown.length === 0 && meta.arsenal.length === 0) {
         var empty = document.createElement('div'); empty.className = 'mini forge-tip'; empty.textContent = '军械库空空，先去搜刮带回法器';
@@ -8576,17 +8582,23 @@
       slotRow.appendChild(c);
     });
     body.appendChild(slotRow);
-    var rarRow = document.createElement('div'); rarRow.className = 'forge-filter-row';
-    rarRow.innerHTML = '<span class="flabel">品质</span>';
-    [['all', '全部']].concat(RAR.map(function (r) { return [r, RARNAME[r]]; })).forEach(function (o) {
-      var c = document.createElement('span'); c.className = 'fchip' + (forgeFilterRarity === o[0] ? ' on' : ''); c.textContent = o[1];
-      if (o[0] !== 'all') c.style.color = forgeFilterRarity === o[0] ? '#0c0a08' : RARCOL[o[0]];
-      c.onclick = function () { forgeFilterRarity = o[0]; renderForgeDrawer(); };
-      rarRow.appendChild(c);
+    var sortRow = document.createElement('div'); sortRow.className = 'forge-filter-row';
+    sortRow.innerHTML = '<span class="flabel">排序</span>';
+    [['pow', '战力'], ['rarity', '稀有度'], ['name', '名称']].forEach(function (o) {
+      var c = document.createElement('span'); c.className = 'fchip' + (forgeSort === o[0] ? ' on' : ''); c.textContent = o[1];
+      c.onclick = function () { forgeSort = o[0]; renderForgeDrawer(); };
+      sortRow.appendChild(c);
     });
-    body.appendChild(rarRow);
+    body.appendChild(sortRow);
     var shown = meta.arsenal.filter(function (a) {
-      return (forgeFilterSlot === 'all' || a.slot === forgeFilterSlot) && (forgeFilterRarity === 'all' || a.rarity === forgeFilterRarity);
+      return forgeFilterSlot === 'all' || a.slot === forgeFilterSlot;
+    });
+    var RAR_ORDER = { white: 0, green: 1, blue: 2, purple: 3, orange: 4 };
+    shown.sort(function (a, b) {
+      if (forgeSort === 'pow') return (b.pow || 0) - (a.pow || 0);
+      if (forgeSort === 'rarity') return (RAR_ORDER[b.rarity] || 0) - (RAR_ORDER[a.rarity] || 0);
+      if (forgeSort === 'name') return (a.name || '').localeCompare(b.name || '', 'zh');
+      return 0;
     });
     if (shown.length === 0) {
       var e = document.createElement('div'); e.className = 'mini'; e.style.color = 'var(--muted)';
