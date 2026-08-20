@@ -32,7 +32,6 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0); // 逻辑坐标→物理像素映射：所有 draw 调用以 CSS 像素为基准，DPR 自动放大
     W = cssW; H = cssH;              // 全局逻辑坐标用 CSS 像素（视野扩展式：宽屏看到更多世界，不拉伸）
     updateSafeArea();
-    computeLayout();
   }
   // 2026-08-18：resize 时重算 isMobile（很多设备初次检测时视口还没稳定）
   window.addEventListener('resize', function () { resize(); recomputeMobile(); checkOrientation(); showMobileControls(); hideBrowserBars(); });
@@ -1530,7 +1529,6 @@
   // 改为 OR：触屏/移动 UA/小视口 任一命中即视为移动端；并在 resize/orientationchange 时重算
   var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || (navigator.msMaxTouchPoints || 0) > 0 || window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   var _isMobileUA = /Mobi|Android|iPhone|iPad|iPod|Mobile|Tablet|PlayBook|Silk|MIUI|EMUI|HarmonyOS/i.test(navigator.userAgent);
-  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
   function _computeMobile() {
     return isTouch || _isMobileUA || Math.min(window.innerWidth, window.innerHeight) < 800;
   }
@@ -1541,110 +1539,21 @@
   var PHB = isMobile ? 7 : 13;
   function recomputeMobile() { isMobile = _computeMobile(); PHB = isMobile ? 7 : 13; }
   // 安全区（刘海/手势条）：Canvas 无法直接读 env()，用探针元素解析为像素，贯穿所有 HUD 绘制
+  // 微信 H5 顶栏（✕/···）不属于系统 safe-area，额外内缩 WECHAT_TOP，避免遮挡顶部元素
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+  var WECHAT_TOP = isWeChat ? 46 : 0;
   var SA = { t: 0, r: 0, b: 0, l: 0 };
   function updateSafeArea() {
     try {
       var p = document.getElementById('saProbe');
       if (!p) { p = document.createElement('div'); p.id = 'saProbe'; p.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;padding:0;padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);opacity:0;pointer-events:none;'; document.body.appendChild(p); }
       var cs = getComputedStyle(p);
-      SA.t = parseFloat(cs.paddingTop) || 0; SA.r = parseFloat(cs.paddingRight) || 0;
+      SA.t = (parseFloat(cs.paddingTop) || 0) + WECHAT_TOP; SA.r = parseFloat(cs.paddingRight) || 0;
       SA.b = parseFloat(cs.paddingBottom) || 0; SA.l = parseFloat(cs.paddingLeft) || 0;
-      // 微信内置浏览器顶栏常驻，若系统没给安全区，则硬兜底 26px，避免左上 UI 被遮挡
-      if (isWeChat && SA.t < 26) SA.t = 26;
     } catch (e) {}
+    if (isWeChat && !document.body.classList.contains('wechat-h5')) document.body.classList.add('wechat-h5');
   }
   updateSafeArea();
-  // ---------- 自适应布局引擎（运行时按屏幕尺寸计算，从结构上杜绝不同设备堆叠）----------
-  // 单一真相来源：所有 HUD / 触控键位置都由 computeLayout() 依据 W/H/安全区/微信顶栏算出，
-  // 并按「屏幕分区」分配（左上·机体 / 右上·雷达 / 左列·悬赏+拾取 / 右下·开火轮盘 /
-  // 轮盘左·战术竖栈 / 左下·丹药+暂停 / 底部居中·道具槽），保证任意分辨率下互不重叠。
-  var LAYOUT = {};
-  function computeLayout() {
-    // 单一真相：触控键用「固定人体工学尺寸」（不随屏缩放，避免小屏缩成蚂蚁、大屏撑爆）；
-    // 所有 HUD / 触控键位置由 屏幕尺寸 + 安全区 + 微信顶栏 推出，按「屏幕分区」分配，结构上杜绝跨设备堆叠。
-    var tIns = SA.t + (isWeChat ? 40 : 0);   // 顶部内缩：微信 H5 顶栏常驻，额外 +40 防遮挡
-    var bIns = SA.b, lIns = SA.l, rIns = SA.r;
-    var pad = 10;                            // 通用间距（固定）
-    LAYOUT = { t: tIns, b: bIns, l: lIns, r: rIns, pad: pad, W: W, H: H, canvas: !isMobile };
-
-    if (isMobile) {
-      var fsSize = 112, btn = 46, consBtnSize = 46, pauseSize = 40, slotSize = 40, slotGap = 8;
-      // 左列信息面板（先算，供右侧战术栈避让）
-      var lpW = 158, lpH = 88;
-      LAYOUT.hp = { x: lIns + pad, y: tIns + pad, w: lpW, h: lpH };
-      var mmw = 84, mmh = Math.round(mmw * WORLD_H / WORLD_W);
-      LAYOUT.minimap = { x: W - rIns - pad - mmw, y: tIns + pad, w: mmw, h: mmh };
-      // 开火轮盘（右下，贴安全区）
-      LAYOUT.fire = { size: fsSize, x: W - rIns - pad - fsSize, y: H - bIns - pad - fsSize };
-      // 战术竖栈：开火轮盘「左侧」竖向排列——结构上绝不压到轮盘
-      var order = ['ult', 'dash', 'bp', 'phase', 'pick'];
-      var bgap = 12;
-      var stackH = order.length * btn + (order.length - 1) * bgap;
-      var colX = LAYOUT.fire.x - 14 - btn;
-      var botLimit = LAYOUT.fire.y - bgap;                  // 栈底不高于轮盘顶
-      var topLimit = tIns + 8;                              // 栈顶不侵入顶栏
-      var startY = botLimit - stackH;
-      if (startY < topLimit) {                              // 竖直空间不足：先压间隙，再缩按钮
-        var avail = botLimit - topLimit;
-        bgap = Math.max(4, Math.floor((avail - order.length * btn) / (order.length - 1)));
-        stackH = order.length * btn + (order.length - 1) * bgap;
-        startY = botLimit - stackH;
-        if (startY < topLimit) {
-          btn = Math.max(34, Math.floor(btn * (avail / (order.length * btn + (order.length - 1) * Math.max(4, bgap)))));
-          bgap = Math.max(4, Math.floor((avail - order.length * btn) / (order.length - 1)));
-          stackH = order.length * btn + (order.length - 1) * bgap;
-          startY = botLimit - stackH;
-        }
-      }
-      colX = Math.max(colX, LAYOUT.hp.x + LAYOUT.hp.w + 8);   // 不与左侧信息列打架
-      LAYOUT.btns = {};
-      for (var _li = 0; _li < order.length; _li++) LAYOUT.btns[order[_li]] = { x: colX, y: startY + _li * (btn + bgap), size: btn };
-      // 左下：丹药 + 暂停（远离右下战斗簇）
-      LAYOUT.consBtn = { x: lIns + pad, y: H - bIns - pad - consBtnSize, size: consBtnSize };
-      LAYOUT.pause = { x: lIns + pad, y: LAYOUT.consBtn.y - 10 - pauseSize, size: pauseSize };
-      // 底部居中：丹药槽（避开底部安全区，不压轮盘/按钮）
-      var cN = 3, cTot = cN * slotSize + (cN - 1) * slotGap;
-      LAYOUT.consSlots = { x: (W - cTot) / 2, y: H - slotSize - (bIns + 34), size: slotSize, gap: slotGap };
-      // 左列续：相位 → 悬赏 → 拾取（自上而下堆叠，互不重叠）
-      var phaseH = 34, gap = 6;
-      LAYOUT.phase = { x: lIns + pad, y: LAYOUT.hp.y + lpH + gap, w: 150, h: phaseH };
-      var bountyH = 42;
-      LAYOUT.bounty = { x: lIns + pad, y: LAYOUT.phase.y + phaseH + gap, w: Math.min(W * 0.5, 210), h: bountyH };
-      // 拾取面板底部截断：不得压到 丹药槽 / 丹药键 / 暂停键 之上沿，杜绝与左下控件重叠
-      var pickTop = LAYOUT.bounty.y + bountyH + gap;
-      var pickBottom = Math.min(LAYOUT.consSlots.y - 8, LAYOUT.consBtn.y - 8, LAYOUT.pause.y - 8);
-      LAYOUT.pickup = { x: lIns + pad, y: pickTop, w: Math.min(W * 0.54, 230), headerH: 30, rowH: 42, maxBottom: pickBottom };
-    } else {
-      LAYOUT.fire = null; LAYOUT.btns = {}; LAYOUT.consBtn = null; LAYOUT.pause = null;
-      var lpW2 = 210, lpH2 = 92;
-      LAYOUT.hp = { x: lIns + 16, y: tIns + 16, w: lpW2, h: lpH2 };
-      var mmw2 = 150, mmh2 = Math.round(mmw2 * WORLD_H / WORLD_W);
-      LAYOUT.minimap = { x: W - rIns - 10 - mmw2, y: tIns + 10, w: mmw2, h: mmh2 };
-      LAYOUT.phase = { x: lIns + 16, y: LAYOUT.hp.y + lpH2 + 6, w: 184, h: 58 };
-      LAYOUT.bounty = { x: W - rIns - 10 - 220, y: LAYOUT.minimap.y + mmh2 + 10, w: 220, h: 46 };
-      LAYOUT.pickup = { x: W - rIns - 10 - 320, y: LAYOUT.bounty.y + 56, w: 320, headerH: 32, rowH: 34, maxBottom: H - 20 };
-      var slotSize2 = 42, slotGap2 = 11, cTot2 = 3 * slotSize2 + 2 * slotGap2;
-      LAYOUT.consSlots = { x: (W - cTot2) / 2, y: H - slotSize2 - 20, size: slotSize2, gap: slotGap2 };
-    }
-    window.__LAYOUT = LAYOUT;
-  }
-  function applyDOMLayout() {
-    if (!LAYOUT || !LAYOUT.W) return;
-    function put(id, b) {
-      var el = document.getElementById(id); if (!el || !b) return;
-      el.style.left = b.x + 'px'; el.style.top = b.y + 'px';
-      el.style.width = b.size + 'px'; el.style.height = b.size + 'px';
-      el.style.right = 'auto'; el.style.bottom = 'auto';
-    }
-    put('right-stick-container', LAYOUT.fire);
-    put('ultBtn', LAYOUT.btns.ult);
-    put('dashBtn', LAYOUT.btns.dash);
-    put('backpackBtn', LAYOUT.btns.bp);
-    put('phaseBtn', LAYOUT.btns.phase);
-    put('pickupBtn', LAYOUT.btns.pick);
-    put('consBtn', LAYOUT.consBtn);
-    put('pauseBtnMobile', LAYOUT.pause);
-  }
   // 虚拟摇杆状态
   var joy = { active: false, touchId: null, baseX: 0, baseY: 0, dx: 0, dy: 0, mag: 0 };
   // 右摇杆（瞄准+开火一体）：朝向绝对由右摇杆矢量主导，松手保朝向
@@ -1676,7 +1585,6 @@
     // 基地/标题/结算页即使 JS 未及也不残留战斗轮盘。
     document.body.setAttribute('data-scene', scene || '');
     if (!show) { joy.active = false; joy.dx = 0; joy.dy = 0; joy.mag = 0; hideJoystick(); aimJoy.active = false; aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0; hideAimJoystick(); aimTapFire = false; }
-    applyDOMLayout(); // 实时按当前屏幕尺寸重排触控键（不同手机/浏览器不再堆叠）
   }
   function showJoystick(x, y) {
     if (!joyBaseEl) return;
@@ -1935,8 +1843,6 @@
     var portrait = window.innerHeight > window.innerWidth;
     // 横屏/竖屏双支持：仅打标记，由 CSS + drawHUD 自适应，不再封锁竖屏
     document.body.dataset.orient = portrait ? 'portrait' : 'landscape';
-    // 微信 H5：给 body 挂标记，CSS 可为顶部系统栏追加额外偏移，避免暂停/左上 UI 被微信顶栏遮挡
-    if (isWeChat) document.body.classList.add('wechat-h5');
     var rp = document.getElementById('rotatePrompt');
     if (rp) {
       // 非阻塞软提示：仅标题页 + 竖屏 + 未手动关闭时显示；游戏中从不遮挡
@@ -3558,19 +3464,20 @@
   }
   function drawPickupList() {
     pickupRects = [];
+    // 离开范围自动收起：无附近可拾取物时关闭列表（杜绝常驻遮挡战斗视野）
     if (pickupOpen && getNearLoot().length === 0) pickupOpen = false;
     if (!pickupOpen || scene !== 'mission') return;
     var isM = isMobile;
-    // 严格追随 LAYOUT.pickup（移动端=左侧信息列、桌面=右上），面板高度受 maxBottom 截断，
-    // 永不下探压到左下 丹药/暂停 键或底部道具槽，也绝不侵入右侧轮盘/按钮热区。
-    var headerH = LAYOUT.pickup.headerH, rowH = LAYOUT.pickup.rowH, w = LAYOUT.pickup.w, pad = 10;
+    var pad = 10, rowH = isM ? 46 : 34, w = isM ? Math.min(360, W * 0.62) : 320, headerH = 34;
+    w = Math.min(w, W - 18 - SA.l - SA.r); // 钳制：不越左右安全区，避免窄屏溢出/压到左侧轮盘
     var near = getNearLoot();
-    var maxBody = Math.max(rowH, (LAYOUT.pickup.maxBottom - LAYOUT.pickup.y - headerH - pad * 2));
-    var maxRows = Math.max(0, Math.floor(maxBody / rowH));
-    var visible = Math.min(near.length, maxRows);
-    var bodyH = visible ? visible * rowH : 48;
+    var bodyH = near.length ? near.length * rowH : 48;
     var h = headerH + bodyH + pad * 2;
-    var x = LAYOUT.pickup.x, y0 = LAYOUT.pickup.y;
+    // 贴靠右上视野开阔区（小地图正下方），半透明轻量面板——不压暗全屏，杜绝遮挡中央战斗与触控轮盘
+    var mw = isM ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W);
+    var my0 = isM ? (78 + SA.t) : 140;
+    var x = W - w - 14 - SA.r;
+    var y0 = my0 + mh + 8;
     // 半透明底板（轻量，无全屏压暗）
     ctx.fillStyle = 'rgba(16,13,9,0.82)';
     roundRectPath(ctx, x, y0, w, h, 10); ctx.fill();
@@ -3583,7 +3490,7 @@
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       return;
     }
-    for (var i = 0; i < visible; i++) {
+    for (var i = 0; i < near.length; i++) {
       var it = near[i].it, ry = y0 + headerH + pad + i * rowH;
       var sel = (i === pickupSel);
       // 大触控热区：整行可点（mobile 行高 46），交互友好
@@ -7049,11 +6956,9 @@
     }
   }
   function drawMinimap() {
-    // 统一追随 LAYOUT.minimap（已含安全区 + 微信顶栏 inset），杜绝跨设备/微信 H5 顶部遮挡与漂移
-    var _mm = (typeof LAYOUT !== 'undefined' && LAYOUT && LAYOUT.minimap) ? LAYOUT.minimap : null;
-    var mw = _mm ? _mm.w : (isMobile ? 80 : 150), mh = Math.round(mw * WORLD_H / WORLD_W);
-    var mx = _mm ? _mm.x : (W - mw - 14 - SA.r);
-    var my = _mm ? _mm.y : (isMobile ? (38 + SA.t) : (78 + SA.t));
+    // v16.13：地图向上贴近右上「拾0/10·值0·刮0/4」简报（移动端简报 y=8+SA.t 高22 → 底30+SA.t + 8px 间距）
+    var mw = isMobile ? 80 : 150, mh = Math.round(mw * WORLD_H / WORLD_W), mx = W - mw - 14 - SA.r;
+    var my = isMobile ? (38 + SA.t) : (78 + SA.t); // 移动端贴简报下方8px；桌面贴战利品面板下方8px（保持原样）
     // 暗金圆角容器（与左侧血条/相位面板同风格：圆角 + 暗金描边 + 外投影 + 内辉光）
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 8;
@@ -7121,10 +7026,10 @@
     ctx.restore(); // 结束圆角裁剪 + 容器上下文
   }
   function drawConsumables() {
-    var n = 3;
-    var size = isMobile ? LAYOUT.consSlots.size : 42, gap = isMobile ? LAYOUT.consSlots.gap : 10, totalW = n * size + (n - 1) * gap;
-    var bx = isMobile ? LAYOUT.consSlots.x : (W - totalW) / 2;
-    var by = isMobile ? LAYOUT.consSlots.y : (H - size - 20);
+    var n = 3, size = isMobile ? 30 : 38, gap = isMobile ? 6 : 10, totalW = n * size + (n - 1) * gap;
+    // 5锚点之「底部居中·战术道具区」：水平居中浮动，避开底部系统小白条/手势条
+    var bx = (W - totalW) / 2;                              // 水平居中
+    var by = H - size - (isMobile ? 24 + SA.b : 16);        // 避开底部安全区
     for (var i = 0; i < n; i++) {
       var x = bx + i * (size + gap);
       var key = player.consumables[i];
@@ -7425,10 +7330,9 @@
     var P = isMobile && window.innerHeight > window.innerWidth;
     var lootVal = run.loot.reduce(function (s, it) { return s + RARVAL[RAR.indexOf(it.rarity)]; }, 0);
     // 机体状态面板定位（2026-08-19 红line：左上角统一堆叠，左下角彻底清空留给虚拟摇杆）
-    var lpX = isMobile ? LAYOUT.hp.x : (16 + SA.l);
-    var lpY = isMobile ? LAYOUT.hp.y : (16 + SA.t);
-    var lpW = isMobile ? LAYOUT.hp.w : 200;
-    var lpH = isMobile ? LAYOUT.hp.h : 92;
+    var lpW = isMobile ? 176 : 200, lpH = 92;
+    var lpX = 16 + SA.l;
+    var lpY = (isMobile ? 46 : 16) + SA.t; // 移动端让出最左上角暂停微按钮的 6~38px 区
     // 顶部信息堆栈：Boss条→撤离点→灵潮连击→幕章→banner队列
     // #389 调整：top banner 槽独立占据 12+SA.t ~ 12+SA.t+64 区，
     // 已有顶部信息堆栈（boss/extract/combo/act）整体下移到 12+SA.t+64 后开始，
@@ -7465,7 +7369,7 @@
     {
       var _ai = ({ qi: ['起', '潜入搜刮', '#E8DCC4'], cheng: ['承', '积累·裂隙', '#C9A24B'], zhuan: ['转', '围猎·狂暴', '#C8642A'], he: ['合', '终局·穷奇', '#C94F4F'] })[runPhase] || ['起', '潜入搜刮', '#E8DCC4'];
       var _aw = 118, _ah = 20, _ay = _actY;
-      var _ax = W / 2 - _aw / 2;
+      var _ax = isMobile ? (lpX + lpW + 8) : (W / 2 - _aw / 2);
       // 右侧越界保护：窄屏若超出则回落中央
       if (_ax + _aw > W - 8) _ax = W / 2 - _aw / 2;
       ctx.globalAlpha = 0.62;
@@ -7775,9 +7679,18 @@
   // 动态悬赏 HUD（右侧小地图下方；桌面避让背包整块，移动端避让小地图）
   function drawBounty() {
     if (!bounty) return;
-    // 严格追随 LAYOUT 单一真相（移动端=左侧信息列 / 桌面=背包整块下方），杜绝与触控键热区冲突
-    var bw = LAYOUT.bounty.w, bh = LAYOUT.bounty.h;
-    var bx = LAYOUT.bounty.x, by = LAYOUT.bounty.y;
+    var bw = 150, bh = 42;
+    var bx = W - 160 - SA.r;
+    var by;
+    if (isMobile) {
+      by = 140 + SA.t; // 移动端无背包：小地图底≈126，留 14px 间隙
+    } else {
+      // 桌面：背包整块下方（镜像 drawBackpack 公式：cols=4,s=26,g=5；2 行 × (s+g) = 62；勿硬编码）
+      var _mmw = 150, _mmh = Math.round(_mmw * WORLD_H / WORLD_W);
+      var _bpTop = (78 + SA.t) + _mmh + 8;
+      var _bpH = 2 * (26 + 5);
+      by = _bpTop + _bpH + 8;
+    }
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(18,14,10,0.8)';
     ctx.strokeStyle = bounty.completed ? '#7FB069' : 'rgba(201,162,75,0.4)';
@@ -7979,10 +7892,9 @@
           else iconHtml = gearIconHtml(eq, 'gear-icon-hangar');
         }
         var badgeHtml = eq ? '<span class="rarity-badge rarity-' + eq.rarity + '"></span>' : '';
-        var _name = eq ? eq.name : SLOTNAME[slot];
         slots += '<div class="eq-slot" data-type="' + slot + '" data-state="' + state + '">' +
           '<div class="box"><img class="bg" src="assets/v3/ui/cropped/slot_' + slot + '_' + state + '.png" alt="">' + iconHtml + '</div>' +
-          '<div class="en hangar-slot-name slot-label" title="' + _name + '">' + badgeHtml + '<span class="hn-txt">' + _name + '</span></div>' +
+          '<div class="en hangar-slot-name slot-label">' + badgeHtml + (eq ? eq.name : SLOTNAME[slot]) + '</div>' +
         '</div>';
       });
       he.innerHTML = slots;
