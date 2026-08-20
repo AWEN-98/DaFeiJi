@@ -135,3 +135,65 @@
 ## 交付 / 部署
 - 提交 `a623e72` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
 - 这次是结构性根除，不是补丁叠加；若真机/浏览器横屏仍见局部重叠，请发截图 + 大致屏幕宽高，我针对性收紧对应断点。
+
+---
+
+# 机库右栏 · 终版自适应网格（左右对齐/不裁剪/等比）· 2026-08-21
+
+## 用户四度反馈 + 新约束
+- "还是会堆叠，说明还不够" → 前几轮只打补丁，根因未除。
+- 新明确约束：
+  1. **不需要严格对称，但需要左右对齐**（旧 flex-start 把 6 卡/4 槽全挤左边单行 = "贴左"）。
+  2. **不能让文字被美术资产挡住**（标签必须在资产下方、不被遮）。
+  3. **不能裁剪掉美术资产，全部必须展示**；可调整大小，但**资产等比缩放、不能拉伸**。
+  4. **基地图标不要 emoji，可用线性图标**。
+
+## 本次改法（彻底换思路：单行 nowrap 横滑 → 自适应网格换行）
+仅改 `prototype/index.html`（CSS）+ `prototype/game.js`（翻页箭头），不动 DOM、不动桌面双栏格局：
+1. **根除旧全局"严格对称"块**（原 1959 行）：删掉 `flex nowrap + flex-start + overflow-x:auto` 这一整套"贴左+横滑裁剪"机制。
+2. **强化/法器网格改 `repeat(auto-fit, minmax(46px,1fr))`**：
+   - `auto-fit` 折叠空轨道 → 资产自动铺满整宽（**左右对齐**，非 rigid 对称）；
+   - 空间不足自动**换行**，绝不横向溢出/裁切；
+   - 各断点里残留的 `display:flex!important` / `overflow-x:auto` 被本块（更靠后 + `!important`）统一压制。
+3. **资产盒等比不裁剪**：`.box` 锁 `aspect-ratio:1/1` + img `object-fit:contain`（等比、不拉伸）；`.box` 与卡片 `overflow:visible`（完整展示，不裁切）。
+4. **撤掉裁切约束**：`.shop-area/.loadout-area/.tier-area` 的 `max-height` / `overflow:hidden` 全部撤销（`max-height:none!important; overflow:visible!important`）；难度区不再被裁。
+5. **文字永不被遮**：`.name/.lv/.en/.hangar-slot-name` 统一 `margin-top:4px`，居资产下方。
+6. **基地图标去 emoji**：难度翻页 `◀▶`、机体翻页 `‹›` 三角字形 → **SVG 线性箭头**（`currentColor` 鎏金，禁用态随 `opacity` 淡出）；资源/装备/标签图标本就为 PNG 线性切图，未改动。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+- grep 确认 `◀▶‹›` 实际字形已从按钮/标记移除（仅注释残留描述词）。
+
+## 交付 / 部署
+- 提交 `2c0afd5` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 用户可在真机/浏览器横屏（812×375 / 896×414）与窄竖屏验收：强化/法器铺满整宽、资产完整等比、标签在下方、难度区不裁。若仍有局部机型重叠，发截图 + 屏幕宽高即可定点修。
+
+---
+
+# UI 最高优先级铁律：功能按钮完整展示、不拉伸 · 2026-08-21
+
+## 用户铁律
+「UI最大优先级就是让功能按钮完全展示，不拉伸。」—— 此指令覆盖上一轮 `auto-fit` 方案（其中 `1fr` 仍会拉伸卡片），确立为全局最高优先级。
+
+## 本次改法（仅 `prototype/index.html`，CSS）
+1. **机库网格去拉伸源**：`repeat(auto-fit, minmax(46px, 1fr))` 的 `1fr` → `display:flex + flex-wrap:wrap + justify-content:space-between + 卡片 flex:0 0 auto 定宽 46px`。
+   - 卡片/资产盒锁死 46px、`.box` 用 `aspect-ratio:1/1`（等比、不拉伸）；
+   - 空间不足**自动换行**（不裁切），不退回 nowrap 横滑；首末项贴边 = **左右对齐**。
+2. **竖屏断点复拉伸点修复**：原 `.loadout-row .eq-slot { flex:1 1 0; box width/height:100% }`（特异性更高会盖过全局）→ 改为定宽 46px，杜绝复拉伸。
+3. **顶部导航 tab 不压缩裁切**：`.tab { flex-shrink:1→0 }`；`.hall-nav` 加 `overflow-x:auto + justify-content:safe center`（溢出横向滚动，而非裁切文字）；移动端 tab `flex:1 1 0→0 0 auto` + 横滑。
+4. **窄屏**：卡片 46→40px（仍定宽不拉伸）。
+5. 保留 350px 右栏下限与桌面双栏格局。
+
+## 铁律沉淀（后续一律遵守）
+凡功能按钮/资产卡：**`flex:0 0 auto` + 定宽 + `object-fit:contain`**；禁止 `1fr` / `flex:1 1 0` / `width:100%` 拉伸；空间不足用**换行或横向滚动**，绝不允许裁切。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error（暂停按钮等宽断言也通过）
+
+## 交付 / 部署
+- 提交 `2ab31d4` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
+- 用户可刷新在横屏 / 窄竖屏验收：强化/法器卡片定宽不拉伸、完整展示、左右贴边对齐、标签居下；顶部导航 tab 在窄屏横向滚动而非压扁裁切。
