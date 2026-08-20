@@ -7889,7 +7889,54 @@
         '</div>';
       });
       he.innerHTML = slots;
+      // 法器槽点击查看装备属性（仅已装备 data-state="selected" 的槽；未装备槽点击无反应）
+      if (!he._eqWired) {
+        he._eqWired = true;
+        he.addEventListener('click', function (e) {
+          var tgt = (e && e.target && e.target.closest) ? e.target.closest('.eq-slot') : null;
+          if (!tgt) return;
+          if (tgt.getAttribute && tgt.getAttribute('data-state') !== 'selected') return;
+          var slot = tgt.getAttribute ? tgt.getAttribute('data-type') : null;
+          if (slot) openEquipDetail(slot);
+        });
+      }
     }
+  }
+
+  // ---------- 法器槽属性详情弹层（鎏金暗色） ----------
+  var _eqDetailWired = false;
+  function wireEquipDetail() {
+    if (_eqDetailWired) return;
+    _eqDetailWired = true;
+    var mask = document.getElementById('eqDetailMask');
+    if (!mask) return;
+    var closeBtn = document.getElementById('eqDetailClose');
+    function doClose() { mask.style.display = 'none'; mask.setAttribute('aria-hidden', 'true'); }
+    if (closeBtn) closeBtn.addEventListener('click', function (e) { if (e && e.stopPropagation) e.stopPropagation(); doClose(); });
+    // 点遮罩任意处（非面板）关闭
+    mask.addEventListener('click', function (e) { if (e && e.target === mask) doClose(); });
+  }
+  function closeEquipDetail() {
+    var mask = document.getElementById('eqDetailMask');
+    if (mask) { mask.style.display = 'none'; mask.setAttribute('aria-hidden', 'true'); }
+  }
+  function openEquipDetail(slot) {
+    var a = getArt(meta.equipped[slot]);
+    if (!a) return;
+    wireEquipDetail();
+    var mask = document.getElementById('eqDetailMask');
+    if (!mask) return;
+    var nameEl = document.getElementById('eqDetailName');
+    var slotEl = document.getElementById('eqDetailSlot');
+    var rarEl = document.getElementById('eqDetailRar');
+    var modsEl = document.getElementById('eqDetailMods');
+    var col = RARCOL[a.rarity] || '#E8DCC4';
+    if (nameEl) { nameEl.textContent = a.name; nameEl.style.color = col; }
+    if (slotEl) { slotEl.textContent = (SLOTNAME[a.slot] || '装备'); }
+    if (rarEl) { rarEl.textContent = (RARNAME[a.rarity] || ''); rarEl.style.color = col; rarEl.style.borderColor = col; }
+    if (modsEl) { modsEl.textContent = modsText(a.mods || {}); }
+    mask.style.display = 'flex';
+    mask.setAttribute('aria-hidden', 'false');
   }
 
   function renderBase() {
@@ -9091,6 +9138,8 @@
       openForgeDrawer: openForgeDrawer,
       fillForgeSlot: fillForgeSlot,
       closeForgeDrawer: closeForgeDrawer,
+      openEquipDetail: openEquipDetail,
+      closeEquipDetail: closeEquipDetail,
       forgeSelCount: function () { return forgeSel.length; },
       forgeCraftDisabled: function () { var b = document.getElementById('forgeCraft'); return b ? !!b.disabled : null; },
       // 研究院/熔炼台渲染钩子：供桩断言卡片化链路（renderBase → renderResearch/renderForge 已挂载）
