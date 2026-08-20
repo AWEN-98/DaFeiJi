@@ -1634,6 +1634,9 @@
   /* 横屏（含手机横屏）：始终保留机库左右双栏，结合 safe-area 留白 */
   @media (orientation: landscape) {
     #tab-hangar .main { grid-template-columns: 1.3fr minmax(350px, 1fr) !important; grid-template-rows: 1fr !important; }
+    /* 矮横屏：右栏内容多时纵向滚动，杜绝 4 区块互相挤压/裁切重叠 */
+    #tab-hangar .right-col { overflow-y: auto; overflow-x: hidden; }
+    #tab-hangar .r-area { overflow: visible; }
     #tab-hangar .frame, #tab-hangar .r-area { min-height: 0; }
     .hall-brand { padding-top: clamp(6px,1vh,12px); padding-bottom: clamp(6px,1vh,12px); }
     /* 战机立绘容器：严格等比护栏，杜绝拉伸/超出裁切（图二修复） */
@@ -1866,13 +1869,20 @@
   @media (max-width: 980px) and (orientation: landscape) {
     #tab-hangar .main { grid-template-columns: 1.4fr minmax(350px, 1fr) !important; }
     #tab-hangar .right-col { display: flex; flex-direction: column; gap: 9px; min-height: 0; padding: 0; justify-content: flex-start; }
-    #tab-hangar .r-area { padding: 4px 6px !important; gap: 4px !important; overflow: hidden; }
+    #tab-hangar .r-area { padding: 4px 6px !important; gap: 4px !important; overflow: visible; }
+    /* 右栏纵向可滚 + 内部网格极窄时横滑，避免卡片/文字被压扁 */
+    #tab-hangar .right-col { overflow-y: auto; overflow-x: hidden; }
+    #tab-hangar .shop-area .shop-grid, #tab-hangar .loadout-row { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    #tab-hangar .shop-area .shop-card { width: 40px !important; min-width: 40px !important; max-width: 40px !important; }
+    #tab-hangar .shop-area .shop-card .box { height: 40px !important; }
+    #tab-hangar .loadout-row .eq-slot { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
+    #tab-hangar .loadout-row .eq-slot .box { height: 44px !important; }
     #tab-hangar .r-title { font-size: 12px; margin-bottom: 1px; }
     #tab-hangar .r-sub { display: none; }
     #tab-hangar .shop-area { flex: 1 1 auto !important; min-height: 56px; max-height: 44%; }
     #tab-hangar .loadout-area { flex: 0 0 auto !important; min-height: 64px; }
     #tab-hangar .loadout-area .r-title { font-size: 10px; }
-    #tab-hangar .loadout-row .eq-slot { width: 48px !important; height: 48px !important; max-width: 48px !important; }
+    #tab-hangar .loadout-row .eq-slot { width: 44px !important; height: 44px !important; max-width: 44px !important; }
     #tab-hangar .tier-area { flex: 0 0 auto !important; min-height: 0; max-height: 118px; overflow: hidden; }
     #tab-hangar .tier-area .r-title { display: none; }
     /* v16.2 资源条横排紧凑：357px右栏塞4个item, 不堆叠 */
@@ -1971,6 +1981,26 @@
   }
   #tab-hangar .shop-card {
     flex: 0 1 auto !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+  }
+  #tab-hangar .shop-card .box {
+    width: 100% !important;
+    height: 42px !important;
+    aspect-ratio: 1 / 1 !important;
+    flex: 0 0 auto !important;
+  }
+  #tab-hangar .loadout-row .eq-slot,
+  #tab-hangar .eq-slot {
+    flex: 0 1 auto !important;
     width: 46px !important;
     min-width: 46px !important;
     max-width: 46px !important;
@@ -1982,29 +2012,9 @@
     justify-content: flex-start !important;
     overflow: visible !important;
   }
-  #tab-hangar .shop-card .box {
-    width: 100% !important;
-    height: 46px !important;
-    aspect-ratio: 1 / 1 !important;
-    flex: 0 0 auto !important;
-  }
-  #tab-hangar .loadout-row .eq-slot,
-  #tab-hangar .eq-slot {
-    flex: 0 1 auto !important;
-    width: 50px !important;
-    min-width: 50px !important;
-    max-width: 50px !important;
-    height: auto !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    overflow: visible !important;
-  }
   #tab-hangar .eq-slot .box {
     width: 100% !important;
-    height: 50px !important;
+    height: 46px !important;
     aspect-ratio: 1 / 1 !important;
     flex: 0 0 auto !important;
   }
