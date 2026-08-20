@@ -1633,7 +1633,7 @@
   /* ============ 全平台响应式：横屏保持双栏 / 竖屏单列吸底 ============ */
   /* 横屏（含手机横屏）：始终保留机库左右双栏，结合 safe-area 留白 */
   @media (orientation: landscape) {
-    #tab-hangar .main { grid-template-columns: 1.3fr 1fr !important; grid-template-rows: 1fr !important; }
+    #tab-hangar .main { grid-template-columns: 1.3fr minmax(350px, 1fr) !important; grid-template-rows: 1fr !important; }
     #tab-hangar .frame, #tab-hangar .r-area { min-height: 0; }
     .hall-brand { padding-top: clamp(6px,1vh,12px); padding-bottom: clamp(6px,1vh,12px); }
     /* 战机立绘容器：严格等比护栏，杜绝拉伸/超出裁切（图二修复） */
@@ -1647,7 +1647,7 @@
     #tab-hangar .ap-slide.locked img { filter: grayscale(0.7) brightness(0.6); }
     #tab-hangar .ap-lock { position: absolute; left: 50%; bottom: 8%; transform: translateX(-50%); background: rgba(0,0,0,0.72); color: var(--gold); border: 1px solid rgba(201,162,75,0.5); border-radius: 6px; padding: 2px 8px; font-size: 10px; white-space: nowrap; pointer-events: none; }
     #tab-hangar .launch.locked { opacity: 0.45; filter: grayscale(0.7); pointer-events: none; }
-    #tab-hangar .slot-label { display:block; width:100%; max-width:60px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:1.2; text-align:center; margin:0 auto; color:var(--paper); }
+    #tab-hangar .slot-label { display:block; width:100%; max-width:60px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; line-height:1.25; text-align:center; margin:3px auto 0; color:var(--paper); }
     /* 横屏精修：资源条轻量 + 强化横排小图标 + 法宝 52 + 难度胶囊 + 出击 44 */
     .hall-brand .res-item { padding: 3px 10px; gap: 5px; }
     .hall-brand .res-item b { font-size: 14px; }
@@ -1792,9 +1792,9 @@
     #tab-forge .fg-slot { min-width: 56px; min-height: 56px; }
     #tab-lab.on > .lab-panel, #tab-codex.on > .codex-panel { flex: 1 1 auto; min-height: 0; }
     /* 竖屏：法宝名称防重叠 + 强化卡 44px 横滑 + 锁定标注/出击灰显 */
-    #tab-hangar .slot-label { display:block; width:100%; max-width:58px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:1.2; text-align:center; margin:0 auto; color:var(--paper); }
+    #tab-hangar .slot-label { display:block; width:100%; max-width:58px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:10px; line-height:1.25; text-align:center; margin:3px auto 0; color:var(--paper); }
     /* 机库槽位名（2026-08-19 Boss 指定）：窄列里中文+稀有度徽章不再横向溢出 */
-    .hangar-slot-name { width:100%; max-width:58px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; margin:0 auto; }
+    .hangar-slot-name { width:100%; max-width:58px; font-size:9px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; margin:3px auto 0; }
     #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding-bottom: 2px; }
     #tab-hangar .shop-area .shop-card { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     #tab-hangar .shop-area .shop-card .box { aspect-ratio: 1 / 1; }
@@ -1864,7 +1864,7 @@
 
   /* ============ 移动端横屏（≤980 + landscape）：右侧防挤压终极约束（图一/横屏） ============ */
   @media (max-width: 980px) and (orientation: landscape) {
-    #tab-hangar .main { grid-template-columns: 1.4fr 1fr !important; }
+    #tab-hangar .main { grid-template-columns: 1.4fr minmax(350px, 1fr) !important; }
     #tab-hangar .right-col { display: flex; flex-direction: column; gap: 9px; min-height: 0; padding: 0; justify-content: flex-start; }
     #tab-hangar .r-area { padding: 4px 6px !important; gap: 4px !important; overflow: hidden; }
     #tab-hangar .r-title { font-size: 12px; margin-bottom: 1px; }
@@ -1971,6 +1971,26 @@
   }
   #tab-hangar .shop-card {
     flex: 0 1 auto !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    max-width: 46px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+  }
+  #tab-hangar .shop-card .box {
+    width: 100% !important;
+    height: 46px !important;
+    aspect-ratio: 1 / 1 !important;
+    flex: 0 0 auto !important;
+  }
+  #tab-hangar .loadout-row .eq-slot,
+  #tab-hangar .eq-slot {
+    flex: 0 1 auto !important;
     width: 50px !important;
     min-width: 50px !important;
     max-width: 50px !important;
@@ -1982,38 +2002,18 @@
     justify-content: flex-start !important;
     overflow: visible !important;
   }
-  #tab-hangar .shop-card .box {
+  #tab-hangar .eq-slot .box {
     width: 100% !important;
     height: 50px !important;
     aspect-ratio: 1 / 1 !important;
     flex: 0 0 auto !important;
   }
-  #tab-hangar .loadout-row .eq-slot,
-  #tab-hangar .eq-slot {
-    flex: 0 1 auto !important;
-    width: 56px !important;
-    min-width: 56px !important;
-    max-width: 56px !important;
-    height: auto !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    overflow: visible !important;
-  }
-  #tab-hangar .eq-slot .box {
-    width: 100% !important;
-    height: 56px !important;
-    aspect-ratio: 1 / 1 !important;
-    flex: 0 0 auto !important;
-  }
   /* 窄屏安全：手机竖屏右栏偏窄时图标/槽位按比例微缩，仍保持 space-between 两端严格对齐 */
   @media (max-width: 520px) {
-    #tab-hangar .shop-card { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
-    #tab-hangar .shop-card .box { height: 44px !important; }
-    #tab-hangar .eq-slot { width: 48px !important; min-width: 48px !important; max-width: 48px !important; }
-    #tab-hangar .eq-slot .box { height: 48px !important; }
+    #tab-hangar .shop-card { width: 40px !important; min-width: 40px !important; max-width: 40px !important; }
+    #tab-hangar .shop-card .box { height: 40px !important; }
+    #tab-hangar .eq-slot { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
+    #tab-hangar .eq-slot .box { height: 44px !important; }
   }
 
   /* ============ v15 深渊异变·出击面板（tierRow 重构：◀▶ 导航器 + 信息卡 + 阶梯点） ============ */
