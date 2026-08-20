@@ -303,5 +303,11 @@
 - `stub_mobile.js`（390×844）→ 0 error
 
 ## 交付 / 部署
-- 提交待补充 → 已 push `main`；CloudStudio 已重新部署（链接同上）。
+- 已提交 `1e38831` 并 push `main`；CloudStudio 已重新部署（链接同上）。
 - 本次实际改动了 `prototype/index.html`（工程负责人 CSS + 主理人追加竖屏补丁）与 `prototype/game.js`（仅新增 `#forgeAttrs` 写入，未动其它逻辑）。
+
+## 本轮复核（工程负责人 · 收尾）
+- 复核验证链：`node --check prototype/game.js` OK / `stub_check.js`（桌面 1280×720）0 error / `stub_mobile.js`（390×844）0 error。
+- 重新 CloudStudio 部署：复用同一沙箱 `6ae4e56d…`，分享链接不变，实时预览已生效。
+- 4 项 Boss 反馈均已在 `1e38831` 中闭环：①强化/法器卡片下方文本完整可见、不裁切（white-space:normal + overflow:visible + 10px + 2 行 min-height）②左侧机体信息紧凑且机体板块占空间减少（.ap-info 紧凑 + 立绘容器 260→220px + .main 左列 1.27→1.15fr + ap-body 信息列 38%→46%）③熔炉资产图顶部不裁（#forgeStage `center top` + stage-body `overflow:visible` + padding-top）④熔炼按钮缩小（桌面 40 / 横屏 38 / 竖屏 40px）+ 上半合成属性区（game.js 写入 `#forgeAttrs`，未投料提示 / 1 件材料 / ≥2 件预计产出 / 结果产物）。
+- 建议：请 Boss 在微信浏览器真机（横屏 812×375 / 896×414 与竖屏）复验；若仍有局部机型差异，发截图 + 屏幕宽高即可定点修。
