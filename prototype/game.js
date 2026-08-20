@@ -7357,14 +7357,18 @@
       }
     }
     // 起承转合·幕章标识（二级信息：缩小 + 半透明弱化，不抢战斗焦点）
+    // v16.12：竖屏下右移到血量表右侧（lpX+lpW+8），避免与左上机体状态面板重叠；宽屏保持顶部中央
     {
       var _ai = ({ qi: ['起', '潜入搜刮', '#E8DCC4'], cheng: ['承', '积累·裂隙', '#C9A24B'], zhuan: ['转', '围猎·狂暴', '#C8642A'], he: ['合', '终局·穷奇', '#C94F4F'] })[runPhase] || ['起', '潜入搜刮', '#E8DCC4'];
-      var _aw = 118, _ax = W / 2 - _aw / 2, _ay = _actY, _ah = 20;
+      var _aw = 118, _ah = 20, _ay = _actY;
+      var _ax = isMobile ? (lpX + lpW + 8) : (W / 2 - _aw / 2);
+      // 右侧越界保护：窄屏若超出则回落中央
+      if (_ax + _aw > W - 8) _ax = W / 2 - _aw / 2;
       ctx.globalAlpha = 0.62;
       ctx.fillStyle = 'rgba(16,13,9,0.42)'; ctx.strokeStyle = _ai[2]; ctx.lineWidth = 1;
       hp(_ax, _ay, _aw, _ah, 10);
       ctx.fillStyle = _ai[2]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(_ai[0] + '幕 · ' + _ai[1], W / 2, _ay + 14); ctx.textAlign = 'left';
+      ctx.fillText(_ai[0] + '幕 · ' + _ai[1], _ax + _aw / 2, _ay + 14); ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }
     // 灵潮连击计数（二级信息：缩小 + 半透明弱化；连击数随连击弹跳）
