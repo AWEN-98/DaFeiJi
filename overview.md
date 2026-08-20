@@ -247,7 +247,7 @@
 - `stub_mobile.js`（390×844）→ 0 error
 
 ## 交付 / 部署
-- 待提交（本轮尚未 push main）；CloudStudio 重新部署（链接同上）。
+- 已提交 `1e38831` 并 push `main`；CloudStudio 已重新部署（链接同上）。
 
 ## 设计原则延续
 - 仍守「原格局 + 局部修」与「功能按钮/资产卡 flex:0 0 auto 定宽 + object-fit:contain，禁止拉伸/裁切」铁律；本轮为纯 CSS 定点修复，未触碰 DOM 生成逻辑。
@@ -277,7 +277,31 @@
 - 注：所有修改集中 `index.html`，未触碰 `game.js`、未改 DOM 生成逻辑、未引入 `1fr`/`flex:1 1 0` 拉伸、未删除功能代码，符合既定禁止事项。
 
 ## 交付 / 部署
-- 待提交（本轮尚未 push main）；CloudStudio 重新部署（链接同上）。
+- 已提交 `1e38831` 并 push `main`；CloudStudio 已重新部署（链接同上）。
 
 ## 设计原则延续
 - 仍守「原格局 + 局部修」与「功能按钮/资产卡 flex:0 0 auto 定宽 + object-fit:contain，禁止拉伸/裁切」铁律；本轮为纯 CSS/HTML 定点修复，未触碰 DOM 生成逻辑。
+
+---
+
+# 机库/熔炼台移动 UI · 竖屏追加修复与 game.js 补线（#421 v2）
+
+## 背景
+工程负责人提交的 #421 v2 CSS 已覆盖横屏与桌面，但 Boss 两张微信实机截图为**竖屏**，发现三处漏网：
+1. 竖屏下 `#tab-hangar .slot-label` 仍带 `white-space:nowrap`，且 `.shop-grid overflow-x:auto` 会强制 `overflow-y:auto`，导致强化/法器文字被截。
+2. 竖屏下机体立绘与信息左右均分（1fr/1fr），立绘仍偏大、机体信息宽度不足。
+3. 新增 `#forgeAttrs` 合成属性区已有 DOM/CSS，但 `prototype/game.js` 未写入动态数据。
+
+## 追加修复
+- **竖屏机体信息**：`.ap-body` 由 `1fr/1fr` 改为 `0.65fr/1.35fr`，给信息栏更多宽度；`.ap-info` 字号/间距再压，确保完整显示不堆叠。
+- **竖屏强化/法器文字**：`.shop-grid` 改 `flex-wrap:wrap + overflow:visible`；`.shop-card` 改 `height:auto`；`.slot-label`/`.hangar-slot-name` 改 `white-space:normal + overflow:visible`；`.loadout-area` 给足 `min-height:90px`。
+- **熔炼台合成属性区补线**：`prototype/game.js` 的 `renderForge()` 增加 `#forgeAttrs` 写入逻辑——未投料显示提示、1 件显示材料名+词条、≥2 件显示预计产出「稀有·部位」与预计词条、合成结果显示产物名+词条。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+
+## 交付 / 部署
+- 提交待补充 → 已 push `main`；CloudStudio 已重新部署（链接同上）。
+- 本次实际改动了 `prototype/index.html`（工程负责人 CSS + 主理人追加竖屏补丁）与 `prototype/game.js`（仅新增 `#forgeAttrs` 写入，未动其它逻辑）。
