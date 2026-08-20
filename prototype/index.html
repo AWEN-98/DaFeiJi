@@ -659,6 +659,8 @@
   @media (max-width: 800px) and (pointer: coarse) { body[data-scene="mission"] #mobileControls { display: block; } }
   /* Safe Area（刘海屏/手势条）：所有触控按钮定位统一 calc(px + env(safe-area-inset))，异形屏不被遮 */
   #mobileControls { --sa-t: env(safe-area-inset-top, 0px); --sa-b: env(safe-area-inset-bottom, 0px); --sa-l: env(safe-area-inset-left, 0px); --sa-r: env(safe-area-inset-right, 0px); }
+  /* 微信 H5：浏览器顶栏（关闭/···）常驻，给所有顶部触控元素额外 26px 安全缓冲 */
+  body.wechat-h5 #mobileControls { --sa-t: max(env(safe-area-inset-top, 0px), 26px); }
   .joy-base { position: absolute; width: 132px; height: 132px; border-radius: 50%; border: 2px solid rgba(201,162,75,0.35); background: radial-gradient(circle, rgba(16,13,9,0.35), rgba(16,13,9,0.06)); display: none; pointer-events: none; transition: opacity .15s; }
   .joy-base.on { display: block; }
   .joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; border-radius: 50%; background: rgba(201,162,75,0.42); border: 2px solid rgba(201,162,75,0.7); transform: translate(-50%,-50%); box-shadow: 0 0 18px rgba(201,162,75,0.3); }
@@ -706,7 +708,7 @@
   .cons-btn .cons-label { font-size: 7px; margin-top: 1px; opacity: 0.7; }
 
   /* —— 左上工具带（2026-08-18 重构）：仅保留「暂停」与「背包」两个全局控件，拾取/合成/翻相已全部迁入右侧扇形轮盘 —— */
-  .pause-btn { width: 32px; height: 32px; left: calc(6px + var(--sa-l)); top: calc(6px + var(--sa-t)); border-color: rgba(232,220,196,0.35); background: rgba(16,13,9,0.45); font-size: 14px; }
+  .pause-btn { width: 34px; height: 34px; left: calc(8px + var(--sa-l)); top: calc(10px + var(--sa-t)); border-color: rgba(232,220,196,0.35); background: rgba(16,13,9,0.45); font-size: 14px; }
   .pause-btn.on { background: rgba(232,220,196,0.32); }
   .bp-btn { width: 40px; height: 40px; right: calc(32px + var(--sa-r)); bottom: calc(200px + var(--sa-b)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 16px; line-height: 1; }
   .bp-btn.on { background: rgba(127,176,105,0.55); }
@@ -820,23 +822,22 @@
   #rotatePrompt .rot-actions { display: flex; gap: 10px; }
   #rotatePrompt .btn { min-height: 38px; padding: 8px 14px; font-size: 13px; border-radius: 10px; }
 
-  /* ============ 竖屏（窄长屏）控件自适应 v3：战斗轮盘稍小、顶部工具带单行收紧 ============ */
-  body[data-orient="portrait"] .right-stick { width: 120px; height: 120px; right: calc(18px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); }
-  body[data-orient="portrait"] .right-stick-knob { width: 52px; height: 52px; font-size: 22px; }
-  body[data-orient="portrait"] .ult-btn { width: 48px; height: 48px; right: calc(78px + var(--sa-r)); bottom: calc(167px + var(--sa-b)); }
-  body[data-orient="portrait"] .dash-btn { width: 48px; height: 48px; right: calc(143px + var(--sa-r)); bottom: calc(128px + var(--sa-b)); }
-  body[data-orient="portrait"] .cons-btn { width: 40px; height: 40px; left: calc(20px + var(--sa-l)); bottom: calc(170px + var(--sa-b)); }
-  body[data-orient="portrait"] .mbtn.pause-btn { left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
-  /* #381-⑥ 竖屏单摇杆：背包移到绝技键上方紧邻（原左上→右下战斗簇），并禁用左半屏浮动移动摇杆 */
-  body[data-orient="portrait"] .mbtn.bp-btn { right: calc(78px + var(--sa-r)); bottom: calc(223px + var(--sa-b)); width: 38px; height: 38px; font-size: 15px; }
+  /* ============ 竖屏（窄长屏）控件自适应 v4：右侧战斗键改为扇形分层布局，杜绝重叠误触 ============ */
+  body[data-orient="portrait"] .right-stick { width: 116px; height: 116px; right: calc(18px + var(--sa-r)); bottom: calc(18px + var(--sa-b)); }
+  body[data-orient="portrait"] .right-stick-knob { width: 50px; height: 50px; font-size: 22px; }
+  /* 核心战斗键：以右摇杆为中心做扇形展开（ult 正上 / dash 左上 / pick 左中 / phase 左下 / bp 右上） */
+  body[data-orient="portrait"] .ult-btn   { width: 46px; height: 46px; right: calc(56px + var(--sa-r)); bottom: calc(154px + var(--sa-b)); }
+  body[data-orient="portrait"] .dash-btn  { width: 46px; height: 46px; right: calc(122px + var(--sa-r)); bottom: calc(120px + var(--sa-b)); }
+  body[data-orient="portrait"] .pick-btn  { width: 42px; height: 42px; right: calc(166px + var(--sa-r)); bottom: calc(162px + var(--sa-b)); }
+  body[data-orient="portrait"] .phase-btn { width: 40px; height: 40px; right: calc(192px + var(--sa-r)); bottom: calc(96px + var(--sa-b)); }
+  body[data-orient="portrait"] .mbtn.bp-btn { right: calc(92px + var(--sa-r)); bottom: calc(214px + var(--sa-b)); width: 38px; height: 38px; font-size: 14px; }
+  /* 丹药：左下独立区，远离右下战斗簇 */
+  body[data-orient="portrait"] .cons-btn  { width: 42px; height: 42px; left: calc(22px + var(--sa-l)); bottom: calc(150px + var(--sa-b)); }
+  /* 暂停：默认再往下挪 4px，微信 H5 额外由 --sa-t 兜底 */
+  body[data-orient="portrait"] .mbtn.pause-btn { left: calc(10px + var(--sa-l)); top: calc(10px + var(--sa-t)); width: 36px; height: 36px; font-size: 14px; }
   body[data-orient="portrait"] .joy-base { display: none !important; }
   body[data-orient="portrait"] .joy-knob { display: none !important; }
-  body[data-orient="portrait"] .mbtn.phase-btn { right: calc(170px + var(--sa-r)); bottom: calc(64px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
-  /* 竖屏合成键已移除：合成入口迁入战利品储物舱 */
-  body[data-orient="portrait"] .mbtn.pick-btn { right: calc(225px + var(--sa-r)); bottom: calc(144px + var(--sa-b)); width: 42px; height: 42px; font-size: 17px; }
   body[data-orient="portrait"] .mbtn .mb-label { font-size: 7px; }
-  body[data-orient="portrait"] .joy-base { width: 120px; height: 120px; }
-  body[data-orient="portrait"] .joy-knob { width: 52px; height: 52px; }
   @keyframes rotateHint { 0%,100% { transform: rotate(0); } 50% { transform: rotate(90deg); } }
 
   /* 撤离/裂隙浮层 */
@@ -1019,6 +1020,7 @@
   .hall-brand .hall-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
   /* 内容区：弹性撑满品牌栏以下全部空间（砸碎固定 1840×810 死框） */
   .hall-content { position: relative; width: 100%; flex: 1 1 auto; min-height: 0; z-index: 3; padding: 0; overflow: hidden; }
+  .hall-content .tab-pane.on { padding-top: 6px; }
   .hall-bottom  { display: none; }
 
   /* 品牌区：左标题（固定宽）+ 中Tab（flex:1）+ 右资源（固定宽） */
@@ -1038,7 +1040,7 @@
 
   /* 内容区：各 tab-pane 铺满，非激活必须隐藏，杜绝堆叠 */
   .hall-content .tab-pane:not(.on) { display: none !important; }
-  .hall-content .tab-pane.on { display: flex !important; position: absolute; inset: 0; gap: 0; padding: 0 clamp(12px,2vw,28px) clamp(8px,1.4vh,16px); }
+  .hall-content .tab-pane.on { display: flex !important; position: absolute; inset: 0; gap: 0; padding: 6px clamp(12px,2vw,28px) calc(8px + env(safe-area-inset-bottom, 0px)); }
 
 #tab-hangar.tab-pane.on { flex-direction: column; min-height: 0; overflow: hidden; }
 :root {
@@ -1643,6 +1645,8 @@
     #tab-hangar .ap-slide img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
     /* 法宝金属框：正方形等比，恢复清晰大尺寸质感 */
     #tab-hangar .eq-slot .box, #tab-hangar .shop-card .box { aspect-ratio: 1 / 1; }
+    #tab-hangar .hangar-slot-name { display:flex; align-items:center; justify-content:center; gap:2px; }
+    #tab-hangar .hangar-slot-name .hn-txt { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     /* 横屏：法宝名称标签防重叠溢出 + 锁定机体标注 + 出击拦截灰显 */
     #tab-hangar .ap-slide { position: relative; }
     #tab-hangar .ap-slide.locked img { filter: grayscale(0.7) brightness(0.6); }
@@ -1795,7 +1799,8 @@
     /* 竖屏：法宝名称防重叠 + 强化卡 44px 横滑 + 锁定标注/出击灰显 */
     #tab-hangar .slot-label { display:block; width:100%; max-width:58px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:11px; line-height:1.2; text-align:center; margin:0 auto; color:var(--paper); }
     /* 机库槽位名（2026-08-19 Boss 指定）：窄列里中文+稀有度徽章不再横向溢出 */
-    .hangar-slot-name { width:100%; max-width:58px; font-size:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; margin:0 auto; }
+    .hangar-slot-name { width:100%; max-width:58px; font-size:10px; white-space:nowrap; text-align:center; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:2px; }
+    .hangar-slot-name .hn-txt { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     #tab-hangar .shop-area .shop-grid { display: flex; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 6px; padding-bottom: 2px; }
     #tab-hangar .shop-area .shop-card { flex: 0 0 44px; width: 44px; height: 44px; min-width: 44px; min-height: 44px; }
     #tab-hangar .shop-area .shop-card .box { aspect-ratio: 1 / 1; }
@@ -1827,9 +1832,14 @@
   }
   /* 横屏手机（矮高度）：进一步压缩品牌栏与内边距 */
   @media (max-width: 920px) and (orientation: landscape) and (max-height: 560px) {
-    .hall-brand { padding: 4px 12px; }
-    .hall-brand .nav-brand h1 { font-size: 16px; }
-    .hall-content { padding: 0 clamp(8px,1.4vw,18px) clamp(6px,1vh,10px); }
+    .hall-brand { padding: 4px 10px; }
+    .hall-brand .nav-brand h1 { font-size: 15px; }
+    .hall-brand .nav-res { gap: 4px; }
+    .hall-brand .res-item { padding: 2px 5px; gap: 2px; }
+    .hall-brand .res-item .icon-sprite-sm { width: 12px; height: 12px; }
+    .hall-brand .res-item b { font-size: 12px; }
+    .hall-brand .res-item .res-lab { display: none; }
+    .hall-content { padding: 4px clamp(8px,1.4vw,18px) calc(6px + env(safe-area-inset-bottom, 0px)); }
   }
 
   /* ============ PC 宽屏（≥981px）：顶部栏大气化放大（图三） ============ */
