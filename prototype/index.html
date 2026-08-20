@@ -1014,8 +1014,8 @@
   .hall-brand { position: relative; width: 100%; height: auto; flex: 0 0 auto; z-index: 4; display: flex !important; align-items: center; justify-content: space-between; gap: clamp(12px,2vw,24px); padding: clamp(8px,1.4vh,14px) clamp(16px,3vw,40px); background: linear-gradient(180deg, rgba(8,11,18,0.85), rgba(8,11,18,0.55)); border-bottom: 1px solid rgba(201,162,39,0.22); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
   .hall-brand .nav-brand { margin-left: 0; }
   .hall-brand .nav-res { margin-right: 0; }
-  /* 中段 Tab 容器：占满剩余空间，内容居中（导航绝对屏幕居中） */
-  .hall-brand .hall-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: safe center; gap: 8px; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  /* 中段 Tab 容器：占满剩余空间，tab 左右对齐（首尾贴边） */
+  .hall-brand .hall-nav { flex: 1 1 auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .hall-brand .hall-nav::-webkit-scrollbar { display: none; }
   /* 内容区：弹性撑满品牌栏以下全部空间（砸碎固定 1840×810 死框） */
   .hall-content { position: relative; width: 100%; flex: 1 1 auto; min-height: 0; z-index: 3; padding: 0; overflow: hidden; }
@@ -1032,7 +1032,7 @@
   .hall-brand .res-item .res-lab { font-size: 9px; color: #A79B8A; letter-spacing: 0; }
 
   /* Tab 导航：精灵图标 + 文字标签（已嵌入 hall-brand 中段） */
-  .hall-brand .hall-nav .tab { height: 46px; width: auto; aspect-ratio: 295 / 86; background-size: contain; background-position: center; flex-shrink: 0; min-width: 0; white-space: nowrap; }
+  .hall-brand .hall-nav .tab { height: 46px; width: auto; min-width: 88px; aspect-ratio: 295 / 86; background-size: 100% 100%; background-position: center; flex-shrink: 0; white-space: nowrap; padding: 0 10px; box-sizing: border-box; }
   .tab-label { position: relative; z-index: 1; color: #F2E8CE; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); pointer-events: none; white-space: nowrap; }
   .tab.on .tab-label { color: #FFF4D6; text-shadow: 0 0 12px rgba(201,162,75,0.8); }
 
@@ -1080,7 +1080,7 @@
     }#tab-hangar .ap-carousel {flex:1 1 auto;min-height:0;width:100%;position:relative;overflow:hidden;display:flex;align-items:flex-end}#tab-hangar .ap-track {display:flex;height:100%;width:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}#tab-hangar .ap-slide {flex:0 0 100%;height:100%;display:flex;align-items:flex-end;justify-content:center;position:relative;padding-bottom:clamp(6px,1.5cqw,18px)}#tab-hangar .ap-slide img {pointer-events:none;filter:drop-shadow(0 6px 22px rgba(0,0,0,.7));height:auto;max-height:118%;width:auto;max-width:115%;object-fit:contain;display:block;}#tab-hangar .ap-arrow {position:absolute;top:50%;transform:translateY(-50%);width:clamp(28px,5cqw,48px);height:clamp(28px,5cqw,48px);border-radius:50%;border:1px solid rgba(201,162,75,.5);background:rgba(10,8,6,.6);color:var(--gold);font-size:clamp(18px,3cqw,28px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;user-select:none;box-shadow:0 0 14px rgba(201,162,75,.2)}#tab-hangar .ap-arrow:hover {background:rgba(201,162,75,.18)}#tab-hangar .ap-arrow.l {left:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-arrow.r {right:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-dots {position:absolute;bottom:1%;left:50%;transform:translateX(-50%);display:flex;gap:clamp(6px,1.2cqw,12px);z-index:3}#tab-hangar .ap-dots i {width:clamp(8px,1.6cqw,12px);height:clamp(8px,1.6cqw,12px);border-radius:50%;background:rgba(201,162,75,.3);cursor:pointer;transition:all .2s}#tab-hangar .ap-dots i.on {background:var(--gold);box-shadow:0 0 10px rgba(201,162,75,.7);transform:scale(1.25)    }#tab-hangar .ap-info {
       min-height:0;min-width:150px;
       display:flex;flex-direction:column;justify-content:center;
-      gap:clamp(8px,1.2cqw,16px);
+      gap:clamp(4px,0.65cqw,10px);
       padding:clamp(4px,0.8cqw,10px);
     }#tab-hangar .ap-info .label {
       font-size:clamp(16px,2.8cqw,26px);
@@ -1739,9 +1739,9 @@
     .hall-brand { flex-wrap: wrap; padding: 6px 12px; gap: 8px; align-items: center; }
     .hall-brand .nav-brand { flex: 1 1 auto; min-width: 0; order: 1; }
     .hall-brand .nav-res { order: 2; margin-left: auto; flex: 0 0 auto; gap: 6px; }
-    .hall-brand .hall-nav { order: 3; flex-basis: 100%; display: flex; gap: 4px; margin: 0; justify-content: flex-start; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .hall-brand .hall-nav { order: 3; flex-basis: 100%; display: flex; gap: 4px; margin: 0; justify-content: space-between; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .hall-brand .hall-nav::-webkit-scrollbar { display: none; }
-    .hall-brand .hall-nav .tab { flex: 0 0 auto; height: 30px; font-size: 11px; aspect-ratio: auto; white-space: nowrap; }
+    .hall-brand .hall-nav .tab { flex: 0 0 auto; height: 30px; min-width: 0; font-size: 11px; aspect-ratio: 295 / 86; background-size: 100% 100%; white-space: nowrap; }
     .hall-brand .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
     /* 军械库竖屏：装备槽改顶部横排 4 等分 · 左右对称；仓库在下（底部操作栏 DOM 已移除，卸下改为槽内 ✕ 角标） */
@@ -1813,8 +1813,8 @@
   }
   /* 中小桌面 / 横屏手机视口：顶部栏等比收敛，杜绝 Tab 与资源栏重叠 */
   @media (max-width: 980px) {
-    .hall-brand .hall-nav .tab { height: 34px; }
-    .hall-brand .hall-nav { gap: 8px; }
+    .hall-brand .hall-nav .tab { height: 34px; min-width: 0; aspect-ratio: 295 / 86; background-size: 100% 100%; }
+    .hall-brand .hall-nav { gap: 8px; justify-content: space-between; }
     .hall-brand .nav-res .res-item { padding: 4px 10px; }
     .hall-brand .res-item b { font-size: 16px; }
   }
@@ -1930,7 +1930,7 @@
     /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
-    #tab-forge .mf-ops .v3btn { min-height: 32px !important; font-size: 12px !important; padding: 3px 5px !important; }
+    #tab-forge .mf-ops .v3btn { width: 100% !important; min-height: 32px !important; font-size: 12px !important; padding: 3px 5px !important; }
     #tab-forge .mf-ops .ops-hint { font-size: 10px !important; }
     /* v16.4 强化/法器紧凑化: 高度收窄到与tier-area一致, 字号缩小, 不重叠 */
     #tab-hangar .shop-area { max-height: 110px !important; min-height: 70px !important; padding: 4px 6px !important; gap: 2px !important; }
@@ -1959,7 +1959,7 @@
   }
   /* ===== 机库右侧：强化/法器 自适应网格（左右对齐·不裁剪·等比）=====
      旧版强制 flex nowrap + 横向滚动（即“贴左 + 裁剪”元凶）；
-     改 auto-fit 网格：自动铺满整宽（左右对齐）、空间不足自动换行、
+     改 flex-wrap：自动铺满整宽（左右对齐）、空间不足自动换行、
      每个资产盒锁定 1:1 等比、img object-fit:contain 绝不拉伸/裁切。 */
   #tab-hangar .shop-area,
   #tab-hangar .loadout-area,
@@ -1967,7 +1967,7 @@
     width: 100%;
     box-sizing: border-box;
     max-height: none !important;   /* 禁用任何 max-height 裁切 */
-    overflow: visible !important;  /* 区域层绝不裁切资产 */
+    overflow: visible !important;  /* 区域层绝不裁切资产/文字 */
   }
   #tab-hangar .shop-grid,
   #tab-hangar .loadout-row {
@@ -1992,7 +1992,7 @@
     min-width: 46px !important;
     max-width: 46px !important;
     height: auto !important;
-    min-height: 0 !important;
+    min-height: fit-content !important; /* 必须包含文字行 */
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
@@ -2005,17 +2005,25 @@
     height: 46px !important;
     aspect-ratio: 1 / 1 !important;  /* 锁定等比，绝不拉伸 */
     flex: 0 0 auto !important;
-    overflow: visible !important;    /* 资产完整展示，不裁切 */
+    overflow: hidden !important;     /* 资产容器本身裁切，asset 用 contain 已完整显示 */
   }
   #tab-hangar .shop-card .name,
   #tab-hangar .shop-card .lv,
   #tab-hangar .eq-slot .en,
   #tab-hangar .hangar-slot-name {
-    margin-top: 4px !important;     /* 文字始终在资产下方，不被遮挡 */
+    margin-top: 5px !important;     /* 文字始终在资产下方，不被遮挡 */
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
+    text-align: center;
+    line-height: 1.2;
+  }
+  #tab-hangar .eq-slot .en {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 2px !important;
   }
   /* 窄屏：卡片 46 -> 40px（仍定宽不拉伸，空间不足自动换行，不退回 nowrap 横滑） */
   @media (max-width: 520px) {
@@ -2264,7 +2272,7 @@
     <div class="hall-brand">
       <div class="nav-brand">
         <h1>空域基地</h1>
-        <span class="base-sub">SKY BUREAU 07</span>
+        <span class="base-sub">SKY 07</span>
       </div>
       <div class="hall-nav">
         <button class="tab tab-hangar on" data-tab="hangar"><span class="tab-label">机库</span></button>

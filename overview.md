@@ -221,3 +221,33 @@
 ## 交付 / 部署
 - 提交 `7bfa50f` → 已 push `main`；已重新 CloudStudio 部署（链接同上）。
 - 注意：加载期间不再有任何遮罩；资产未就绪时屏幕停留/直接进基地，靠门控保证不白屏。
+
+---
+
+# 机库/基地 UI 定点修复（4 图定点）· 2026-08-21
+
+## 用户反馈（4 张截图定点）
+1. 顶部导航栏左右对齐，且 tab 背景资产（v3 切图 tab_*_normal/hover/selected/disabled）要显示铺满（原红框处资产丢失/未铺满）。
+2. 中间「强化」标题文本看不到；强化卡名称/等级、法器槽名称文字显示不全、被遮挡。
+3. 左侧机体信息太松散，需紧凑但不堆叠重叠。
+4. 熔炼台操作区「合成/清空已填入」按钮没显示全。
+5. 左上角英文副标题「SKY BUREAU 07」缩短，空出位置给导航栏。
+
+## 本次改法（仅 `prototype/index.html`，8 处 Edit，未动 game.js 结构与 DOM 生成）
+- 顶部导航 `.hall-nav` `safe center` → `space-between`（首尾贴边）；`.tab` 新增 `min-width:88px` + `background-size:100% 100%` + `padding:0 10px` + `box-sizing:border-box`，v3 tab 切图完整铺满不再缩小不可见。
+- 英文副标题 `<span class="base-sub">SKY BUREAU 07</span>` → `SKY 07`，释放水平空间给导航。
+- 左侧机体信息 `#tab-hangar .ap-info` gap `clamp(8px,1.2cqw,16px)` → `clamp(4px,0.65cqw,10px)`（紧凑、不堆叠）。
+- 右栏强化/法器网格大段重写：区块 `auto-fit` → `flex-wrap`；`.shop-card`/`.eq-slot` `min-height:0` → `min-height:fit-content!important`（容纳文字行）；`.box` `overflow:visible` → `overflow:hidden!important`（资产盒裁切，但 asset 用 object-fit:contain 已完整展示）；`.name/.lv/.en/.hangar-slot-name` `margin-top:4px` → `5px!important` + `text-align:center;line-height:1.2`；新增 `.eq-slot .en` 居中 inline-flex。
+- 熔炼台横屏手机 `#tab-forge .mf-ops .v3btn` `width:200px!important` → `width:100%!important`（按钮显示全）。
+- 移动端竖屏 `.hall-nav` `flex-start` → `space-between`；`.tab` 改 `aspect-ratio:295/86 + background-size:100% 100%`（删 auto）；`@media(max-width:980px)` 同步 `min-width:0 + 295/86 + 100% 100%` + `.hall-nav space-between`。
+
+## 验证
+- `node --check prototype/game.js` → OK
+- `stub_check.js`（桌面 1280×720）→ 0 error
+- `stub_mobile.js`（390×844）→ 0 error
+
+## 交付 / 部署
+- 待提交（本轮尚未 push main）；CloudStudio 重新部署（链接同上）。
+
+## 设计原则延续
+- 仍守「原格局 + 局部修」与「功能按钮/资产卡 flex:0 0 auto 定宽 + object-fit:contain，禁止拉伸/裁切」铁律；本轮为纯 CSS 定点修复，未触碰 DOM 生成逻辑。
