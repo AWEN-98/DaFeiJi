@@ -7364,7 +7364,7 @@
       ctx.fillStyle = 'rgba(16,13,9,0.42)'; ctx.strokeStyle = _ai[2]; ctx.lineWidth = 1;
       hp(_ax, _ay, _aw, _ah, 10);
       ctx.fillStyle = _ai[2]; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('第 ' + _ai[0] + ' 幕 · ' + _ai[1], W / 2, _ay + 14); ctx.textAlign = 'left';
+      ctx.fillText(_ai[0] + '幕 · ' + _ai[1], W / 2, _ay + 14); ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }
     // 灵潮连击计数（二级信息：缩小 + 半透明弱化；连击数随连击弹跳）
