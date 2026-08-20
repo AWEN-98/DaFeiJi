@@ -1362,6 +1362,9 @@
   #tab-forge .mf-mats { flex:0 0 340px; }
   #tab-forge .mf-stage { flex:1 1 auto; min-width:0; }
   #tab-forge .mf-ops { flex:0 0 220px; }
+  #tab-forge .mf-ops .ops-body { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 4px 0; }
+  #tab-forge .mf-ops .v3btn { width: 100%; min-height: 36px; font-size: 13px; padding: 4px 6px; letter-spacing: 1px; }
+  #tab-forge .mf-ops .ops-hint { font-size: 11px; line-height: 1.45; padding: 4px 2px; word-break: break-all; }
   #tab-forge .stage-body { display:flex; align-items:center; justify-content:center; overflow:hidden; }
   /* 熔炉：放大原资产图，槽位直接显示法器图标 */
   #forgeStage {
@@ -1901,6 +1904,8 @@
     /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
+    #tab-forge .mf-ops .v3btn { min-height: 32px !important; font-size: 12px !important; padding: 3px 5px !important; }
+    #tab-forge .mf-ops .ops-hint { font-size: 10px !important; }
     /* v16.4 强化/法器紧凑化: 高度收窄到与tier-area一致, 字号缩小, 不重叠 */
     #tab-hangar .shop-area { max-height: 110px !important; min-height: 70px !important; padding: 4px 6px !important; gap: 2px !important; }
     #tab-hangar .shop-area .r-title { font-size: 10px !important; margin: 0 !important; }
