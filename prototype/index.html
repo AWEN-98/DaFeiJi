@@ -1326,31 +1326,32 @@
   #tab-arsenal .stoggle.on { color:var(--gold); border-color:var(--border-strong); background:rgba(201,162,75,.1); font-weight:700; }
 
   /* 仓库列表：横屏 2 列网格，卡片横向舒展，杜绝文字竖排 */
-  #tab-arsenal .inv-list { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+  #tab-arsenal .inv-list { display:grid; grid-template-columns:1fr 1fr; gap:5px; max-width:100%; box-sizing:border-box; overflow:hidden; }
   #tab-arsenal .inv-row {
     position:relative; background:var(--bg-surface); border:1px solid var(--border);
-    border-radius:var(--r); padding:5px 8px 5px 5px;
-    display:flex; justify-content:flex-start; align-items:center; gap:6px;
-    cursor:pointer; transition:border-color var(--ease), background var(--ease), filter var(--ease);
+    border-radius:var(--r); padding:4px 6px 4px 4px;
+    display:flex; justify-content:flex-start; align-items:center; gap:4px;
+    cursor:pointer; min-width:0; box-sizing:border-box;
+    transition:border-color var(--ease), background var(--ease), filter var(--ease);
   }
   #tab-arsenal .inv-row:hover { border-color:var(--border-strong); filter:brightness(1.05); }
   #tab-arsenal .inv-row.on { border-color:var(--border-gold); background:rgba(201,162,75,.08); box-shadow:0 0 0 1px rgba(201,162,75,.25); }
-  /* 左：40×40 图标；右：两行（名称+品质 / 词条） */
-  #tab-arsenal .inv-icon { flex:0 0 36px; width:36px; height:36px; display:flex; align-items:center; justify-content:center; }
-  #tab-arsenal .inv-icon .wpn-icon-row, #tab-arsenal .inv-icon .gear-icon-row { width:36px !important; height:36px !important; }
-  #tab-arsenal .inv-txt { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; }
-  #tab-arsenal .inv-1 { display:flex; align-items:center; gap:5px; min-width:0; }
-  #tab-arsenal .inv-1 .an { font-size:11px; font-weight:800; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
-  #tab-arsenal .inv-1 .rar { font-size:10px; color:var(--text-muted); white-space:nowrap; flex:0 0 auto; padding:1px 6px; border:1px solid var(--border-subtle); border-radius:var(--r-pill); }
-  #tab-arsenal .inv-txt .mods { font-size:10px; color:var(--text-muted); line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* v16.6 左：32×32 图标；右：两行（名称+品质 / 词条）—— 收窄以适应 2 列网格 */
+  #tab-arsenal .inv-icon { flex:0 0 32px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; }
+  #tab-arsenal .inv-icon .wpn-icon-row, #tab-arsenal .inv-icon .gear-icon-row { width:32px !important; height:32px !important; }
+  #tab-arsenal .inv-txt { flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px; overflow:hidden; }
+  #tab-arsenal .inv-1 { display:flex; align-items:center; gap:4px; min-width:0; }
+  #tab-arsenal .inv-1 .an { font-size:10px; font-weight:800; letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 auto; min-width:0; }
+  #tab-arsenal .inv-1 .rar { font-size:9px; color:var(--text-muted); white-space:nowrap; flex:0 0 auto; padding:1px 4px; border:1px solid var(--border-subtle); border-radius:var(--r-pill); }
+  #tab-arsenal .inv-txt .mods { font-size:9px; color:var(--text-muted); line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   #tab-arsenal .inv-row .rec { color:var(--gold); cursor:pointer; font-size:10px; white-space:nowrap; align-self:flex-start; transition:color var(--ease); }
   #tab-arsenal .inv-row .rec:hover { color:var(--gold-light); }
   #tab-arsenal .q-empty { padding:var(--s-3) var(--s-2); color:var(--text-muted); font-size:var(--t-cap); }
-  /* v16.5 仓库卡片内联按钮组：装配/回收 水平一行 (消除底部留白, 按钮贴卡底一行) */
-  #tab-arsenal .inv-act { display:flex; flex-direction:row; gap:4px; flex:0 0 auto; align-self:center; }
-  #tab-arsenal .inv-equip { font-size:10px; font-weight:800; letter-spacing:1px; padding:3px 7px; border-radius:var(--r-sm); cursor:pointer; color:#1a1205; background:linear-gradient(180deg,var(--gold-light),var(--gold)); border:1px solid var(--gold); box-shadow:0 1px 4px rgba(201,162,75,.4); white-space:nowrap; }
+  /* v16.6 仓库卡片内联按钮组：装配/回收 水平一行, 紧凑, 不溢出 2 列网格 */
+  #tab-arsenal .inv-act { display:flex; flex-direction:row; gap:3px; flex:0 0 auto; align-self:center; }
+  #tab-arsenal .inv-equip { font-size:9px; font-weight:800; letter-spacing:0; padding:2px 5px; border-radius:var(--r-sm); cursor:pointer; color:#1a1205; background:linear-gradient(180deg,var(--gold-light),var(--gold)); border:1px solid var(--gold); box-shadow:0 1px 3px rgba(201,162,75,.3); white-space:nowrap; }
   #tab-arsenal .inv-equip:hover { filter:brightness(1.08); }
-  #tab-arsenal .inv-rec { font-size:10px; font-weight:700; padding:3px 7px; border-radius:var(--r-sm); cursor:pointer; color:var(--text-muted); background:rgba(255,255,255,.05); border:1px solid var(--border); white-space:nowrap; }
+  #tab-arsenal .inv-rec { font-size:9px; font-weight:700; padding:2px 5px; border-radius:var(--r-sm); cursor:pointer; color:var(--text-muted); background:rgba(255,255,255,.05); border:1px solid var(--border); white-space:nowrap; }
   #tab-arsenal .inv-rec:hover { color:#FFB4B4; border-color:rgba(217,106,126,.5); }
   #tab-arsenal .inv-pow { position:absolute; top:3px; left:3px; z-index:2; font-size:9px; font-weight:800; color:var(--gold-light); background:rgba(0,0,0,.6); border:1px solid rgba(201,162,75,.4); border-radius:var(--r-pill); padding:0 4px; line-height:14px; pointer-events:none; }
   /* 图标品质光晕（轻量）；relative 用于锚定战力角标 */
