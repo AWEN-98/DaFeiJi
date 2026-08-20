@@ -1854,11 +1854,39 @@
     #tab-hangar .loadout-area { flex: 0 0 auto !important; min-height: 64px; }
     #tab-hangar .loadout-area .r-title { font-size: 10px; }
     #tab-hangar .loadout-row .eq-slot { width: 48px !important; height: 48px !important; max-width: 48px !important; }
-    #tab-hangar .tier-area { flex: 0 0 38px !important; min-height: 0; }
+    #tab-hangar .tier-area { flex: 0 0 auto !important; min-height: 0; max-height: 118px; overflow: hidden; }
     #tab-hangar .tier-area .r-title { display: none; }
-    #tab-hangar .deploy-area { flex: 0 0 44px !important; position: relative !important; margin-top: 0 !important; background: none !important; padding: 0 !important; min-height: 0; }
+    /* v15 异变面板紧凑化：横屏矮视口下确保 deploy-area 有 44px 空间不被挤出 */
+    #tab-hangar .tier-navigator { gap: 4px !important; min-height: 56px; }
+    #tab-hangar .tier-card { padding: 4px 8px !important; gap: 1px !important; border-radius: 6px !important; box-shadow: inset 0 0 14px rgba(201,162,75,.05), 0 0 8px rgba(201,162,75,.10) !important; }
+    #tab-hangar .tier-card-title { font-size: 12px !important; padding-right: 78px !important; letter-spacing: 0 !important; }
+    #tab-hangar .tier-best-badge { font-size: 9px !important; top: 2px; right: 4px; letter-spacing: 0 !important; }
+    #tab-hangar .tier-affixes { min-height: 14px !important; gap: 3px !important; }
+    #tab-hangar .affix-pill { font-size: 9px !important; padding: 0 6px !important; }
+    #tab-hangar .affix-none { font-size: 9px !important; }
+    #tab-hangar .tier-rewards { font-size: 10px !important; }
+    #tab-hangar .tier-muls { font-size: 9px !important; }
+    #tab-hangar .tier-prev, #tab-hangar .tier-next { width: 30px !important; min-height: 50px !important; font-size: 14px !important; border-radius: 6px !important; }
+    #tab-hangar .tier-dots { padding: 1px 0 !important; }
+    #tab-hangar .tier-dot { width: 14px !important; height: 14px !important; font-size: 9px !important; }
+    #tab-hangar .deploy-area { flex: 0 0 44px !important; position: relative !important; margin-top: 0 !important; background: none !important; padding: 0 !important; min-height: 44px !important; }
     #tab-hangar .deploy-area .launch { width: 100%; height: 100%; }
     #tab-hangar .loadout-row { grid-template-columns: repeat(4, 1fr); }
+    /* v16 横屏超矮视口（≤500h, iPhone 横屏 812×375 / 896×414）：二级压缩, deploy 40px, tier 90px, 隐藏敌倍率行 */
+    @media (max-width: 980px) and (orientation: landscape) and (max-height: 500px) {
+      #tab-hangar .tier-area { max-height: 90px !important; }
+      #tab-hangar .tier-card { padding: 2px 6px !important; }
+      #tab-hangar .tier-card-title { font-size: 11px !important; padding-right: 60px !important; }
+      #tab-hangar .tier-affixes { min-height: 12px !important; }
+      #tab-hangar .tier-rewards { font-size: 9px !important; }
+      #tab-hangar .tier-muls { display: none; }
+      #tab-hangar .tier-prev, #tab-hangar .tier-next { min-height: 40px !important; }
+      #tab-hangar .deploy-area { flex: 0 0 40px !important; min-height: 40px !important; }
+      #tab-hangar .shop-area { max-height: 30% !important; min-height: 40px !important; }
+      #tab-hangar .loadout-area { min-height: 50px !important; }
+      #tab-hangar .loadout-row .eq-slot { width: 40px !important; height: 40px !important; max-width: 40px !important; }
+      #tab-hangar .r-title { font-size: 10px !important; }
+    }
     /* 熔炼台横屏手机：材料/操作栏收窄（点圆盘热区弹底抽为主交互） */
     #tab-forge .mf-mats { flex: 0 0 200px !important; }
     #tab-forge .mf-ops { flex: 0 0 150px !important; }
