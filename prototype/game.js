@@ -5895,55 +5895,88 @@
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
       if (ob.type === 'rock') {
-        // 残垣屏障：真精灵 env_ruin_barrier，圆形裁剪 + 覆盖缩放（不拉伸）
+        // 鎏金暗色·残垣屏障（纯矢量，不依赖外部精灵）
         ctx.save(); ctx.translate(ob.x, ob.y);
-        ctx.globalAlpha = 0.30; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(0, ob.r * 0.55, ob.r * 1.02, ob.r * 0.5, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.globalAlpha = 0.35; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(0, ob.r * 0.55, ob.r * 1.02, ob.r * 0.5, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
         ctx.restore();
-        var rd = ob.r * 2.2;
         ctx.save(); ctx.translate(ob.x, ob.y); ctx.beginPath(); ctx.arc(0, 0, ob.r, 0, 7); ctx.clip();
-        if (!blitCover('env_ruin_barrier', 0, 0, rd, rd)) {
-          ctx.fillStyle = '#39404e'; ctx.beginPath();
-          for (var v = 0; v < ob.verts.length; v++) { var p = ob.verts[v]; if (v === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
-          ctx.closePath(); ctx.fill();
+        // 暗褐岩体
+        var rg = ctx.createRadialGradient(0, 0, ob.r * 0.2, 0, 0, ob.r);
+        rg.addColorStop(0, '#2a2420'); rg.addColorStop(1, '#0f0d0a');
+        ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0, ob.r, 0, 7); ctx.fill();
+        // 鎏金裂纹
+        ctx.strokeStyle = 'rgba(201,162,75,0.32)'; ctx.lineWidth = 1.5;
+        var seedR = (ob.seed || 0) * 12.7;
+        for (var c = 0; c < 6; c++) {
+          var ang = (c / 6) * Math.PI * 2 + seedR;
+          ctx.beginPath(); ctx.moveTo(Math.cos(ang) * ob.r * 0.25, Math.sin(ang) * ob.r * 0.25);
+          ctx.lineTo(Math.cos(ang) * ob.r * 0.85, Math.sin(ang) * ob.r * 0.85); ctx.stroke();
         }
         ctx.restore();
         ctx.save(); ctx.translate(ob.x, ob.y);
-        if (glowOn) { ctx.shadowColor = '#6b7686'; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = '#7a8699'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, ob.r + 1.5, 0, 7); ctx.stroke();
+        if (glowOn) { ctx.shadowColor = '#C9A24B'; ctx.shadowBlur = 10; }
+        ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, ob.r + 1.5, 0, 7); ctx.stroke();
         ctx.restore();
       } else if (ob.type === 'wall') {
-        // 城市俯视：大厦实体墙（2.5D 立体投影 + 窗格 + 楼顶停机坪）
+        // 鎏金暗色·矢量墙体（替换 env_cover_block 箱子外观）
         var wx = ob.x - ob.hw, wy = ob.y - ob.hh, ww = ob.hw * 2, wh = ob.hh * 2;
-        // 2.5D 大楼立体投影：右下方偏移长投影（战机低空掠过摩天楼，营造纵深）
-        ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.42)'; ctx.fillRect(wx + 16, wy + 20, ww, wh); ctx.restore();
+        var isSkirt = ob.skirt;
+        var _oseed = (ob.seed || 0) * 97;
+        // 2.5D 立体投影
+        ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.48)'; ctx.fillRect(wx + 12, wy + 14, ww, wh); ctx.restore();
         ctx.save(); ctx.beginPath(); ctx.rect(wx, wy, ww, wh); ctx.clip();
-        if (!blitCover('env_cover_block', wx + ww / 2, wy + wh / 2, ww, wh)) {
-          var grd = ctx.createLinearGradient(wx, wy, wx, wy + wh);
-          grd.addColorStop(0, '#5a6373'); grd.addColorStop(1, '#2c323d');
-          ctx.fillStyle = grd; ctx.fillRect(wx, wy, ww, wh);
+        // 主体暗褐渐变（裙楼更沉）
+        var grd = ctx.createLinearGradient(wx, wy, wx, wy + wh);
+        if (isSkirt) {
+          grd.addColorStop(0, '#1a1612'); grd.addColorStop(1, '#0d0b08');
+        } else {
+          grd.addColorStop(0, '#241f1a'); grd.addColorStop(0.55, '#15120e'); grd.addColorStop(1, '#0a0907');
         }
-        if (ob.building) {
-          // 城市俯视窗格（鎏金微光，呼应“霓虹山海→鎏金暗色”基调）
-          ctx.fillStyle = 'rgba(201,162,75,0.12)';
-          for (var gyy = wy + 12; gyy < wy + wh - 8; gyy += 20) {
-            for (var gxx = wx + 12; gxx < wx + ww - 8; gxx += 24) {
-              if ((((gxx * 7 + gyy * 13) | 0) % 5) === 0) ctx.fillRect(gxx, gyy, 14, 9);
+        ctx.fillStyle = grd; ctx.fillRect(wx, wy, ww, wh);
+        // 内部暗金网格纹理
+        ctx.strokeStyle = 'rgba(201,162,75,0.06)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (var ly = wy + 16; ly < wy + wh - 4; ly += 18) { ctx.moveTo(wx + 4, ly); ctx.lineTo(wx + ww - 4, ly); }
+        ctx.stroke();
+        // 鎏金窗格（仅主塔楼）
+        if (ob.building && !isSkirt) {
+          var winW = 11, winH = 7, winGapX = 22, winGapY = 16;
+          ctx.fillStyle = 'rgba(201,162,75,0.10)'; ctx.strokeStyle = 'rgba(201,162,75,0.28)'; ctx.lineWidth = 1;
+          for (var gyy = wy + 14; gyy < wy + wh - 10; gyy += winGapY) {
+            for (var gxx = wx + 14; gxx < wx + ww - 10; gxx += winGapX) {
+              if (((((gxx * 7 + gyy * 13 + _oseed) | 0) % 5) === 0)) {
+                ctx.fillRect(gxx, gyy, winW, winH); ctx.strokeRect(gxx, gyy, winW, winH);
+              }
             }
           }
         }
         ctx.restore();
+        // 顶面鎏金高光
         ctx.save();
-        if (glowOn) { ctx.shadowColor = '#6b7686'; ctx.shadowBlur = 10; }
-        ctx.strokeStyle = '#8a96a8'; ctx.lineWidth = 2; ctx.strokeRect(wx, wy, ww, wh);
+        ctx.strokeStyle = 'rgba(201,162,75,0.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(wx + ww, wy); ctx.stroke();
+        ctx.restore();
+        // 鎏金边框 + 外发光
+        ctx.save();
+        if (glowOn) { ctx.shadowColor = '#C9A24B'; ctx.shadowBlur = 8; }
+        ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 2; ctx.strokeRect(wx, wy, ww, wh);
+        ctx.restore();
+        // 四角鎏金折角装饰
+        ctx.save(); ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 2;
+        var cl = Math.min(8, Math.min(ww, wh) * 0.12);
+        ctx.beginPath(); ctx.moveTo(wx, wy + cl); ctx.lineTo(wx, wy); ctx.lineTo(wx + cl, wy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx + ww, wy + cl); ctx.lineTo(wx + ww, wy); ctx.lineTo(wx + ww - cl, wy); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx, wy + wh - cl); ctx.lineTo(wx, wy + wh); ctx.lineTo(wx + cl, wy + wh); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(wx + ww, wy + wh - cl); ctx.lineTo(wx + ww, wy + wh); ctx.lineTo(wx + ww - cl, wy + wh); ctx.stroke();
         ctx.restore();
         // 楼顶停机坪（H 标 / 发光停机圈）——仅主塔楼
         if (ob.helipad) {
           var hcx = ob.x, hcy = ob.y - ob.hh + Math.min(30, ob.hh * 0.42);
           var hp = 0.5 + 0.25 * Math.sin(gameTime * 3);
           ctx.save();
-          ctx.strokeStyle = 'rgba(201,162,75,' + (0.45 + hp * 0.4) + ')'; ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(201,162,75,' + (0.55 + hp * 0.4) + ')'; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(hcx, hcy, Math.min(24, ob.hw * 0.4), 0, 7); ctx.stroke();
-          ctx.fillStyle = 'rgba(201,162,75,' + (0.7 + hp * 0.25) + ')';
+          ctx.fillStyle = 'rgba(201,162,75,' + (0.85 + hp * 0.15) + ')';
           ctx.font = 'bold ' + Math.min(20, ob.hw * 0.32) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('H', hcx, hcy);
           ctx.restore();
