@@ -604,6 +604,7 @@
     player.bountyBuff = true;
     burst(player.x, player.y, '#FFE9A8', 30, { ring: true, ringR: 80, r0: 10 });
     spawnRing(player.x, player.y, '#FFE9A8', 100);
+    spawnVfx('vfx_objective_activate', player.x, player.y, 120, 0.8, rand(0, 6.28), 0); // v2 战术 VFX：悬赏达成
     setBanner('★ 悬赏达成！天工宝箱 + 暴击/移速增益', 2.4);
     AudioSys.sfx.eliteDie();
     addShake(3, 200, 80);
@@ -1369,6 +1370,9 @@
   loadImg('hit_thunder', A3 + 'hit_thunder_transparent.png');
   loadImg('hit_wind', A3 + 'hit_wind_transparent.png');
   loadImg('hit_earth', A3 + 'hit_earth_transparent.png');
+  // v2 战术/战斗 VFX 精灵（24 张，统一接入事件钩点；单图 additive + 淡出 + 出场放大，缺图自动回退）
+  var A4 = 'assets/v2/vfx/sprites/';
+  ['vfx_boss_death', 'vfx_boss_phase', 'vfx_boss_dash_warn', 'vfx_crit', 'vfx_danger_grid', 'vfx_discovery_scan', 'vfx_elite_death', 'vfx_enemy_death', 'vfx_extract_complete', 'vfx_extract_interrupt', 'vfx_hit_player', 'vfx_lifesteal', 'vfx_loot_burst', 'vfx_low_health', 'vfx_muzzle_player', 'vfx_objective_activate', 'vfx_player_dash', 'vfx_player_hurt', 'vfx_route_arrow', 'vfx_shield_break', 'vfx_summon', 'vfx_terminal_hack', 'vfx_vault_locked', 'vfx_vault_unlocked'].forEach(function (k) { loadImg(k, A4 + k + '.png'); });
   var ELEM_VFX = {
     '火': { trail: 'trail_fire', hit: 'hit_fire' },
     '水': { trail: 'trail_water', hit: 'hit_water' },
@@ -1410,6 +1414,19 @@
         ctx.save(); ctx.translate(s.x, s.y); ctx.rotate(s.rot); ctx.drawImage(im, -sz / 2, -sz / 2, sz, sz); ctx.restore();
       }
     }
+    ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }
+  // 目标导航箭头：指向当前最优先目标（未开秘库 → 开放撤离点），vfx_route_arrow 贴图，缺图自动跳过
+  function drawObjectiveArrow() {
+    if (scene !== 'mission' || !player) return;
+    var tx = null, ty = null;
+    if (secretVault && !secretVault.opened) { tx = secretVault.x; ty = secretVault.y; }
+    if (tx == null && extractPoints) { for (var _oi = 0; _oi < extractPoints.length; _oi++) { var _z = extractPoints[_oi]; if (_z.state === 'open') { tx = _z.x + _z.w / 2; ty = _z.y + _z.h / 2; break; } } }
+    if (tx == null) return;
+    var ang = Math.atan2(player.y - ty, player.x - tx);
+    var pulse = 0.8 + 0.2 * Math.sin(gameTime * 6);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = pulse;
+    blit('vfx_route_arrow', tx, ty - 46, 30 * pulse, 30 * pulse, ang); // 缺图返回 false 自动跳过
     ctx.restore(); ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   }
   var PSIZE = { a: 50, b: 56, c: 60 };
@@ -2206,6 +2223,7 @@
 
   // ---------- 地形障碍（山海墨玉：掩体礁石 + 灵脉裂隙）----------
   var obstacles = [];
+  var decor = []; // 装饰性残垣（非碰撞·纯背景，复用 env_ruin_barrier / env_cover_block 闲置资产）
   var buildingRooftops = [];   // 锚点簇 PCG：主塔楼楼顶停机坪锚点（供宝箱/封印柱/撤离点优先锚定）
   // 空域：开阔天空，无房间/走廊结构。飞机在天空自由飞行，仅受障碍物与地图边界约束。
   var spawnPoint = { x: WORLD_W / 2, y: WORLD_H - 150 };
@@ -2438,6 +2456,7 @@
     burst(v.x, v.y, '#E0B84A', 26, { ring: true, ringR: 64 }); addShake(4, 180, 80); AudioSys.sfx.chestOpen(4);
     screenFlash = { color: '#E0B84A', a: 0.4 };
     floatText(v.x, v.y - 28, v.type === 'seal' ? '封印解除！' : '符文共鸣！', '#E0B84A');
+    spawnVfx('vfx_vault_unlocked', v.x, v.y, 110, 0.8, rand(0, 6.28), 0);
     setBanner((v.type === 'seal' ? '封印宝箱' : '符文宝箱') + ' 开启 · 获得高品质战利品', 2.4);
   }
   function updateVaults(dt) {
@@ -2498,7 +2517,7 @@
       combo: 0, comboT: 0, comboBest: 0, ultCharge: 0, evolved: {}, aimLineT: 0
     };
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
-    bullets = []; enemies = []; loot = []; resetParticles(); resetFloaters(); nodes = []; vaults = []; totems = [];
+    bullets = []; enemies = []; loot = []; resetParticles(); resetFloaters(); nodes = []; vaults = []; totems = []; decor = []; genDecor();
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
@@ -2970,6 +2989,7 @@
     }
     else { var pool = LOOT_NAMES[rarity] || LOOT_NAMES.white; el.name = pool[randi(0, pool.length - 1)]; }
     loot.push(el);
+    if (scene === 'mission') spawnVfx('vfx_loot_burst', x, y, 50, 0.4, rand(0, 6.28), 0); // v2 战术 VFX：战利品迸发
     // 余烬相掉率 ×2 仅在「主动献祭核心翻余烬」时生效（自动/相位柱翻余烬不享受，§7.3）
     if (activeEmber && phase === PHASE.EMBER && type !== 'bossrelic' && type !== 'legendary_weapon' && type !== 'legendary') {
       var el2 = {}; for (var _k in el) el2[_k] = el[_k];
@@ -3009,10 +3029,10 @@
   // 全部包 try-catch，绝不向每帧循环抛错
   function phaseObjectFeedback(kind, x, y) {
     try {
-      if (kind === 'pillar') { AudioSys.sfx.pillar(); burst(x, y, phase === PHASE.EMBER ? '#C8642A' : '#C9A24B', 16, { ring: true, ringR: 70, r0: 8 }); addShake(5, 140, 60); }
-      else if (kind === 'vault') { AudioSys.sfx.vault(); burst(x, y, '#E0B84A', 26, { ring: true, ringR: 90, r0: 10 }); addShake(7, 200, 70); }
-      else if (kind === 'rift') { AudioSys.sfx.rift(); burst(x, y, '#B06FD0', 22, { ring: true, ringR: 80, r0: 10 }); addTint('#B06FD0', 0.18); }
-      else if (kind === 'extract') { AudioSys.sfx.extract(); burst(x, y, '#7FB069', 24, { ring: true, ringR: 100, r0: 12 }); addShake(4, 130, 55); }
+      if (kind === 'pillar') { AudioSys.sfx.pillar(); burst(x, y, phase === PHASE.EMBER ? '#C8642A' : '#C9A24B', 16, { ring: true, ringR: 70, r0: 8 }); addShake(5, 140, 60); spawnVfx('vfx_terminal_hack', x, y, 80, 0.6, rand(0, 6.28), 0); }
+      else if (kind === 'vault') { AudioSys.sfx.vault(); burst(x, y, '#E0B84A', 26, { ring: true, ringR: 90, r0: 10 }); addShake(7, 200, 70); spawnVfx('vfx_vault_unlocked', x, y, 110, 0.8, rand(0, 6.28), 0); spawnVfx('vfx_discovery_scan', x, y, 140, 0.7, rand(0, 6.28), 0); }
+      else if (kind === 'rift') { AudioSys.sfx.rift(); burst(x, y, '#B06FD0', 22, { ring: true, ringR: 80, r0: 10 }); addTint('#B06FD0', 0.18); spawnVfx('vfx_discovery_scan', x, y, 120, 0.7, rand(0, 6.28), 0); }
+      else if (kind === 'extract') { AudioSys.sfx.extract(); burst(x, y, '#7FB069', 24, { ring: true, ringR: 100, r0: 12 }); addShake(4, 130, 55); spawnVfx('vfx_extract_complete', x, y, 130, 0.7, rand(0, 6.28), 0); }
     } catch (e) {}
   }
   function floatText(x, y, text, color, style) {
@@ -3894,7 +3914,7 @@
       for (var _cz = 0; _cz < extractPoints.length; _cz++) {
         var _cz2 = extractPoints[_cz];
         if (_cz2.state === 'open' && player.x > _cz2.x && player.x < _cz2.x + _cz2.w && player.y > _cz2.y && player.y < _cz2.y + _cz2.h) {
-          AudioSys.sfx.extract(); finishRun('success'); return;
+          AudioSys.sfx.extract(); spawnVfx('vfx_extract_complete', player.x, player.y, 220, 1.0, 0, 0); finishRun('success'); return;
         }
       }
     }
@@ -3929,6 +3949,7 @@
     if (b.phase === p) return;
     b.phase = p;
     var pcol = bossPhaseColor(b);
+    spawnVfx('vfx_boss_phase', b.x, b.y, 240, 0.9, rand(0, 6.28), 0); // v2 战术 VFX：阶段切换冲击波
     // 阶段切换反馈：白闪 + 慢镜顿帧 + 抖动 + 色调偏移 + 1s 弱点无敌窗口
     addShake(5.5, 280, 130, true); addFreeze(120); addTint(pcol, 0.3);
     b.invuln = 1.0;
@@ -4040,7 +4061,7 @@
       var mv = (d > 240 ? 1 : -0.4) * 120 * dt;
       b.x = clamp(b.x + (dx / d) * mv, 60, WORLD_W - 60); b.y = clamp(b.y + (dy / d) * mv * 0.7, 60, WORLD_H * 0.55);
       b.dashCd -= dt;
-      if (b.dashCd <= 0 && b.dashing <= 0) { b.dashWarn = 0.4; b.dashCd = (b.phase >= 2 ? 3 : 4.5); }
+      if (b.dashCd <= 0 && b.dashing <= 0) { b.dashWarn = 0.4; b.dashCd = (b.phase >= 2 ? 3 : 4.5); spawnVfx('vfx_boss_dash_warn', b.x, b.y, 150, 0.4, rand(0, 6.28), 0); }
       if (b.dashWarn > 0) { b.dashWarn -= dt; if (b.dashWarn <= 0) b.dashing = 0.45; }
     }
     if (b.phase === 1 && b.hp <= b.maxhp * 0.6) setBossPhase(b, 2);
@@ -4059,7 +4080,7 @@
           var cnt = b.phase >= 2 ? 3 : 2;
           for (var k = 0; k < cnt; k++) spawnEnemy(b.x + rand(-40, 40), b.y + rand(-40, 40), b.tier || run.tier);
         }
-        b.summonCd = b.phase >= 3 ? 4 : 7; setBanner('穷奇召唤眷属！', 1.2, null, 'top');
+        b.summonCd = b.phase >= 3 ? 4 : 7; setBanner('穷奇召唤眷属！', 1.2, null, 'top'); spawnVfx('vfx_summon', b.x, b.y, 130, 0.6, rand(0, 6.28), 0);
       }
     } else if (b.summonCd <= 0) { b.summonWarn = 0.6; }
   }
@@ -4128,8 +4149,9 @@
     // 死亡反馈：白闪 + 大爆裂双环 + 长抖 + 长顿帧
     burst(boss.x, boss.y, '#B37FD0', 30, { ring: true, ringR: 90, r0: 10 });
     burst(boss.x, boss.y, '#B03A3A', 16, { ring: true, ringR: 60 });
-    addShake(6, 420, 150, true); addFreeze(180); addTint('#ffffff', 0.4); screenFlash = { color: '#ffffff', a: 0.4 };
+    addShake(6, 420, 150, true); addFreeze(180);     addTint('#ffffff', 0.4); screenFlash = { color: '#ffffff', a: 0.4 };
     AudioSys.sfx.bossDie();
+    spawnVfx('vfx_boss_death', boss.x, boss.y, 220, 1.0, rand(0, 6.28), 0); // v2 战术 VFX：Boss 陨落炸裂
     // 常规战利品（掉落分层重构 2026-08-19）：150 灵玉 + 10 灵矿碎屑 + 2~3 件整装（60%蓝/38%紫/2%橙），整装过单局预算则降级为灵玉
     dropLoot(boss.x, boss.y, 'blue', 'jade', null, { amount: 150 });
     dropOre(boss.x, boss.y, 10);
@@ -4299,10 +4321,10 @@
       }
       if (nearestUnmarked) { nearestUnmarked.marked = true; nearestUnmarked.markT = 5; }
     }
-    // spawnVfx('vfx_enemy_death', e.x, e.y, 56, 0.5, rand(0, 6.28)); // 旧资产未抠干净，先禁用
+    spawnVfx('vfx_enemy_death', e.x, e.y, 58, 0.5, rand(0, 6.28), 0); // v2 战术 VFX：通用击杀爆裂（单图 additive）
     if (!fromExpl && player.killExplode > 0) explodeAt(e.x, e.y, player.killExplode, Math.max(10, effAtk() * 0.9));
     if (e.arche === 'looter' && e.lootStolen) { run.loot.push({ rarity: e.lootStolen.rarity, name: e.lootStolen.name, slot: e.lootStolen.slot || pickSlot() }); run.picked++; floatText(e.x, e.y - 18, '夺回战利品!', COL.extract, 'crit'); }
-    if (e.elite) { burst(e.x, e.y, COL.elite, 18, { ring: true, ringR: 60 }); spawnVfx('vfx_explosion_sheet', e.x, e.y, 80, 0.7, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 }); addShake(4, 200, 90); addFreeze(90); AudioSys.sfx.eliteDie(); }
+    if (e.elite) { burst(e.x, e.y, COL.elite, 18, { ring: true, ringR: 60 }); spawnVfx('vfx_explosion_sheet', e.x, e.y, 80, 0.7, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 }); spawnVfx('vfx_elite_death', e.x, e.y, 96, 0.7, rand(0, 6.28), 0); addShake(4, 200, 90); addFreeze(90); AudioSys.sfx.eliteDie(); }
     else if (e.arche === 'split' && !e.small) { burst(e.x, e.y, RARCOL.purple, 12, { ring: true, ringR: 44 }); spawnVfx('vfx_explosion_sheet', e.x, e.y, 64, 0.6, rand(0, 6.28), 0, { cols: 4, rows: 2, fps: 12 }); addShake(3.5, 160, 70); addFreeze(90); AudioSys.sfx.enemyDie(); }
     else if (e.arche === 'swarm') { burst(e.x, e.y, '#A8C84E', 4); AudioSys.sfx.enemyDie(); }
     else { burst(e.x, e.y, e.col || COL.enemy, 6); addFreeze(90); AudioSys.sfx.enemyDie(); }
@@ -4660,6 +4682,7 @@
       player.dashAnimT = DASH_DUR;
       AudioSys.sfx.dash();
       spawnRing(player.x, player.y, player.color, 64); // 起手冲击环
+      spawnVfx('vfx_player_dash', player.x, player.y, 90, 0.4, rand(0, 6.28), 0); // v2 战术 VFX：冲刺残光
       addShake(2, 90, 40);
       burst(player.x, player.y, player.color, 6, { ring: false });
     }
@@ -4806,7 +4829,7 @@
           { pierce: player.pierce, homing: player.homing, explode: player.explode, crit: lcrit, burn: player.burn, lifesteal: player.lifesteal, chain: player.chain, elem: shotElem });
         var lmzX = player.x + Math.cos(leftAng) * 18;
         var lmzY = player.y + Math.sin(leftAng) * 18;
-        spawnVfx('vfx_muzzle_flash_sheet', lmzX, lmzY, 52, 0.12, qang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 });
+        spawnVfx('vfx_muzzle_flash_sheet', lmzX, lmzY, 52, 0.12, qang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 }); spawnVfx('vfx_muzzle_player', lmzX, lmzY, 46, 0.12, qang + Math.PI / 2, 0);
         AudioSys.sfx.shoot();
         player.attackSide = 0;
       }
@@ -4823,7 +4846,7 @@
           { pierce: player.pierce, homing: player.homing, explode: player.explode, crit: rcrit, burn: player.burn, lifesteal: player.lifesteal, chain: player.chain, elem: shotElem });
         var rmzX = player.x + Math.cos(rightAng) * 18;
         var rmzY = player.y + Math.sin(rightAng) * 18;
-        spawnVfx('vfx_muzzle_flash_sheet', rmzX, rmzY, 52, 0.12, qang2 + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 });
+        spawnVfx('vfx_muzzle_flash_sheet', rmzX, rmzY, 52, 0.12, qang2 + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 }); spawnVfx('vfx_muzzle_player', rmzX, rmzY, 46, 0.12, qang2 + Math.PI / 2, 0);
         AudioSys.sfx.shoot();
         player.attackSide = 1;
       }
@@ -4850,7 +4873,7 @@
         fireBullet(cbx, cby, cang, 'player', cdmg, player.bulletSpeed,
           { pierce: player.pierce, homing: true, explode: player.explode, crit: ccrit, burn: player.burn, lifesteal: player.lifesteal, chain: player.chain, elem: shotElem, chilan: true });
         // 枪口闪光：赤鸾专属
-        spawnVfx('vfx_chilan_muzzle_sheet', player.x + Math.cos(cang) * 14, player.y + Math.sin(cang) * 14, 56, 0.15, cang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 26 });
+        spawnVfx('vfx_chilan_muzzle_sheet', player.x + Math.cos(cang) * 14, player.y + Math.sin(cang) * 14, 56, 0.15, cang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 26 }); spawnVfx('vfx_muzzle_player', player.x + Math.cos(cang) * 14, player.y + Math.sin(cang) * 14, 50, 0.15, cang + Math.PI / 2, 0);
         AudioSys.sfx.shoot();
       }
     }
@@ -4904,7 +4927,7 @@
         mx = player.x + Math.cos(player.ang) * 22;
         my = player.y + Math.sin(player.ang) * 22;
       }
-      spawnVfx(mKey, mx, my, mSize, 0.12, player.ang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 });
+      spawnVfx(mKey, mx, my, mSize, 0.12, player.ang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 }); spawnVfx('vfx_muzzle_player', mx, my, mSize * 0.9, 0.12, player.ang + Math.PI / 2, 0);
     }
     aimTapFire = false; // 点按保底仅触发一次
     if (player.shield < player.maxshield) player.shield = Math.min(player.maxshield, player.shield + (player.regen + (player.shieldRegen || 0)) * dt);
@@ -5021,7 +5044,7 @@
             var castTime = (exfilChoice === 'quick') ? EXFIL2.quickCast : 3.0; // 急速读条更短
             if (player.dashCdReduce > 0) castTime *= 0.85; // 机动型核心：读条加速 15%
             ez.prog = Math.min(1, ez.prog + dt / castTime);
-            if (ez.prog >= 1) { AudioSys.sfx.extract(); finishRun('success'); }
+            if (ez.prog >= 1) { AudioSys.sfx.extract(); spawnVfx('vfx_extract_complete', player.x, player.y, 220, 1.0, 0, 0); finishRun('success'); }
           }
         } else {
           // 不在区域内：进度缓慢衰减
@@ -5342,6 +5365,7 @@
             player.hp = Math.min(player.maxhp, player.hp + Math.round(_heal));
             _lsCd = 0.2; // 0.2s 内置冷却，防高射速瞬间回满
             floatText(player.x, player.y - 20, '+' + Math.round(_heal), '#7FB069', 'heal');
+            spawnVfx('vfx_lifesteal', player.x, player.y, 60, 0.4, rand(0, 6.28), 0); // v2 战术 VFX：噬血回春
           }
           if (boss.hp <= 0) killBoss();
           if (bl.pierce > 0) bl.pierce--; else { bullets.splice(b, 1); consumed = true; }
@@ -5406,6 +5430,7 @@
                 player.hp = Math.min(player.maxhp, player.hp + Math.round(_heal));
                 _lsCd = 0.2; // 0.2s 内置冷却，防高射速瞬间回满
                 floatText(player.x, player.y - 20, '+' + Math.round(_heal), '#7FB069', 'heal');
+                spawnVfx('vfx_lifesteal', player.x, player.y, 60, 0.4, rand(0, 6.28), 0); // v2 战术 VFX：噬血回春
               }
               if (bl.pierce > 0) { bl.pierce--; } else { bullets.splice(b, 1); consumed = true; }
               if (en.hp <= 0) { onEnemyDeath(en); } // 敌人被移除（onEnemyDeath 设 dead 并 splice）；邻域遍历按对象，dead 跳过即可，无需回退索引
@@ -5854,11 +5879,11 @@
     if (player.setStandStillReduce > 0 && player.standStillT >= (player.setStandStillTime || 1.5)) _mit += player.setStandStillReduce;
     _mit = Math.min(_mit, 0.70);
     dmg *= (1 - _mit);
-    if (player.shield > 0) { var ab = Math.min(player.shield, dmg); player.shield -= ab; dmg -= ab; if (player.undying && !player.undyingUsed && player.shield <= 0) { player.undyingUsed = true; player.hp = Math.min(player.maxhp, player.hp + Math.round(player.maxhp * 0.3)); floatText(player.x, player.y - 24, '厚德!', '#7FB069', 'heal'); AudioSys.sfx.heal(); } }
+    if (player.shield > 0) { var ab = Math.min(player.shield, dmg); player.shield -= ab; dmg -= ab; if (player.shield <= 0) spawnVfx('vfx_shield_break', player.x, player.y, 90, 0.5, rand(0, 6.28), 0); if (player.undying && !player.undyingUsed && player.shield <= 0) { player.undyingUsed = true; player.hp = Math.min(player.maxhp, player.hp + Math.round(player.maxhp * 0.3)); floatText(player.x, player.y - 24, '厚德!', '#7FB069', 'heal'); AudioSys.sfx.heal(); } }
     if (dmg > 0) player.hp -= dmg;
     // 灵潮连击：真实掉血即断连（护盾全额吸收不断）——风险换爆发的对价
     if (dmg > 0 && player.combo >= 5) { floatText(player.x, player.y - 36, '连击中断 ×' + player.combo, '#C94F4F'); }
-    if (dmg > 0) { player.combo = 0; player.comboT = 0; }
+    if (dmg > 0) { player.combo = 0; player.comboT = 0; spawnVfx('vfx_hit_player', player.x, player.y, 70, 0.35, rand(0, 6.28), 0); spawnVfx('vfx_player_hurt', player.x, player.y, 96, 0.4, rand(0, 6.28), 0); }
     if (player.guardShock) explodeAt(player.x, player.y, player.guardShock, Math.max(8, player.dmg * 0.4)); // 土·山岳：受击范围震击
     // 反伤词条：受击时对周围敌人造成固定伤害
     if (player.thorns) { burst(player.x, player.y, '#FF7A59', 8, { ring: true, ringR: 40 }); for (var ti = 0; ti < enemies.length; ti++) { if (dist2(enemies[ti].x, enemies[ti].y, player.x, player.y) < 50 * 50) { enemies[ti].hp -= player.thorns; } } if (boss && dist2(boss.x, boss.y, player.x, player.y) < 60 * 60) { boss.hp -= player.thorns; boss.flash = 0.08; } }
@@ -5891,7 +5916,22 @@
     }
   }
   // (空域无设施地板，drawMapLayout 已移除)
+  function genDecor() {
+    decor = [];
+    if (!WORLD_W) return;
+    var spots = [
+      [WORLD_W * 0.07, WORLD_H * 0.10], [WORLD_W * 0.93, WORLD_H * 0.12],
+      [WORLD_W * 0.10, WORLD_H * 0.88], [WORLD_W * 0.91, WORLD_H * 0.90],
+      [WORLD_W * 0.50, WORLD_H * 0.05], [WORLD_W * 0.05, WORLD_H * 0.50],
+      [WORLD_W * 0.95, WORLD_H * 0.50], [WORLD_W * 0.50, WORLD_H * 0.95]
+    ];
+    for (var _di = 0; _di < spots.length; _di++) {
+      decor.push({ x: spots[_di][0], y: spots[_di][1], key: (_di % 2 ? 'env_cover_block' : 'env_ruin_barrier'), rot: (_di * 1.3) % 6.283, s: (_di % 2 ? 60 : 76) });
+    }
+  }
   function drawObstacles() {
+    // 装饰残垣（非碰撞背景，缺图自动跳过）
+    for (var _d = 0; _d < decor.length; _d++) { var _dd = decor[_d]; ctx.save(); ctx.translate(_dd.x, _dd.y); ctx.globalAlpha = 0.92; ctx.rotate(_dd.rot); if (!blit(_dd.key, 0, 0, _dd.s, _dd.s, 0)) {} ctx.restore(); ctx.globalAlpha = 1; }
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
       if (ob.type === 'rock') {
@@ -6152,6 +6192,7 @@
         else { ctx.rotate(gameTime * 1.5); ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9; ctx.beginPath(); for (var st = 0; st < 6; st++) { var a2 = st * Math.PI / 3, rad = st % 2 ? 3 : 8, px = Math.cos(a2) * rad, py = Math.sin(a2) * rad; if (st === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
       }
       if (v.state === 'opening') { ctx.strokeStyle = '#E0B84A'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, 0, v.r + 22, -Math.PI / 2, -Math.PI / 2 + 6.283 * v.prog); ctx.stroke(); }
+      if (!done) { blit('vfx_vault_locked', 0, -v.r - 18, 30, 30, 0); } // 未解封：鎏金锁标（缺图回退）
       ctx.restore();
     }
   }
@@ -7405,6 +7446,7 @@
         ctx.strokeStyle = svcol; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, svsz * 0.42, 0, 7); ctx.stroke();
         ctx.restore();
       }
+      if (!opened) { blit('vfx_vault_locked', sv.x, sv.y - svsz * 0.5 - 14, 26, 26, 0); } // 未开启：鎏金锁标（缺图回退）
       // 状态文字
       ctx.save(); ctx.fillStyle = svcol; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(opened ? '已开' : '秘库', sv.x, sv.y); ctx.restore(); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -7885,12 +7927,17 @@
         ctx.fillStyle = hexToRgba(screenFlash.color, screenFlash.a); ctx.fillRect(0, 0, W, H);
       }
     }
-    // 低血量警报：HP<30% 红色呼吸 vignette（边缘径向渐变，非全屏遮挡）
+    // 低血量警报：HP<30% 红色呼吸 vignette（边缘径向渐变 + vfx_low_health 贴图，缺图回退到渐变）
     if (scene === 'mission' && player && player.hp < player.maxhp * 0.3 && player.hp > 0) {
       var _lva = 0.3 + 0.3 * Math.sin(gameTime * 6);
       var lgrd = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.62);
       lgrd.addColorStop(0, 'rgba(0,0,0,0)'); lgrd.addColorStop(1, 'rgba(201,79,79,' + _lva.toFixed(3) + ')');
       ctx.fillStyle = lgrd; ctx.fillRect(0, 0, W, H);
+      ctx.save(); ctx.globalAlpha = 0.30 + 0.35 * Math.abs(Math.sin(gameTime * 6)); if (!blit('vfx_low_health', W / 2, H / 2, W * 1.05, H * 1.05, 0)) {} ctx.restore(); ctx.globalAlpha = 1;
+    }
+    // 危险网格：Boss 战（已苏醒）时暗角网格预警（vfx_danger_grid 贴图，缺图回退）
+    if (scene === 'mission' && boss && boss.wake <= 0) {
+      ctx.save(); ctx.globalAlpha = 0.10 + 0.06 * Math.abs(Math.sin(gameTime * 3)); if (blit('vfx_danger_grid', W / 2, H / 2, W * 1.1, H * 1.1, 0)) {} ctx.restore(); ctx.globalAlpha = 1;
     }
     if (lastError && performance.now() - lastError.t < 5000) {
       ctx.fillStyle = 'rgba(140,0,0,0.88)'; ctx.fillRect(0, 0, W, 26);
