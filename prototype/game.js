@@ -4540,8 +4540,12 @@
       boss.hp -= PILLAR_OVERLOAD_DMG; boss.flash = 0.1;
       if (boss.hp <= 0) killBoss();
     }
-    // #381-⑤ 过载奖励强化：1 件高品质法器（过 budgetArtifact 预算）+ 灵矿 + 灵玉，已有效果（清屏/伤害/冰冻）保留
-    var _pRar = Math.random() < 0.5 ? 'orange' : 'purple';
+    // #BALANCE 相位柱过载传说率压低（原 50% 传说过高：5 柱×15s 冷却易变传说喷泉）
+    //   改为以蓝/紫为主、传说仅小概率，随层级微增但封顶；清屏/冰冻/伤害仍是主价值，传说回归稀有奖励
+    var _pTier = run ? run.tier : 1;
+    var _pLegend = 0.06 + Math.min(0.06, (_pTier - 1) * 0.015); // 传说 6%（tier1）→ 封顶 12%（tier5）
+    var _pRoll = Math.random();
+    var _pRar = _pRoll < _pLegend ? 'orange' : (_pRoll < _pLegend + 0.34 ? 'purple' : 'blue'); // 史诗 34% · 蓝装保底
     if (budgetArtifact(_pRar)) dropLoot(pp.x + rand(-20, 20), pp.y + rand(-20, 20), _pRar, 'artifact');
     dropOre(pp.x, pp.y, 2);
     dropLoot(pp.x + rand(-16, 16), pp.y + rand(-16, 16), 'blue', 'jade', null, { amount: 5 + Math.floor((run ? run.tier : 1) * 2) });
