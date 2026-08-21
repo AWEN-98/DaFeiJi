@@ -7399,8 +7399,8 @@
     var lootVal = 0; for (var _li = 0; _li < run.loot.length; _li++) { var _it = run.loot[_li]; lootVal += RARVAL[RAR.indexOf(_it.rarity)]; }
     // 机体状态面板定位（2026-08-19 红line：左上角统一堆叠，左下角彻底清空留给虚拟摇杆）
     var lpW = isMobile ? 176 : 200, lpH = 92;
-    var lpX = 16 + SA.l;
-    var lpY = (isMobile ? 46 : 16) + SA.t; // 移动端让出最左上角暂停微按钮的 6~38px 区
+    var lpX = 6 + SA.l;
+    var lpY = 6 + SA.t; // 暂停按钮已移开，状态面板紧贴左上角（绿框位置）
     // 顶部信息堆栈：Boss条→撤离点→灵潮连击→幕章→banner队列
     // #389 调整：top banner 槽独立占据 12+SA.t ~ 12+SA.t+64 区，
     // 已有顶部信息堆栈（boss/extract/combo/act）整体下移到 12+SA.t+64 后开始，
@@ -7434,11 +7434,12 @@
       }
     }
     // 起承转合·幕章标识（二级信息：缩小 + 半透明弱化，不抢战斗焦点）
-    // v16.12：竖屏下右移到血量表右侧（lpX+lpW+8），避免与左上机体状态面板重叠；宽屏保持顶部中央
+    // 移到机体状态面板正下方，左对齐（黄框→蓝框）
     {
       var _ai = ACT_PHASE_INFO[runPhase] || ACT_PHASE_INFO.qi;
-      var _aw = 118, _ah = 20, _ay = _actY;
-      var _ax = isMobile ? (lpX + lpW + 8) : (W / 2 - _aw / 2);
+      var _aw = 118, _ah = 20;
+      var _ay = lpY + lpH + 6;
+      var _ax = lpX;
       // 右侧越界保护：窄屏若超出则回落中央
       if (_ax + _aw > W - 8) _ax = W / 2 - _aw / 2;
       ctx.globalAlpha = 0.62;
@@ -7469,7 +7470,7 @@
       if (isMobile) {
         // 移动端：单行极简条（相位 + 计时 + 核心点 + 张力微条），归并到左上角机体面板正下方
         _cardW = 152; _cardH = 34;
-        _cardX = lpX; _cardY = lpY + lpH + 6;
+        _cardX = lpX; _cardY = lpY + lpH + 30;
         ctx.fillStyle = 'rgba(16,13,9,0.45)'; ctx.strokeStyle = pcol; ctx.lineWidth = 1;
         hp(_cardX, _cardY, _cardW, _cardH, 8);
         var _ms = Math.ceil(Math.max(phaseTransT, phaseTimer));
@@ -7492,7 +7493,7 @@
         // 桌面：左上卡片，归并到机体状态面板正下方（紧凑垂直堆叠）
         var ptxt = plabel + ' ' + Math.ceil(Math.max(phaseTransT, phaseTimer)) + 's' + (phase === PHASE.EMBER ? (' · 撤窗 ' + Math.ceil(Math.max(0, emberOpenWindow)) + 's') : ' · 蓄能');
         _cardW = 184; _cardH = 58;
-        _cardX = lpX; _cardY = lpY + lpH + 6;
+        _cardX = lpX; _cardY = lpY + lpH + 30;
         _cx = _cardX + 10; _cy = _cardY + 24;
         ctx.fillStyle = 'rgba(16,13,9,0.74)'; ctx.strokeStyle = pcol; ctx.lineWidth = 1;
         hp(_cardX, _cardY, _cardW, _cardH, 9);

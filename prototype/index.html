@@ -834,6 +834,8 @@
   body[data-orient="portrait"] .mbtn .mb-label { font-size: 7px; }
   body[data-orient="portrait"] .joy-base { width: 120px; height: 120px; }
   body[data-orient="portrait"] .joy-knob { width: 52px; height: 52px; }
+  /* 横屏：暂停按钮移到机体状态面板右侧上方（状态面板已贴左上角，避免重叠） */
+  body[data-orient="landscape"] .mbtn.pause-btn { left: calc(190px + var(--sa-l)); top: calc(8px + var(--sa-t)); }
   @keyframes rotateHint { 0%,100% { transform: rotate(0); } 50% { transform: rotate(90deg); } }
 
   /* 撤离/裂隙浮层 */
