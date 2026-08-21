@@ -3473,8 +3473,9 @@
     if (pickupOpen && getNearLoot().length === 0) pickupOpen = false;
     if (!pickupOpen || scene !== 'mission') return;
     var isM = isMobile;
-    var pad = 10, rowH = isM ? 46 : 34, w = isM ? Math.min(360, W * 0.62) : 320, headerH = 34;
-    w = Math.min(w, W - 18 - SA.l - SA.r); // 钳制：不越左右安全区，避免窄屏溢出/压到左侧轮盘
+    // #UI 移动端拾取面板改为竖向窄条（横红框→竖红框）：缩窄增行高，减少与右侧按钮群重叠，条目仍保持 48px 以上触控热区
+    var pad = isM ? 8 : 10, rowH = isM ? 52 : 34, w = isM ? Math.min(180, W * 0.48) : 320, headerH = isM ? 30 : 34;
+    w = Math.min(w, W - 18 - SA.l - SA.r); // 钳制：不越左右安全区
     var near = getNearLoot();
     var bodyH = near.length ? near.length * rowH : 48;
     var h = headerH + bodyH + pad * 2;
@@ -3487,10 +3488,10 @@
     ctx.fillStyle = 'rgba(16,13,9,0.82)';
     roundRectPath(ctx, x, y0, w, h, 10); ctx.fill();
     ctx.strokeStyle = 'rgba(201,162,75,0.55)'; ctx.lineWidth = 1.5; roundRectPath(ctx, x, y0, w, h, 10); ctx.stroke();
-    ctx.fillStyle = '#C9A24B'; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#C9A24B'; ctx.font = isM ? 'bold 12px sans-serif' : 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
     ctx.fillText(isM ? '附近可拾取 · 点按选取' : '附近可拾取  ·  F 关闭  ·  ↑↓ 选择  ·  Enter 拾取', x + pad, y0 + headerH / 2 + 1);
     if (near.length === 0) {
-      ctx.fillStyle = '#8B95A0'; ctx.font = (isM ? 14 : 13) + 'px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#8B95A0'; ctx.font = (isM ? 12 : 13) + 'px sans-serif'; ctx.textAlign = 'center';
       ctx.fillText('附近没有可拾取物品', x + w / 2, y0 + headerH + 24);
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       return;
@@ -3503,9 +3504,9 @@
       ctx.fillRect(x + 4, ry, w - 8, rowH - 4);
       if (sel) { ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 1.5; ctx.strokeRect(x + 4, ry, w - 8, rowH - 4); }
       var col = RARCOL[it.rarity] || '#E8DCC4';
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + pad + 8, ry + (rowH - 4) / 2, isM ? 7 : 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#E8DCC4'; ctx.font = (sel ? 'bold ' : '') + (isM ? 15 : 13) + 'px sans-serif'; ctx.textAlign = 'left';
-      ctx.fillText((i + 1) + '. ' + pickupLabel(it), x + pad + 24, ry + (rowH - 4) / 2);
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + pad + 8, ry + (rowH - 4) / 2, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#E8DCC4'; ctx.font = (sel ? 'bold ' : '') + (isM ? 12 : 13) + 'px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText((i + 1) + '. ' + pickupLabel(it), x + pad + 22, ry + (rowH - 4) / 2);
       pickupRects.push({ x: x + 4, y: ry, w: w - 8, h: rowH - 4 });
     }
     ctx.textBaseline = 'alphabetic';
