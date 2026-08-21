@@ -48,10 +48,10 @@
   function roundRectPath(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
   var COL = {
-    bg: '#0D0F12', grid: 'rgba(201,162,75,0.06)', player: '#C9A24B', playerEdge: '#0A2E26',
+    bg: '#0E0B08', grid: 'rgba(201,162,75,0.06)', player: '#C9A24B', playerEdge: '#0A2E26',
     bulletP: '#E8DCC4', enemy: '#C94F4F', enemyEdge: '#3D1515', bulletE: '#E8907C',
     extract: '#7FB069', gold: '#C9A24B', node: '#C9A24B', elite: '#D9B64A',
-    ink: '#0E1424', paper: '#F4EFE6', jade: '#7FB069', iron: '#7A8794', sha: '#B03A3A'
+    enemyDetail: '#0E1424', jade: '#7FB069', iron: '#7A8794', sha: '#B03A3A'
   };
   var RAR = ['white', 'green', 'blue', 'purple', 'orange'];
   var RARNAME = { white: '普通', green: '精良', blue: '稀有', purple: '史诗', orange: '传说' };
@@ -1653,7 +1653,7 @@
       if (_tapped) continue;
       // 双摇杆：左半屏→左摇杆(移动)；右半屏→右摇杆(瞄准+开火)；各自追踪 touchId，支持多点触控同时操作
       // #381-⑥ 竖屏单摇杆：竖屏下左半屏不再生成移动摇杆（移动整合到右下主摇杆，拖拽=移动+开火）
-      if (x < W * 0.45 && !joy.active && !portraitNow()) {
+      if (x < W * 0.45 && !joy.active) {
         joy.active = true; joy.touchId = t.identifier;
         joy.baseX = x; joy.baseY = y;
         joy.dx = 0; joy.dy = 0; joy.mag = 0;
@@ -2728,7 +2728,7 @@
     var RAD = { turret: 22, gunship: 30, split: 22, heal: 20, looter: 17, ram: 15, sniper: 18, shielder: 22, swarm: 10, kamikaze: 16, phaseSniper: 18, weaver: 24, bastion: 46 };
     var r = RAD[arche] || 17;
     var _ecolMap = { heal: COL.extract, split: RARCOL.purple, looter: '#E0B84A', sniper: '#E8A050', shielder: '#5B9FD0', swarm: '#A8C84E', kamikaze: '#E0623A', phaseSniper: '#E84A6A', weaver: '#B06FD0', bastion: '#E0B84A' };
-    var _eedgeMap = { heal: COL.ink, split: '#2a0a2a', looter: '#8a5f1a', sniper: '#6a4520', shielder: '#1a4a70', swarm: '#4a6020', kamikaze: '#5a1e10', phaseSniper: '#5a1024', weaver: '#3a1a4a', bastion: '#8a5f1a' };
+    var _eedgeMap = { heal: COL.enemyDetail, split: '#2a0a2a', looter: '#8a5f1a', sniper: '#6a4520', shielder: '#1a4a70', swarm: '#4a6020', kamikaze: '#5a1e10', phaseSniper: '#5a1024', weaver: '#3a1a4a', bastion: '#8a5f1a' };
     var ecol = _ecolMap[arche] || COL.enemy;
     var eedge = _eedgeMap[arche] || COL.enemyEdge;
     var e = {
@@ -2945,6 +2945,11 @@
       homingTurnRate: opts.homingTurnRate || 0, splashRatio: opts.splashRatio || 0, chainRange: opts.chainRange || 140, chainDecay: opts.chainDecay || 0.5, falloff: opts.falloff || 0 };
     if (from === 'player' && opts.elem && ELEM_VFX[opts.elem]) b.trail = { elem: opts.elem, age: 0, fps: 18, size: 46 };
     if (!Array.isArray(bullets)) bullets = []; // 防御：bullets 被误置 null/非数组时复位，杜绝敌弹数组断层
+    if (from === 'player') { // M-5 护栏：玩家弹总数硬上限，超出则回收最旧一颗，杜绝高射速/分裂弹无限堆积导致 O(B×E) 爆炸与内存膨胀
+      var _pc = 0, _old = -1;
+      for (var _bi = 0; _bi < bullets.length; _bi++) { if (bullets[_bi].from === 'player') { _pc++; if (_old < 0) _old = _bi; } }
+      if (_pc >= MAX_BULLETS && _old >= 0) bullets.splice(_old, 1);
+    }
     bullets.push(b);
     if (DBG_ENEMY_AI && from === 'enemy') console.log('[AI] fireBullet from=enemy x=' + x.toFixed(0) + ' y=' + y.toFixed(0) + ' ang=' + ang.toFixed(2) + ' dmg=' + dmg.toFixed(1) + ' spd=' + speed);
   }
@@ -3658,9 +3663,33 @@
   var TRAUMA_HIT = 2.5;           // 命中敌人微震振幅(px)
   var huntRamp = 1.0;             // 围猎速度平滑系数（1 → HUNT_AGGRO 缓动）
   var phaseSpeedMul = 1.0;        // = PHASE_SPD[runPhase] * huntRamp，每帧刷新
+  // ===== 空间网格（性能护栏 M-6）：敌人坐标哈希，子弹碰撞 / 分离力做 3×3 邻域粗筛，把 O(B×E) 压成近 O(B) =====
+  var GRID_CELL = 96;            // 网格边长(px)：> 最大敌半径+弹半径，单格 3×3 邻域即可覆盖全部近距对
+  var MAX_BULLETS = 240;         // M-5：玩家弹总数硬上限，超出回收最旧一颗，杜绝高射速/分裂弹无限堆积
+  var _enemyGrid = null;
+  var _gridFrame = 0;
+  function buildEnemyGrid() {
+    var g = Object.create(null);
+    for (var i = 0; i < enemies.length; i++) {
+      var e = enemies[i]; if (e.dead) continue;
+      var key = Math.floor(e.x / GRID_CELL) + ',' + Math.floor(e.y / GRID_CELL);
+      (g[key] || (g[key] = [])).push(e);
+    }
+    _enemyGrid = g; _gridFrame++;
+  }
+  // 返回 (x,y) 所在格及其 3×3 邻域内的敌人数组（可能含已死亡者，调用方自行 e.dead 跳过）
+  function nearbyEnemies(x, y) {
+    var cx = Math.floor(x / GRID_CELL), cy = Math.floor(y / GRID_CELL), out = [];
+    for (var dx = -1; dx <= 1; dx++) for (var dy = -1; dy <= 1; dy++) {
+      var arr = _enemyGrid[cx + dx + ',' + (cy + dy)];
+      if (arr) for (var k = 0; k < arr.length; k++) out.push(arr[k]);
+    }
+    return out;
+  }
   function sepForce(e) {
     var sx = 0, sy = 0;
-    for (var j = 0; j < enemies.length; j++) { var o = enemies[j]; if (o === e) continue; var ddx = e.x - o.x, ddy = e.y - o.y, dd = Math.hypot(ddx, ddy); if (dd > 0 && dd < SEP_RADIUS) { var w = (SEP_RADIUS - dd) / SEP_RADIUS; sx += (ddx / dd) * w; sy += (ddy / dd) * w; } }
+    var _nb = nearbyEnemies(e.x, e.y);
+    for (var j = 0; j < _nb.length; j++) { var o = _nb[j]; if (o === e || o.dead) continue; var ddx = e.x - o.x, ddy = e.y - o.y, dd = Math.hypot(ddx, ddy); if (dd > 0 && dd < SEP_RADIUS) { var w = (SEP_RADIUS - dd) / SEP_RADIUS; sx += (ddx / dd) * w; sy += (ddy / dd) * w; } }
     return { x: sx, y: sy };
   }
   // 硬分离兜底：位置级校正，彻底消除怪堆重叠（与 sepForce 软力互补；O(n²) 但敌数≤28 可忽略）
@@ -3854,6 +3883,15 @@
   // v12.6：战场自毁坍塌（45s 内未撤离 → 强制结算失败）
   function collapseEvac() {
     if (scene !== 'mission') return;
+    // L-3 末段容错：若玩家正在开放撤离点内读条（已提交且进度进行中），战场自毁归零瞬间判成功而非死亡，避免"差一点被抢"
+    if (exfilStarted && extractPoints) {
+      for (var _cz = 0; _cz < extractPoints.length; _cz++) {
+        var _cz2 = extractPoints[_cz];
+        if (_cz2.state === 'open' && player.x > _cz2.x && player.x < _cz2.x + _cz2.w && player.y > _cz2.y && player.y < _cz2.y + _cz2.h) {
+          AudioSys.sfx.extract(); finishRun('success'); return;
+        }
+      }
+    }
     setBanner('战场自毁！撤离失败！', 3, null, 'top');
     addShake(9, 700, 240, true); addTint('#B03A3A', 0.4); screenFlash = { color: '#B03A3A', a: 0.4 };
     AudioSys.sfx.bossDie();
@@ -4533,10 +4571,8 @@
 
     // 移动
     var dirx = 0, diry = 0, mag = 0;
-    // #381-⑥ 竖屏单摇杆：右下主摇杆兼作移动+开火（拖拽方向=移动方向，越过死区才移动；轻点=原地盲射不移动）
-    if (isMobile && portraitNow() && aimJoy.active && aimJoy.mag > AIM_DEADZONE) {
-      dirx = aimJoy.dx; diry = aimJoy.dy; mag = aimJoy.mag;
-    } else if (isMobile && joy.active) {
+    // 双摇杆（横竖屏统一）：左摇杆(移动) + 右摇杆(瞄准+开火)；轻点右摇杆=原地盲射不移动
+    if (isMobile && joy.active) {
       dirx = joy.dx; diry = joy.dy; mag = joy.mag;
     } else {
       var mx = 0, my = 0;
@@ -5026,7 +5062,8 @@
     // 同屏蓄力冲压计数（限制最多 CHARGE_MAX 只同时进入蓄力态，防集体暴冲）
     var chargingNow = 0;
     for (var _cn = 0; _cn < enemies.length; _cn++) if (enemies[_cn].chargeState >= 1) chargingNow++;
-    if (DBG_ENEMY_AI) console.log('[AI] enemies=' + enemies.length + ' dt=' + dt.toFixed(4));
+    if (DBG_ENEMY_AI && (_gridFrame % 30 === 0)) console.log('[AI] enemies=' + enemies.length + ' dt=' + dt.toFixed(4));
+    buildEnemyGrid(); // M-6：每帧构建一次敌人空间网格（供 sepForce 与子弹碰撞邻域粗筛）
     for (var i = enemies.length - 1; i >= 0; i--) {
       var e = enemies[i];
       if (e.burnT > 0) { e.hp -= e.burn * dt; e.burnT -= dt; if (e.hp <= 0) { onEnemyDeath(e); continue; } }
@@ -5223,7 +5260,7 @@
         }
       }
     }
-    resolveEnemyOverlaps(); // 硬分离兜底：消除怪堆重叠
+    if ((_gridFrame & 1) === 0) resolveEnemyOverlaps(); // 硬分离兜底：M-6 分帧执行（隔帧一次），软 sepForce 每帧仍运行，避免怪堆瞬间重叠爆炸
     if (boss) updateBoss(dt);
 
     // 子弹
@@ -5256,9 +5293,10 @@
         // v12.6：鎏金重盾巨舰 —— 正面 120° 金盾反弹直射弹（绕后 / 余烬相或余烬弹破盾）
         var _refl = false;
         if (phase !== PHASE.EMBER) {
-          for (var _bs = 0; _bs < enemies.length; _bs++) {
-            var _bn = enemies[_bs];
-            if (!_bn.bastion) continue;
+          var _nbB = nearbyEnemies(bl.x, bl.y);
+          for (var _bs = 0; _bs < _nbB.length; _bs++) {
+            var _bn = _nbB[_bs];
+            if (_bn.dead || !_bn.bastion) continue;
             if (dist2(bl.x, bl.y, _bn.x, _bn.y) < (_bn.r + bl.r + 6) * (_bn.r + bl.r + 6)) {
               var _bf = Math.atan2(player.y - _bn.y, player.x - _bn.x); // 盾朝向玩家
               var _bi = Math.atan2(bl.y - _bn.y, bl.x - _bn.x);          // 子弹相对巨舰方位
@@ -5299,8 +5337,10 @@
           if (bl.pierce > 0) bl.pierce--; else { bullets.splice(b, 1); consumed = true; }
         }
         if (!consumed) {
-          for (var ei = 0; ei < enemies.length; ei++) {
-            var en = enemies[ei];
+          var _nb2 = nearbyEnemies(bl.x, bl.y);
+          for (var ei = 0; ei < _nb2.length; ei++) {
+            var en = _nb2[ei];
+            if (en.dead) continue;
             if (dist2(bl.x, bl.y, en.x, en.y) < (en.r + bl.r) * (en.r + bl.r)) {
               var dmg0 = calcDamage(bl.dmg, bl.crit, en);
               // 异相克制：玩家相位与敌机相位相异 → ×1.5（余烬打金系 / 鎏金打余烬系）；金色火花 + 暴击大字
@@ -5358,7 +5398,7 @@
                 floatText(player.x, player.y - 20, '+' + Math.round(_heal), '#7FB069', 'heal');
               }
               if (bl.pierce > 0) { bl.pierce--; } else { bullets.splice(b, 1); consumed = true; }
-              if (en.hp <= 0) { onEnemyDeath(en); ei--; } // 敌人被移除，回退索引避免跳过下一个
+              if (en.hp <= 0) { onEnemyDeath(en); } // 敌人被移除（onEnemyDeath 设 dead 并 splice）；邻域遍历按对象，dead 跳过即可，无需回退索引
               if (bl.pierce <= 0) break;
             }
           }
@@ -6255,7 +6295,7 @@
         } else if (e.arche === 'gunship') {
           // 横向长舰体 + 前端 3 炮口 + 顶部装甲
           roundRectPath(ctx, -e.r, -e.r * 0.45, e.r * 2, e.r * 0.9, 6); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = e.flash > 0 ? '#fff' : COL.ink; ctx.beginPath(); ctx.arc(-e.r * 0.7, -e.r * 0.45, 3, 0, 7); ctx.arc(-e.r * 0.7, e.r * 0.45, 3, 0, 7); ctx.arc(e.r * 0.7, 0, 3, 0, 7); ctx.fill();
+          ctx.fillStyle = e.flash > 0 ? '#fff' : COL.enemyDetail; ctx.beginPath(); ctx.arc(-e.r * 0.7, -e.r * 0.45, 3, 0, 7); ctx.arc(-e.r * 0.7, e.r * 0.45, 3, 0, 7); ctx.arc(e.r * 0.7, 0, 3, 0, 7); ctx.fill();
           ctx.fillStyle = e.flash > 0 ? '#fff' : COL.enemyEdge; ctx.fillRect(-e.r * 0.2, -e.r * 0.55, e.r * 0.4, e.r * 1.1);
         } else if (e.arche === 'heal') {
           // 圆润菱形/灯笼体（4 点星）
@@ -6273,7 +6313,7 @@
           // 狙击手：前指三角+长炮管
           ctx.rotate(e.sniperAim || 0);
           ctx.beginPath(); ctx.moveTo(e.r, 0); ctx.lineTo(-e.r * 0.6, -e.r * 0.7); ctx.lineTo(-e.r * 0.6, e.r * 0.7); ctx.closePath(); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = e.flash > 0 ? '#fff' : COL.ink; ctx.fillRect(e.r * 0.3, -2, e.r * 1.1, 4); // 长炮管
+          ctx.fillStyle = e.flash > 0 ? '#fff' : COL.enemyDetail; ctx.fillRect(e.r * 0.3, -2, e.r * 1.1, 4); // 长炮管
         } else if (e.arche === 'shielder') {
           // 护盾兵：六边形+中心圆环
           var ns = 6; ctx.beginPath(); for (var ks = 0; ks < ns; ks++) { var as = (ks / ns) * 6.28; var rs = e.r * (ks % 2 ? 0.7 : 1); var pxs = Math.cos(as) * rs, pys = Math.sin(as) * rs; if (ks === 0) ctx.moveTo(pxs, pys); else ctx.lineTo(pxs, pys); } ctx.closePath(); ctx.fill(); ctx.stroke();
@@ -6614,8 +6654,8 @@
       else if (b.kind === 'crit') { col = BULLET_COL.buff; tcol = '#FFE9A8'; }
       else if (b.kind === 'boss') { col = BULLET_COL.boss; tcol = col; }
       else if (b.kind === 'enemy') { col = COL.bulletE; tcol = col; }
-      else if (b.kind === 'pierce') { col = '#bff7ff'; tcol = col; }
-      else if (b.kind === 'homing') { col = '#ff9bd0'; tcol = col; }
+      else if (b.kind === 'pierce') { col = '#C9A24B'; tcol = col; }
+      else if (b.kind === 'homing') { col = '#C8642A'; tcol = col; }
       else if (b.kind === 'explode') { col = '#D98A3D'; tcol = col; }
       else { col = player.color || COL.bulletP; tcol = col; }
       // 霓虹拖尾（世界坐标，旋转前画）
@@ -7334,6 +7374,8 @@
       ctx.beginPath(); ctx.arc(_ax, _ay, aggroRadius, 0, 7); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
     }
   }
+  // L-1 每帧分配缓存：幕章信息表提到模块级，避免 drawHUD 每帧 new 对象字面量
+  var ACT_PHASE_INFO = { qi: ['起', '潜入搜刮', '#E8DCC4'], cheng: ['承', '积累·裂隙', '#C9A24B'], zhuan: ['转', '围猎·狂暴', '#C8642A'], he: ['合', '终局·穷奇', '#C94F4F'] };
   function drawHUD() {
     // ===== 5 锚点分区（屏幕自适应 v13）=====
     // 【左上角·机体状态区】暂停按钮 + 血条面板 + 相位倒计时（内嵌 Safe Area Inset 左/上）
@@ -7344,7 +7386,7 @@
     function hp(x, y, w, h, r) { ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke(); }
     // 竖屏（窄长屏）适配：收窄右上信息列各卡片，避免占满窄屏宽度
     var P = isMobile && window.innerHeight > window.innerWidth;
-    var lootVal = run.loot.reduce(function (s, it) { return s + RARVAL[RAR.indexOf(it.rarity)]; }, 0);
+    var lootVal = 0; for (var _li = 0; _li < run.loot.length; _li++) { var _it = run.loot[_li]; lootVal += RARVAL[RAR.indexOf(_it.rarity)]; }
     // 机体状态面板定位（2026-08-19 红line：左上角统一堆叠，左下角彻底清空留给虚拟摇杆）
     var lpW = isMobile ? 176 : 200, lpH = 92;
     var lpX = 16 + SA.l;
@@ -7357,23 +7399,24 @@
     var _sy = 12 + SA.t + 64 + (P ? 14 : 0);
     function _slot(h) { var y = _sy; _sy += h + 8; return y; }
     var _bossY = boss ? _slot(30) : -1;
-    var _extOpen = [], _extWarn = [];
-    if (extractPoints && extractPoints.length) { for (var zz2 = 0; zz2 < extractPoints.length; zz2++) { var p2 = extractPoints[zz2]; if (p2.state === 'open') _extOpen.push(p2); else if (p2.state === 'warning') _extWarn.push(p2); } }
-    var _extY = (_extOpen.length || _extWarn.length) ? _slot(22) : -1;
+    var _hasOpen = false, _hasWarn = false;
+    if (extractPoints && extractPoints.length) { for (var zz2 = 0; zz2 < extractPoints.length; zz2++) { var p2 = extractPoints[zz2]; if (p2.state === 'open') _hasOpen = true; else if (p2.state === 'warning') _hasWarn = true; } }
+    var _extY = (_hasOpen || _hasWarn) ? _slot(22) : -1;
     var _comboY = (player && player.combo >= 3) ? _slot(21) : -1;
     var _actY = _slot(20);
     // _bannerTop 已废弃：banner 移至底部居中（见 drawHUD 尾部）
     // 顶部：撤离点开放状态（一级危险/时机信息：保留高对比，尺寸微收）
     if (_extY >= 0) {
-      var openZ = _extOpen, warnZ = _extWarn;
-      if (openZ.length) {
-        var ot = openZ.map(function (q) { var t = q.beacon ? Math.ceil(run.selfDestruct) : Math.ceil(q.timer); return (q.beacon ? '战场自毁 ' + t + 's · 冲入光柱撤离' : '撤离点' + q.label + ' 开放 ' + t + 's'); }).join('   ·   ');
+      if (_hasOpen) {
+        var ot = '';
+        for (var _oz = 0; _oz < extractPoints.length; _oz++) { var q = extractPoints[_oz]; if (q.state !== 'open') continue; var t = q.beacon ? Math.ceil(run.selfDestruct) : Math.ceil(q.timer); if (ot) ot += '   ·   '; ot += (q.beacon ? '战场自毁 ' + t + 's · 冲入光柱撤离' : '撤离点' + q.label + ' 开放 ' + t + 's'); }
         ctx.font = 'bold 12px sans-serif'; var ow = ctx.measureText(ot).width;
         ctx.fillStyle = 'rgba(16,13,9,0.72)'; ctx.strokeStyle = 'rgba(127,176,105,0.55)'; ctx.lineWidth = 1;
         hp(W / 2 - ow / 2 - 12, _extY, ow + 24, 22, 11);
         ctx.fillStyle = COL.extract; ctx.textAlign = 'center'; ctx.strokeStyle = 'transparent'; ctx.fillText(ot, W / 2, _extY + 15); ctx.textAlign = 'left';
-      } else if (warnZ.length) {
-        var wt = warnZ.map(function (q) { return '撤离点' + q.label + ' ' + Math.ceil(q.timer) + 's 后开放'; }).join('   ·   ');
+      } else if (_hasWarn) {
+        var wt = '';
+        for (var _wz = 0; _wz < extractPoints.length; _wz++) { var qw = extractPoints[_wz]; if (qw.state !== 'warning') continue; if (wt) wt += '   ·   '; wt += '撤离点' + qw.label + ' ' + Math.ceil(qw.timer) + 's 后开放'; }
         ctx.font = 'bold 11px sans-serif'; var ww = ctx.measureText(wt).width;
         ctx.fillStyle = 'rgba(16,13,9,0.7)'; ctx.strokeStyle = 'rgba(201,162,75,0.55)'; ctx.lineWidth = 1;
         hp(W / 2 - ww / 2 - 12, _extY, ww + 24, 20, 10);
@@ -7383,7 +7426,7 @@
     // 起承转合·幕章标识（二级信息：缩小 + 半透明弱化，不抢战斗焦点）
     // v16.12：竖屏下右移到血量表右侧（lpX+lpW+8），避免与左上机体状态面板重叠；宽屏保持顶部中央
     {
-      var _ai = ({ qi: ['起', '潜入搜刮', '#E8DCC4'], cheng: ['承', '积累·裂隙', '#C9A24B'], zhuan: ['转', '围猎·狂暴', '#C8642A'], he: ['合', '终局·穷奇', '#C94F4F'] })[runPhase] || ['起', '潜入搜刮', '#E8DCC4'];
+      var _ai = ACT_PHASE_INFO[runPhase] || ACT_PHASE_INFO.qi;
       var _aw = 118, _ah = 20, _ay = _actY;
       var _ax = isMobile ? (lpX + lpW + 8) : (W / 2 - _aw / 2);
       // 右侧越界保护：窄屏若超出则回落中央

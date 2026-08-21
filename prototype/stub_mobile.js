@@ -1,5 +1,5 @@
 // stub_mobile.js —— 移动端·竖屏专项桩：在 iPhone 竖屏环境下执行真实 game.js，
-// 验证 #381-⑥ 竖屏单摇杆改造：左半屏移动摇杆禁用，右下主摇杆拖拽=移动+开火一体、轻点=原地盲射；
+// 验证 #M7 竖屏双摇杆：左半屏触摸生成移动摇杆（左摇杆），右下主摇杆=瞄准+开火（不移动），轻点=原地盲射；
 // 保留阻尼转向、点按盲射、死区判定、松手定角、多点触控（Multi-touch）事件捕获无死锁 / 无报错 / 无 NaN。
 // 末尾追加横屏双摇杆回归段（左摇杆移动 + 右摇杆瞄准开火，互不串扰）。
 const fs = require('fs');
@@ -108,11 +108,12 @@ try {
   // 3) 竖屏渲染 + 战斗帧（drawHUD 走 P=true 分支）
   for (let i=0;i<120;i++) tick(16.7);
   api.renderFrame();
-  // 4) 移动端触控（#381-⑥ 竖屏单摇杆）：左半屏触摸不再生成移动摇杆；次级键（绝技/闪避/丹药/暂停/翻相/合成/背包/拾取）
+  // 4) 移动端触控（#M7 竖屏双摇杆）：左半屏触摸生成移动摇杆（左摇杆）；次级键（绝技/闪避/丹药/暂停/翻相/合成/背包/拾取）
   api.cleanState();
-  mtouch('touchstart', [{id:1, x:80, y:600}]);     // 左半屏 → 竖屏单摇杆下不生成左摇杆
+  mtouch('touchstart', [{id:1, x:80, y:600}]);     // 左半屏 → 竖屏双摇杆下生成左摇杆（移动）
   mtouch('touchmove', [{id:1, x:110, y:560}]);
-  if (api.joyState().active) errors.push('竖屏单摇杆：左半屏触摸不应激活左摇杆（移动已并入右下主摇杆）');
+  if (!api.joyState().active) errors.push('竖屏双摇杆：左半屏触摸应激活左摇杆（移动）');
+  if (api.joyState().active && api.joyState().mag <= 0.05) errors.push('竖屏双摇杆：左摇杆拖拽应有移动向量 mag>0');
   mtouch('touchend', [{id:1, x:110, y:560}]);
   const btns = ['ultBtn','dashBtn','consBtn','pauseBtnMobile','phaseBtn','mergeBtn','backpackBtn','pickupBtn'];
   btns.forEach(b=>{ touch(b,'touchstart',10,10); touch(b,'touchend',10,10); });
@@ -135,18 +136,18 @@ try {
   console.log('竖屏校验：orient=' + api.orient() + ' | autoFire(default)=' + 'false(双摇杆接管) | 触控+渲染 OK');
 
   // ============================================================
-  // 6) 竖屏单摇杆多点触控专项（#381-⑥：真实 canvas 'game' 事件）
+  // 6) 竖屏双摇杆多点触控专项（#M7：真实 canvas 'game' 事件）
   // ============================================================
-  // (a) 单摇杆架构：左半屏触摸不激活左摇杆（移动并入右摇杆）；右摇杆(aimJoy)独立激活
+  // (a) 双摇杆架构：左半屏触摸激活左摇杆(移动)；右摇杆(aimJoy)独立激活(瞄准+开火)
   api.cleanState();
   api.enemies().length = 0;            // 确定性：移除敌人，排除辅助瞄准干扰
   api.player().ang = 0;                // 已知朝向（朝右）
   mtouch('touchstart', [{id:1, x:80, y:600}]);
   mtouchStick('touchstart', [{id:2, x:330, y:784}]);
   let js = api.joyState(), as = api.aimJoyState();
-  if (js.active) errors.push('竖屏单摇杆：左摇杆不应激活（canvas 左半屏触摸被禁用）');
-  if (!as.active) errors.push('竖屏单摇杆：右摇杆未激活（touchId 2）');
-  if (!js.active && as.active) console.log('竖屏单摇杆：左摇杆禁用 + 右摇杆 active → 移动/开火合一 OK');
+  if (!js.active) errors.push('竖屏双摇杆：左摇杆应激活（canvas 左半屏触摸）');
+  if (!as.active) errors.push('竖屏双摇杆：右摇杆未激活（touchId 2）');
+  if (js.active && as.active) console.log('竖屏双摇杆：左摇杆 active + 右摇杆 active → 移动/开火分轨 OK');
 
   // (b) 右摇杆拖动越过死区(>0.2) → 持续开火（firedT>0）+ 瞄准线
   mtouchStick('touchmove', [{id:2, x:330+45, y:784}]);   // dx=45, maxR=45 → mag=1.0 > 0.2
@@ -186,7 +187,7 @@ try {
   if (Math.abs(api.playerAng() - angRelease) > 1e-3) errors.push('松手后 facing 应锁定不变（松即定角），实际 ' + api.playerAng().toFixed(4) + '（松手时 ' + angRelease.toFixed(4) + '）');
   console.log('松手定角：release 后 ang=' + api.playerAng().toFixed(4) + ' 锁定稳定（松手时 ' + angRelease.toFixed(4) + '）→ 推即朝向/松即定角 OK');
 
-  // (f) 多点触控收尾（竖屏单摇杆）：左半屏触摸被忽略 + 右摇杆按下→拖动→松手→touchcancel 健壮性复位 → 无死锁/无 NaN
+  // (f) 多点触控收尾（竖屏双摇杆）：左摇杆+右摇杆并存 → 按下→拖动→松手→touchcancel 健壮性复位 → 无死锁/无 NaN
   api.cleanState();
   mtouch('touchstart', [{id:1, x:80, y:600}]);
   mtouchStick('touchstart', [{id:2, x:330, y:784}]);
@@ -201,20 +202,33 @@ try {
   if (api.joyState().active || api.aimJoyState().active) errors.push('所有触摸结束后摇杆应复位（active=false）');
   console.log('收尾：右摇杆复位 active=false，player 有限值 → 无死锁/无 NaN');
 
-  // (g) #381-⑥ 竖屏单摇杆·移动+开火合一：右摇杆拖拽=移动玩家（位置变化）+ 持续开火；轻点=原地盲射不移动
+  // (g) #M7 竖屏双摇杆：左摇杆(移动) + 右摇杆(瞄准+开火)；左摇杆拖拽=移动玩家；右摇杆拖拽=只瞄准开火不移动
+  // (g1) 左摇杆：左半屏落指并向右拖 → 移动玩家
+  api.cleanState();
+  api.obstacles().length = 0; api.enemies().length = 0;
+  api.player().x = 800; api.player().y = 550; api.player().ang = 0; api.player().vx = 0; api.player().vy = 0;
+  mtouch('touchstart', [{id:1, x:80, y:600}]);
+  mtouch('touchmove', [{id:1, x:125, y:600}]);   // 向右拖（dx=45, maxR=55 → mag≈0.818 > 死区）
+  const mx0 = api.player().x;
+  for (let i=0;i<40;i++){ api.obstacles().length=0; api.enemies().length=0; api.tick(1); }
+  const mx1 = api.player().x;
+  if (!(mx1 > mx0 + 20)) errors.push('竖屏双摇杆：左摇杆向右拖应移动玩家（x ' + mx0.toFixed(1) + '→' + mx1.toFixed(1) + '）');
+  mtouch('touchend', [{id:1, x:125, y:600}]);
+  console.log('竖屏双摇杆·左摇杆拖拽：x ' + mx0.toFixed(1) + '→' + mx1.toFixed(1) + ' 移动 OK');
+  // (g2) 右摇杆：仅瞄准+开火，不移动玩家
   api.cleanState();
   api.obstacles().length = 0; api.enemies().length = 0;
   api.player().x = 800; api.player().y = 550; api.player().ang = 0; api.player().vx = 0; api.player().vy = 0;
   mtouchStick('touchstart', [{id:2, x:330, y:784}]);
-  mtouchStick('touchmove', [{id:2, x:375, y:784}]);   // 向右拖（dx=45, maxR=45 → mag=1.0 > 死区）
+  mtouchStick('touchmove', [{id:2, x:375, y:784}]);   // 向右拖（mag=1.0 > 死区）
   const sx0 = api.player().x;
   for (let i=0;i<40;i++){ api.obstacles().length=0; api.enemies().length=0; api.tick(1); }
   const sx1 = api.player().x;
-  if (!(sx1 > sx0 + 20)) errors.push('竖屏单摇杆：右摇杆向右拖应移动玩家（x ' + sx0.toFixed(1) + '→' + sx1.toFixed(1) + '）');
-  if (!(api.firedT() > 0)) errors.push('竖屏单摇杆：右摇杆拖拽应同时持续开火（firedT>0），实际 ' + api.firedT());
-  console.log('竖屏单摇杆拖拽：x ' + sx0.toFixed(1) + '→' + sx1.toFixed(1) + ' 移动+开火 firedT=' + api.firedT().toFixed(3) + ' OK');
+  if (Math.abs(sx1 - sx0) > 2) errors.push('竖屏双摇杆：右摇杆向右拖不应移动玩家（x ' + sx0.toFixed(1) + '→' + sx1.toFixed(1) + '）');
+  if (!(api.firedT() > 0)) errors.push('竖屏双摇杆：右摇杆拖拽应持续开火（firedT>0），实际 ' + api.firedT());
   mtouchStick('touchend', [{id:2, x:375, y:784}]);
-  // 轻点（未过死区立即松手）→ aimTapFire 原地盲射：不移动、有开火
+  console.log('竖屏双摇杆·右摇杆拖拽：x ' + sx0.toFixed(1) + '→' + sx1.toFixed(1) + ' 不移动 + 开火 firedT=' + api.firedT().toFixed(3) + ' OK');
+  // (g3) 轻点（未过死区立即松手）→ aimTapFire 原地盲射：不移动、有开火
   api.cleanState();
   api.obstacles().length = 0; api.enemies().length = 0;
   api.player().x = 800; api.player().y = 550; api.player().ang = 0; api.player().vx = 0; api.player().vy = 0;
@@ -222,10 +236,10 @@ try {
   mtouchStick('touchend', [{id:2, x:330, y:784}]);   // 点按即松（mag=0 ≤ 死区、tapT≈0）→ tap-fire
   const tap2 = api.aimTapFireState();
   tick(16.7);
-  if (!tap2) errors.push('竖屏单摇杆：轻点右摇杆应触发 aimTapFire（原地盲射）');
-  if (Math.abs(api.player().x - 800) > 1) errors.push('竖屏单摇杆：轻点不应移动玩家');
-  if (!(api.firedT() > 0)) errors.push('竖屏单摇杆：轻点盲射应有开火（firedT>0），实际 ' + api.firedT());
-  console.log('竖屏单摇杆轻点：aimTapFire=' + tap2 + ' 不移动 + firedT=' + api.firedT().toFixed(3) + ' → 原地盲射 OK');
+  if (!tap2) errors.push('竖屏双摇杆：轻点右摇杆应触发 aimTapFire（原地盲射）');
+  if (Math.abs(api.player().x - 800) > 1) errors.push('竖屏双摇杆：轻点不应移动玩家');
+  if (!(api.firedT() > 0)) errors.push('竖屏双摇杆：轻点盲射应有开火（firedT>0），实际 ' + api.firedT());
+  console.log('竖屏双摇杆·轻点：aimTapFire=' + tap2 + ' 不移动 + firedT=' + api.firedT().toFixed(3) + ' → 原地盲射 OK');
 
   // ============================================================
   // v12.6 深度玩法重构 · 移动端轻量回归（双摇杆环境下不崩溃、核心机制可用）

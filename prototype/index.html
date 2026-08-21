@@ -699,7 +699,7 @@
   .ult-btn.ready { animation: ultPulse 1.1s ease-in-out infinite; }
   @keyframes ultPulse { 0%, 100% { box-shadow: 0 0 8px 3px rgba(217,182,74,0.35); } 50% { box-shadow: 0 0 20px 6px rgba(217,182,74,0.75); } }
   /* 丹药键：迁至屏幕左下角、虚拟摇杆上方，远离右下战斗簇，杜绝激战误触 */
-  .cons-btn { width: 44px; height: 44px; right: calc(150px + var(--sa-r)); bottom: calc(28px + var(--sa-b)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 20px; flex-direction: column; }
+  .cons-btn { width: 44px; height: 44px; left: calc(18px + var(--sa-l)); bottom: calc(132px + var(--sa-b)); border-color: rgba(127,176,105,0.6); background: rgba(127,176,105,0.2); font-size: 20px; flex-direction: column; }
   .cons-btn.on { background: rgba(127,176,105,0.55); }
   .cons-btn.empty { opacity: 0.26; }
   .cons-btn .cons-label { font-size: 7px; margin-top: 1px; opacity: 0.7; }
@@ -826,10 +826,8 @@
   body[data-orient="portrait"] .dash-btn { width: 48px; height: 48px; right: calc(143px + var(--sa-r)); bottom: calc(128px + var(--sa-b)); }
   body[data-orient="portrait"] .cons-btn { width: 40px; height: 40px; left: calc(20px + var(--sa-l)); bottom: calc(170px + var(--sa-b)); }
   body[data-orient="portrait"] .mbtn.pause-btn { left: calc(8px + var(--sa-l)); top: calc(8px + var(--sa-t)); width: 38px; height: 38px; font-size: 15px; }
-  /* #381-⑥ 竖屏单摇杆：背包移到绝技键上方紧邻（原左上→右下战斗簇），并禁用左半屏浮动移动摇杆 */
+  /* #381-⑥ 竖屏双摇杆还原：背包移到绝技键上方紧邻（原左上→右下战斗簇）；左半屏浮动移动摇杆恢复启用 */
   body[data-orient="portrait"] .mbtn.bp-btn { right: calc(78px + var(--sa-r)); bottom: calc(223px + var(--sa-b)); width: 38px; height: 38px; font-size: 15px; }
-  body[data-orient="portrait"] .joy-base { display: none !important; }
-  body[data-orient="portrait"] .joy-knob { display: none !important; }
   body[data-orient="portrait"] .mbtn.phase-btn { right: calc(170px + var(--sa-r)); bottom: calc(64px + var(--sa-b)); width: 40px; height: 40px; font-size: 17px; }
   /* 竖屏合成键已移除：合成入口迁入战利品储物舱 */
   body[data-orient="portrait"] .mbtn.pick-btn { right: calc(225px + var(--sa-r)); bottom: calc(144px + var(--sa-b)); width: 42px; height: 42px; font-size: 17px; }
