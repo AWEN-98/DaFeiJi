@@ -523,13 +523,13 @@
     var base = outcome === 'success' ? 1 : outcome === 'abandon' ? 0.3 : 0.15;
     return outcome === 'death' ? base : Math.min(1, base + (player.extractBonus || 0));
   }
-  function bankLoot(outcome) {
+  function bankLoot(outcome, keepMul) {
     var keep = lootKeepRate(outcome);
     var kept = 0;
     for (var i = 0; i < run.loot.length; i++) {
       var it = run.loot[i];
       // 裂隙内所得：成功 100% 保留，失败（阵亡/弃局）按 50% 保底（呼应「搏命有底」）
-      var kp = it.rift ? (outcome === 'success' ? 1 : 0.5) : keep;
+      var kp = it.rift ? (outcome === 'success' ? 1 : 0.5) : keep; if (keepMul) kp *= keepMul;
       if (Math.random() > kp) continue;
       // Boss 遗物/传说武器使用固定词条，普通战利品随机词条
       if (it.relicMods) {
@@ -2502,7 +2502,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _riftSdFrozen: 0 };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _earlyUnlocked: false, _riftSdFrozen: 0 };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）；深渊异变·潮汐：含 tide_fast 时周期 ×0.6
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -3615,10 +3615,12 @@
   var EXTRACT = {
     warnDur: 5,    // 开放前预兆（闪烁信号）时长
     openDur: 30,   // 单次开放窗口（秒）
+    earlyDur: 22,  // H-2：提前撤离点窗口（比常规更短）
     guardCd: 3.2,  // 开放期围堵刷新间隔
     gapMin: 25, gapMax: 45, // 关闭后到下一轮预兆的间隔
     beaconDur: 45  // v12.6：击破领主后金色光柱（beacon）自毁倒计时时长
   };
+  var EARLY_LOOT_THRESHOLD = 8; // H-2：搜刮达标件数 → 解锁一个提前撤离点（不打 Boss 也能撤）
   // ===== 敌机行为与撤离惊动（规则圣经 v1 参数）=====
   var ALERT = {
     detectEdge: 300,   // 探测边缘半径（→ 1级警觉）
@@ -3765,6 +3767,18 @@
       if (run.selfDestruct <= 0) { run.selfDestruct = 0; collapseEvac(); }
     }
     if (!extractPoints) return;
+    // H-2：提前撤离点（不打 Boss 也能撤）——搜刮达标即解锁 1 个 sealed 点，窗口更短、保底更低
+    if (run && !run._earlyUnlocked && run.loot.length >= EARLY_LOOT_THRESHOLD) {
+      for (var _ep = 0; _ep < extractPoints.length; _ep++) {
+        if (extractPoints[_ep].state === 'sealed') {
+          var _ez2 = extractPoints[_ep];
+          _ez2.state = 'open'; _ez2.timer = EXTRACT.earlyDur; _ez2.early = true; _ez2.prog = 0;
+          run._earlyUnlocked = true;
+          setBanner('★ 搜刮达标！撤离点 ' + _ez2.label + ' 提前开放（窗口较短·保底较低）——可随时撤离', 3.6, null, 'top');
+          break;
+        }
+      }
+    }
     for (var i = 0; i < extractPoints.length; i++) {
       var z = extractPoints[i];
       if (z.state === 'sealed') {
@@ -3787,7 +3801,7 @@
           for (var egi = 0; egi < enemies.length; egi++) { if (enemies[egi].extractGuard === i) { enemies[egi].wake = 0; enemies[egi].alert = 1; } }
         }
       } else if (z.state === 'open') {
-        if (z.timer <= 0) { z.state = 'closed'; z.timer = rand(EXTRACT.gapMin, EXTRACT.gapMax); z.prog = 0; setBanner('撤离点 ' + z.label + ' 已关闭', 2.2); }
+        if (z.timer <= 0) { z.state = 'closed'; z.timer = rand(EXTRACT.gapMin, EXTRACT.gapMax); z.prog = 0; if (z.early) z.early = false; setBanner('撤离点 ' + z.label + ' 已关闭', 2.2); }
       } else if (z.state === 'cooldown') {
         z.cd -= dt;
         if (z.cd <= 0) { z.state = 'closed'; z.timer = rand(EXTRACT.gapMin, EXTRACT.gapMax); z.prog = 0; setBanner('撤离点 ' + z.label + ' 冷却结束（已关闭）', 2.0); }
@@ -4117,12 +4131,13 @@
   function finishRun(outcome) {
     if (scene !== 'mission') return;
     showScene('result');
+    var earlyExfil = (outcome === 'success' && exfilPoint && exfilPoint.early); // H-2：提前撤离（不打 Boss）保底较低
     var killReward = Math.floor(run.kills * 2) + (outcome === 'success' ? 30 : outcome === 'abandon' ? 10 : 0);
     if (outcome === 'success' && exfilJadePenalty > 0) killReward = Math.floor(killReward * (1 - exfilJadePenalty)); // 急速读条折损
-    // ★ 深渊层级：成功撤离带回 100% 灵矿碎屑 / 阵亡 15% / 弃局 30%
-    var oreReturnRate = outcome === 'success' ? 1.0 : (outcome === 'abandon' ? 0.30 : 0.15);
+    // ★ 深渊层级：成功撤离带回 100% 灵矿碎屑 / 提前撤离 70% / 阵亡 15% / 弃局 30%
+    var oreReturnRate = outcome === 'success' ? (earlyExfil ? 0.70 : 1.0) : (outcome === 'abandon' ? 0.30 : 0.15);
     var oreReward = Math.floor((run.oreCollected || 0) * oreReturnRate);
-    var kept = bankLoot(outcome);                 // 战利品入库为法器（按 outcome 比例，带研究院撤离加成）
+    var kept = bankLoot(outcome, earlyExfil ? 0.70 : 1); // 战利品入库（提前撤离按 70% 保底）
     var lostLoot = run.loot.length - kept;        // 被没收的战利品件数
     meta.currency += killReward; meta.ore += oreReward; meta.runs += 1;  // 灵玉仅来自击杀；灵矿碎屑来自采集
     if (run.kills > meta.bestKills) meta.bestKills = run.kills;
@@ -4939,34 +4954,35 @@
     updateVaults(dt); // 封印/符文宝箱状态机（解封/击柱解锁）
     if (!inRift && !bossSpawned && run.nodes >= 3 + run.tier) spawnBoss(); // 裂隙内不触发主图Boss
 
-    // 撤离逻辑（简化版）：进入开放点 → 立即开始读条；离开则进度衰减（不冷却不惩罚）
+    // 撤离逻辑：进入开放点 → 弹出撤离抉择（静默/急速/清场），选后读条；离开则进度衰减
     exfil = false;
     if (exfilAlarmT > 0) exfilAlarmT -= dt;
+    // 撤离抉择自动超时（2s 未选 → 默认清场撤离），避免浮层卡死
+    if (exfilAutoT > 0) { exfilAutoT -= dt; if (exfilAutoT <= 0 && exfilChoicePending) commitExfil('clear'); }
     if (extractPoints && extractPoints.length) {
       for (var ei2 = 0; ei2 < extractPoints.length; ei2++) {
         var ez = extractPoints[ei2];
-        // v12.6：撤离点仅在击破领主后的光柱（beacon, state==='open'）可发起读条；不再依赖相位窗
+        // v12.6：撤离点 state==='open' 即可发起读条（beacon 光柱 / 提前撤离点 均走此分支）
         if (ez.state !== 'open') continue;
         var inside = player.x > ez.x && player.x < ez.x + ez.w && player.y > ez.y && player.y < ez.y + ez.h;
         if (inside) {
           exfil = true;
-          // 首次进入 → 触发惊动
-          if (!exfilStarted || exfilPoint !== ez) {
-            exfilStarted = true; exfilPoint = ez; exfilChoice = 'clear';
-            triggerAlarm(ez, false);
-            setBanner('撤离读条中…留在光柱内！', 1.8);
-            phaseObjectFeedback('extract', ez.x + ez.w / 2, ez.y + ez.h / 2);
+          if (!exfilStarted) {
+            if (exfilChoice) { exfilStarted = true; exfilPoint = ez; } // 已选定（走出再走回）→ 直接恢复读条
+            else if (!exfilChoicePending) { exfilChoicePending = ez; showExfilChoice(ez); } // 首次进入 → 弹抉择
+          } else {
+            // 已提交选择：按所选方式读条
+            var castTime = (exfilChoice === 'quick') ? EXFIL2.quickCast : 3.0; // 急速读条更短
+            if (player.dashCdReduce > 0) castTime *= 0.85; // 机动型核心：读条加速 15%
+            ez.prog = Math.min(1, ez.prog + dt / castTime);
+            if (ez.prog >= 1) { AudioSys.sfx.extract(); finishRun('success'); }
           }
-          var castTime = 3.0; // v12.6：3s 无干扰读条（beacon 态）
-          // 机动型核心：读条加速15%
-          if (player.dashCdReduce > 0) castTime *= 0.85;
-          ez.prog = Math.min(1, ez.prog + dt / castTime);
-          if (ez.prog >= 1) { AudioSys.sfx.extract(); finishRun('success'); }
         } else {
           // 不在区域内：进度缓慢衰减
           if (ez.prog > 0) ez.prog = Math.max(0, ez.prog - dt / 3);
-          // 如果当前正在读条的这个点，玩家离开了，清除读条状态（但不清零进度）
-          if (exfilPoint === ez && exfilStarted) { exfilStarted = false; }
+          if (exfilPoint === ez && exfilStarted) exfilStarted = false; // 离开清零读条态（进度保留）
+          // 已弹抉择但未提交就离开 → 取消抉择浮层
+          if (exfilChoicePending === ez) { exfilChoicePending = null; hideExfilChoice(); }
         }
       }
     }
@@ -6838,7 +6854,7 @@
         blit('seal_circle_teal', cx, cy, sealSz, sealSz, gameTime * 0.35);
         ctx.globalAlpha = 1;
         ctx.fillStyle = COL.extract; ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText('撤离点' + z.label + ' ' + Math.floor(prog2 * 100) + '%', cx, z.y - 12);
+        ctx.fillText('撤离点' + z.label + (z.early ? '[提前]' : '') + ' ' + Math.floor(prog2 * 100) + '%', cx, z.y - 12);
         ctx.font = '11px sans-serif'; ctx.fillText('开放 ' + Math.ceil(z.timer) + 's', cx, z.y + z.h + 16); ctx.textAlign = 'left';
         if (z.near) drawInteractLabel(cx, z.y - 30, '撤离点 · 站定读条撤离', '#7FB069');
       } else if (z.state === 'sealed') {
