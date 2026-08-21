@@ -2341,6 +2341,8 @@
       if (dist2(rx2, ry2, plaza.x, plaza.y) < 120 * 120) continue;
       obstacles.push({ type: 'rift', x: rx2, y: ry2, r: rr2, dps: 9 + t * 2, col: '#B06FD0', pulse: rand(0, 6.28) });
     }
+    // 障碍布局完成后，生成有逻辑的装饰残垣（沿簇边缘/世界边界，不堵路）
+    genDecor();
   }
   function resolveObstacles(ent, rad) {
     for (var i = 0; i < obstacles.length; i++) {
@@ -2532,7 +2534,7 @@
       combo: 0, comboT: 0, comboBest: 0, ultCharge: 0, evolved: {}, aimLineT: 0
     };
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
-    bullets = []; enemies = []; loot = []; resetParticles(); resetFloaters(); nodes = []; vaults = []; totems = []; decor = []; genDecor();
+    bullets = []; enemies = []; loot = []; resetParticles(); resetFloaters(); nodes = []; vaults = []; totems = []; decor = [];
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
@@ -5956,14 +5958,57 @@
   function genDecor() {
     decor = [];
     if (!WORLD_W) return;
-    var spots = [
-      [WORLD_W * 0.07, WORLD_H * 0.10], [WORLD_W * 0.93, WORLD_H * 0.12],
-      [WORLD_W * 0.10, WORLD_H * 0.88], [WORLD_W * 0.91, WORLD_H * 0.90],
-      [WORLD_W * 0.50, WORLD_H * 0.05], [WORLD_W * 0.05, WORLD_H * 0.50],
-      [WORLD_W * 0.95, WORLD_H * 0.50], [WORLD_W * 0.50, WORLD_H * 0.95]
-    ];
-    for (var _di = 0; _di < spots.length; _di++) {
-      decor.push({ x: spots[_di][0], y: spots[_di][1], key: (_di % 2 ? 'env_cover_block' : 'env_ruin_barrier'), rot: (_di * 1.3) % 6.283, s: (_di % 2 ? 60 : 76) });
+    var wallOb = obstacles.filter(function (o) { return o.type === 'wall' || o.type === 'rock'; });
+    function distToWall(x, y, ob) {
+      if (ob.type === 'rock') return Math.hypot(x - ob.x, y - ob.y) - ob.r;
+      var nx = clamp(x, ob.x - ob.hw, ob.x + ob.hw), ny = clamp(y, ob.y - ob.hh, ob.y + ob.hh);
+      return Math.hypot(x - nx, y - ny);
+    }
+    function insideWall(x, y) { for (var i = 0; i < wallOb.length; i++) if (distToWall(x, y, wallOb[i]) < -2) return true; return false; }
+    function tooCloseWall(x, y, thr) { for (var i = 0; i < wallOb.length; i++) if (distToWall(x, y, wallOb[i]) < thr) return true; return false; }
+
+    var candidates = [];
+    // A. 障碍簇边缘残骸：沿每个墙体/岩石外侧随机点缀，形成"废墟环抱战场"的逻辑
+    for (var wi = 0; wi < wallOb.length; wi++) {
+      var ob = wallOb[wi];
+      var dirCount = ob.type === 'rock' ? 6 : 4;
+      for (var d = 0; d < dirCount; d++) {
+        var ang = (d / dirCount) * 6.283 + (ob.type === 'wall' ? rand(-0.25, 0.25) : rand(-0.4, 0.4));
+        var ux = Math.cos(ang), uy = Math.sin(ang);
+        var extent = ob.type === 'rock' ? ob.r : (Math.abs(ux) * ob.hw + Math.abs(uy) * ob.hh);
+        var gap = rand(24, 52);
+        var px = ob.x + ux * (extent + gap), py = ob.y + uy * (extent + gap);
+        if (px < 60 || px > WORLD_W - 60 || py < 60 || py > WORLD_H - 60) continue;
+        if (insideWall(px, py)) continue;
+        if (tooCloseWall(px, py, 18)) continue; // 别贴墙，留飞行通道
+        if (dist2(px, py, spawnPoint.x, spawnPoint.y) < 220 * 220) continue;
+        candidates.push({ x: px, y: py });
+      }
+    }
+    // B. 世界边界残骸带：提示地图边缘，强化"城市空域残垣"的战场感
+    var edgeCount = Math.floor((WORLD_W + WORLD_H) / 320);
+    for (var e = 0; e < edgeCount; e++) {
+      var side = randi(0, 4);
+      var px, py;
+      if (side === 0) { px = rand(80, WORLD_W - 80); py = rand(40, 85); }
+      else if (side === 1) { px = rand(80, WORLD_W - 80); py = rand(WORLD_H - 85, WORLD_H - 40); }
+      else if (side === 2) { px = rand(40, 85); py = rand(80, WORLD_H - 80); }
+      else { px = rand(WORLD_W - 85, WORLD_W - 40); py = rand(80, WORLD_H - 80); }
+      if (insideWall(px, py)) continue;
+      if (dist2(px, py, spawnPoint.x, spawnPoint.y) < 200 * 200) continue;
+      candidates.push({ x: px, y: py });
+    }
+
+    // 洗牌后稀疏放置，避免局部过密
+    candidates.sort(function () { return Math.random() - 0.5; });
+    var maxDecor = Math.min(candidates.length, 24);
+    var keys = ['env_ruin_barrier', 'env_cover_block'];
+    for (var ci = 0; ci < maxDecor; ci++) {
+      var c = candidates[ci];
+      var tooNear = false;
+      for (var dj = 0; dj < decor.length; dj++) if (dist2(c.x, c.y, decor[dj].x, decor[dj].y) < 100 * 100) { tooNear = true; break; }
+      if (tooNear) continue;
+      decor.push({ x: c.x, y: c.y, key: keys[decor.length % 2], rot: rand(0, 6.283), s: rand(48, 78) });
     }
   }
   function drawObstacles() {
