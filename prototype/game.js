@@ -2469,12 +2469,24 @@
   function openVault(v) {
     if (v.state === 'done') return; v.state = 'done';
     var drops = v.type === 'seal' ? (Math.random() < 0.5 ? ['purple', 'orange'] : ['purple', 'blue']) : ['orange', 'purple'];
-    for (var i = 0; i < drops.length; i++) { run.loot.push({ rarity: drops[i], name: pickName(drops[i]), slot: pickSlot() }); run.picked++; }
+    var gainedNames = [];
+    for (var i = 0; i < drops.length; i++) {
+      var rar = drops[i];
+      run.picked++;
+      var item = { rarity: rar, name: pickName(rar), slot: pickSlot() };
+      // 宝箱解锁后迸发可见战利品实体（玩家需走过去拾取）
+      loot.push({ x: v.x + rand(-18, 18), y: v.y + rand(-18, 18), type: 'artifact', rarity: item.rarity, name: item.name, slot: item.slot, vx: rand(-70, 70), vy: rand(-70, 70), life: 36, age: 0 });
+      gainedNames.push(item.name);
+    }
     burst(v.x, v.y, '#E0B84A', 26, { ring: true, ringR: 64 }); addShake(4, 180, 80); AudioSys.sfx.chestOpen(4);
     screenFlash = { color: '#E0B84A', a: 0.4 };
     floatText(v.x, v.y - 28, v.type === 'seal' ? '封印解除！' : '符文共鸣！', '#E0B84A');
+    // 具体获得内容浮字
+    for (var gi = 0; gi < gainedNames.length; gi++) {
+      floatText(v.x, v.y - 46 - gi * 15, '获得 ' + gainedNames[gi], RARCOL[drops[gi]] || '#E0B84A');
+    }
     spawnVfx('vfx_vault_unlocked', v.x, v.y, 110, 0.8, rand(0, 6.28), 0);
-    setBanner((v.type === 'seal' ? '封印宝箱' : '符文宝箱') + ' 开启 · 获得高品质战利品', 2.4);
+    setBanner((v.type === 'seal' ? '封印宝箱' : '符文宝箱') + ' 开启 · 获得 ' + gainedNames.join(' / '), 2.4);
   }
   function updateVaults(dt) {
     for (var vi = 0; vi < vaults.length; vi++) {
@@ -6266,9 +6278,18 @@
       var sealOk = blit('seal_circle_gold', 0, 0, sealSize, sealSize, gameTime * (v.state === 'opening' ? 0.8 : 0.4));
       if (!sealOk) { ctx.strokeStyle = 'rgba(' + rgb + ',' + ringA + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, v.r + 14, 0, 7); ctx.stroke(); }
       ctx.globalAlpha = 1;
-      ctx.fillStyle = done ? '#3a3f4a' : (v.type === 'seal' ? '#E0B84A' : '#B06FD0'); ctx.globalAlpha = done ? 0.5 : 1;
-      ctx.beginPath(); ctx.moveTo(-14, 12); ctx.lineTo(-14, -2); ctx.quadraticCurveTo(0, -16, 14, -2); ctx.lineTo(14, 12); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = done ? '#555' : '#fff'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+      // 宝箱本体：接入真实资产图（封印宝箱 / 符文宝箱）
+      var chestKey = v.type === 'seal' ? 'chest_vault' : 'chest_common';
+      var chestSize = 56;
+      ctx.globalAlpha = done ? 0.38 : 1;
+      var chestOk = blit(chestKey, 0, 0, chestSize, chestSize, 0);
+      if (!chestOk) {
+        // 优雅降级：鎏金拱形箱
+        ctx.fillStyle = done ? '#3a3f4a' : (v.type === 'seal' ? '#E0B84A' : '#B06FD0');
+        ctx.beginPath(); ctx.moveTo(-14, 12); ctx.lineTo(-14, -2); ctx.quadraticCurveTo(0, -16, 14, -2); ctx.lineTo(14, 12); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = done ? '#555' : '#fff'; ctx.lineWidth = 2; ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
       if (!done) {
         if (v.type === 'seal') { ctx.fillStyle = '#fff'; ctx.fillRect(-3, -4, 6, 9); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -4, 4, Math.PI, 0); ctx.stroke(); }
         else { ctx.rotate(gameTime * 1.5); ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9; ctx.beginPath(); for (var st = 0; st < 6; st++) { var a2 = st * Math.PI / 3, rad = st % 2 ? 3 : 8, px = Math.cos(a2) * rad, py = Math.sin(a2) * rad; if (st === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; }
