@@ -765,6 +765,14 @@
   .bp-stat { font-size: 12px; color: #B8A98A; padding: 5px 11px; border: 1px solid rgba(201,162,75,0.3); border-radius: 9px; background: rgba(20,16,10,0.5); }
   .bp-stat b { color: #E0B84A; font-size: 14px; margin-left: 5px; }
   .bp-status #backpackClose { margin-left: auto; }
+  /* 本局符文区块（接入 v2 rune_* 图标，横向不挤压战利品网格） */
+  .bp-runes { flex: 0 0 auto; padding: 10px 18px 4px; border-bottom: 1px solid rgba(201,162,75,0.16); }
+  .bp-runes-head { font-size: 12px; color: #C9A24B; font-weight: 700; letter-spacing: .4px; margin-bottom: 7px; }
+  .bp-runes-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .bp-rune { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px 4px 5px; border: 1px solid rgba(201,162,75,0.34); border-radius: 9px; background: rgba(28,22,13,0.6); font-size: 11px; color: #E8DCC4; max-width: 160px; }
+  .bp-rune-ic { width: 20px; height: 20px; object-fit: contain; flex: 0 0 auto; }
+  .bp-rune-ic.glyph { font-size: 14px; line-height: 20px; text-align: center; width: 20px; height: 20px; }
+  .bp-rune-nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* 3-4 列品质流光金属框网格 */
   .bp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; padding: 14px 18px; overflow-y: auto; }
   .bp-card { position: relative; border: 1.5px solid var(--rc, #C9A24B); border-radius: 11px; padding: 11px 30px 11px 13px;
@@ -1644,6 +1652,11 @@
   .cd-box .cx-got { color:#6fae5f; font-weight:700; }
   .cd-box .cx-miss { color:var(--muted); }
   .cd-box .cx-desc { color:var(--muted); font-size:12px; margin-top:2px; }
+  .cd-box .cx-sub { font-size:12px; color:var(--gold); font-weight:700; letter-spacing:.4px; margin:8px 0 6px; }
+  .cd-box .cx-itm-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .cd-box .cx-itm { display:inline-flex; flex-direction:column; align-items:center; gap:3px; padding:6px 8px; border:1px solid rgba(201,162,75,0.3); border-radius:9px; background:rgba(28,22,13,0.5); font-size:10px; color:var(--parchment); width:58px; }
+  .cd-box .cx-itm img { width:26px; height:26px; object-fit:contain; }
+  .cd-box .cx-itm-miss { opacity:0.5; }
 
   /* === 统一补丁：框架扫描线 + 标题组件（全部卡片化基础） === */
   .mframe::before { content:""; position:absolute; inset:0; pointer-events:none; z-index:1; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.16) 3px); opacity:.22; }
@@ -2742,6 +2755,7 @@
       </div>
       <button id="backpackClose" class="btn btn-sprite btn-small">关闭 (B)</button>
     </div>
+    <div id="backpackRunes" class="bp-runes"></div>
     <div id="backpackGrid" class="bp-grid"></div>
     <div id="backpackDetail" class="bp-detail" style="display:none"></div>
     <div class="actions"><button id="backpackMergeBtn" class="btn btn-sprite btn-secondary">熔炼合成</button><button id="backpackSort" class="btn btn-sprite btn-secondary">整理（稀有度↓）</button><span class="muted">点卡片看详情 · 桌面可拖拽换位</span></div>

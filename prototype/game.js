@@ -1339,6 +1339,11 @@
   loadImg('con_heal', A2 + 'con_heal.png');
   loadImg('con_shield', A2 + 'con_shield.png');
   loadImg('con_slow', A2 + 'con_slow.png');
+  // v2 物品/符文图标（19 张，原闲置；接入背包符文区块 + 基地图鉴装备/符文缩略，消除死加载）
+  ['itm_ammo_crystal', 'itm_ammo_talisman', 'itm_armor_iron', 'itm_armor_jade', 'itm_core_thunder', 'itm_core_void', 'itm_weapon_blade', 'itm_weapon_cannon',
+    'rune_crit_precision', 'rune_earth_pierce', 'rune_earth_vitality', 'rune_fire_attack', 'rune_fire_burst', 'rune_summon_void', 'rune_thunder_chain', 'rune_thunder_rate', 'rune_water_heal', 'rune_water_shield', 'rune_wind_homing', 'rune_wind_speed'].forEach(function (k) { loadImg(k, A2 + k + '.png'); });
+  // 符文系别 → 代表图标（背包区块按 elem 取系别图标；余下 6 张在图鉴展示）
+  var RUNE_ELEM_ICON = { '火': 'rune_fire_attack', '水': 'rune_water_heal', '雷': 'rune_thunder_chain', '风': 'rune_wind_speed', '土': 'rune_earth_pierce' };
   var A3 = 'assets/v3/vfx/';
   // loadImg('vfx_hit_spark', A3 + 'vfx_hit_spark.png');   // 旧资产未抠干净，先禁用
   // loadImg('vfx_crit_flash', A3 + 'vfx_crit_flash.png'); // 旧资产未抠干净，先禁用
@@ -3545,10 +3550,28 @@
   }
   function renderBackpack() {
     var grid = document.getElementById('backpackGrid'), det = document.getElementById('backpackDetail');
+    var runesBox = document.getElementById('backpackRunes');
     var cnt = document.getElementById('backpackCount'), stLoot = document.getElementById('bpStatLoot'), stJade = document.getElementById('bpStatJade');
     if (cnt) cnt.textContent = run.loot.length + ' / ' + invMax;
     if (stLoot) stLoot.textContent = run.loot.length;
     if (stJade) stJade.textContent = run.jade || 0;
+    // 本局符文区块（接入 v2 rune_* 图标，按系别取代表图标；原背包不展示符文，此为明确缺口）
+    if (runesBox) {
+      var _rd = (player && player.runeDefs) || [];
+      if (_rd.length === 0) { runesBox.innerHTML = ''; runesBox.style.display = 'none'; }
+      else {
+        runesBox.style.display = '';
+        var _rh = '<div class="bp-runes-head">本局符文 · ' + _rd.length + ' 枚</div><div class="bp-runes-row">';
+        for (var _ri = 0; _ri < _rd.length; _ri++) {
+          var _d = _rd[_ri], _el = _d.elem || '', _ic = RUNE_ELEM_ICON[_el] || 'rune_fire_attack';
+          var _img = IMG[_ic];
+          var _icHtml = (_img && _img.complete && _img.naturalWidth) ? ('<img class="bp-rune-ic" src="' + _img.src + '" alt="' + _el + '">') : ('<span class="bp-rune-ic glyph" style="color:' + (ELEMCOL[_el] || '#E0B84A') + '">' + (_el || '✦') + '</span>');
+          _rh += '<div class="bp-rune" title="' + (_d.name || '') + ' · ' + (_d.desc || '') + '">' + _icHtml + '<span class="bp-rune-nm">' + (_d.name || '') + '</span></div>';
+        }
+        _rh += '</div>';
+        runesBox.innerHTML = _rh;
+      }
+    }
     if (!grid || !det) return;
     if (backpackDetail != null) { renderBackpackDetail(backpackDetail); return; }
     grid.style.display = ''; det.style.display = 'none'; grid.innerHTML = '';
@@ -8945,6 +8968,19 @@
         parts.push('<span style="color:' + (n > 0 ? RARCOL[r] : '#8a7a60') + '">' + RARNAME[r] + ' ×' + n + '</span>');
       });
       html = '<div class="cx-sec">' + parts.join('<br>') + '</div>';
+      // 战利品类型图鉴（接入 v2 itm_* 图标；缺图自动回退到文字）
+      var ITM_SHOW = [
+        ['itm_weapon_blade', '武器·锋'], ['itm_weapon_cannon', '武器·重'], ['itm_armor_iron', '护甲·铁'], ['itm_armor_jade', '护甲·玉'],
+        ['itm_core_thunder', '核心·雷'], ['itm_core_void', '核心·虚'], ['itm_ammo_crystal', '弹药·晶'], ['itm_ammo_talisman', '弹药·符']
+      ];
+      var _itmHtml = '<div class="cx-sub">战利品种类</div><div class="cx-itm-row">';
+      for (var _ii = 0; _ii < ITM_SHOW.length; _ii++) {
+        var _k = ITM_SHOW[_ii][0], _lbl = ITM_SHOW[_ii][1], _im = IMG[_k];
+        if (_im && _im.complete && _im.naturalWidth) _itmHtml += '<div class="cx-itm"><img src="' + _im.src + '" alt="' + _lbl + '"><span>' + _lbl + '</span></div>';
+        else _itmHtml += '<div class="cx-itm cx-itm-miss"><span>' + _lbl + '</span></div>';
+      }
+      _itmHtml += '</div>';
+      html += _itmHtml;
     } else if (cat.key === 'sets') {
       for (var boss in BOSS_RELICS) {
         var relics = BOSS_RELICS[boss];
