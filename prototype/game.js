@@ -1579,10 +1579,10 @@
   // 虚拟摇杆状态
   var joy = { active: false, touchId: null, baseX: 0, baseY: 0, dx: 0, dy: 0, mag: 0 };
   // 右摇杆（瞄准+开火一体）：朝向绝对由右摇杆矢量主导，松手保朝向
-  var aimJoy = { active: false, touchId: null, baseX: 0, baseY: 0, dx: 0, dy: 0, mag: 0, tapT: 0 };
+  var aimJoy = { active: false, touchId: null, baseX: 0, baseY: 0, dx: 0, dy: 0, sdx: 0, sdy: 0, mag: 0, tapT: 0 };
   var aimTapFire = false; // 右摇杆点按保底发射（消耗一次）
   // 双摇杆手感参数
-  var AIM_DEADZONE = 0.2;                       // 右摇杆死区：拉过才触发瞄准开火
+  var AIM_DEADZONE = 0.12;                      // 右摇杆死区：拉过才触发瞄准开火（降低死区让微调更早生效）
   var TURN_TAU = 0.028;                        // 转向阻尼时间常数：响应 < 0.08s（推摇杆即朝向，松手即定角）
   var AIM_ASSIST_CONE = 15 * Math.PI / 180;    // 15° 扇形辅助瞄准微吸附
   var AIM_ASSIST_RANGE = 600;                  // 辅助瞄准生效距离
@@ -1768,7 +1768,7 @@
       if (scene !== 'mission' || paused || overlaysOpen() || pickupOpen) return;
       var t = e.changedTouches[0]; if (!t) return;
       aimJoy.active = true; aimJoy.touchId = t.identifier;
-      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
+      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.sdx = 0; aimJoy.sdy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
       rsEl.classList.add('on');
       updateAimJoystickKnob(0, 0);
     }, { passive: false });
@@ -1781,7 +1781,7 @@
       var c = rsCenter();
       var dx = t.clientX - c.x, dy = t.clientY - c.y;
       var dist = Math.hypot(dx, dy);
-      var maxR = 45;
+      var maxR = 58;                            // 摇杆行程加大，降低满量程前的灵敏度，提升微调精度
       if (dist > maxR) { dx = dx / dist * maxR; dy = dy / dist * maxR; dist = maxR; }
       aimJoy.dx = dx / maxR; aimJoy.dy = dy / maxR; aimJoy.mag = dist / maxR;
       updateAimJoystickKnob(dx, dy);
@@ -1797,7 +1797,7 @@
         aimTapFire = true;
       }
       aimJoy.active = false; aimJoy.touchId = null;
-      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
+      aimJoy.dx = 0; aimJoy.dy = 0; aimJoy.sdx = 0; aimJoy.sdy = 0; aimJoy.mag = 0; aimJoy.tapT = 0;
       rsEl.classList.remove('on');
       updateAimJoystickKnob(0, 0);
     };
@@ -4779,8 +4779,12 @@
     if (isMobile) {
       // 废除硬性自动锁敌：朝向绝对由玩家右摇杆矢量主导；无右摇杆时跟随移动方向兜底，否则保持最后朝向
       if (aimJoy.active) {
-        if (aimJoy.mag > AIM_DEADZONE) {
-          aimSourceAng = Math.atan2(aimJoy.dy, aimJoy.dx);
+        // 低通滤波：抑制触控采样抖动（α≈0.35，约 80 ms 达到 90% 响应），同时保持跟手
+        aimJoy.sdx += (aimJoy.dx - aimJoy.sdx) * 0.35;
+        aimJoy.sdy += (aimJoy.dy - aimJoy.sdy) * 0.35;
+        var _smag = Math.hypot(aimJoy.sdx, aimJoy.sdy);
+        if (_smag > AIM_DEADZONE) {
+          aimSourceAng = Math.atan2(aimJoy.sdy, aimJoy.sdx);
         } else {
           // 未拖过死区（点按/按住未拖拽）：吸附最近敌机方向，否则保持当前朝向
           var _ne = null, _nd = AIM_ASSIST_RANGE * AIM_ASSIST_RANGE;
