@@ -1307,6 +1307,15 @@
   loadImg('enm_sniper', A1 + 'enemy/enm_sniper.png');      // 源：enm_lantern_imp（漂浮灯笼精 → 幽灵狙击手气质）
   loadImg('enm_shielder', A1 + 'enemy/enm_shielder.png');  // 源：enm_golden_mask（金鬼面 → 厚重护盾兵）
   loadImg('enm_swarm', A1 + 'enemy/enm_swarm.png');        // 源：enm_paper_effigy（小纸人 → 蜂群数量感）
+  // v4 monsters：Boss 拍板替换 v1 enemy 美术，8 张独立裁切图映射给 10 个 archetype（部分共用）
+  loadImg('mon_v4_0', 'assets/v4/monsters/monster_r0_c0.png'); // 青焰灯笼怪
+  loadImg('mon_v4_1', 'assets/v4/monsters/monster_r0_c1.png'); // 符咒纸人
+  loadImg('mon_v4_2', 'assets/v4/monsters/monster_r0_c2.png'); // 恶魔羊头/冲撞
+  loadImg('mon_v4_3', 'assets/v4/monsters/monster_r0_c3.png'); // 四管炮台要塞
+  loadImg('mon_v4_4', 'assets/v4/monsters/monster_r1_c0.png'); // 金面具锁链球
+  loadImg('mon_v4_5', 'assets/v4/monsters/monster_r1_c1.png'); // 青玉圆环灯笼
+  loadImg('mon_v4_6', 'assets/v4/monsters/monster_r1_c2.png'); // 分裂双爪
+  loadImg('mon_v4_7', 'assets/v4/monsters/monster_r1_c3.png'); // 白毛龙首（宝库守卫）
   loadImg('boss_taowu', 'assets/v4/bosses/boss_taowu.png');
   loadImg('boss_qiongqi', 'assets/v4/bosses/boss_qiongqi.png');
   loadImg('boss_taotie', 'assets/v4/bosses/boss_taotie.png');
@@ -1439,16 +1448,17 @@
   // 游戏内实体（机体 / 怪物 / 战利品 / 掉落物）渲染放大倍率。统一调这一值即可整体缩放，碰撞半径不受影响。
   var ICON_SCALE = 1.8;
   function enemySprite(e) {
-    if (e.arche === 'turret') return 'enm_turret';
-    if (e.arche === 'gunship') return 'enm_gunship';
-    if (e.arche === 'heal') return 'enm_heal';
-    if (e.arche === 'split') return 'enm_split';
-    if (e.arche === 'looter') return 'enm_looter';
-    if (e.arche === 'shoot') return 'enm_shoot';
-    if (e.arche === 'sniper') return 'enm_sniper';
-    if (e.arche === 'shielder') return 'enm_shielder';
-    if (e.arche === 'swarm') return 'enm_swarm';
-    return 'enm_ram';
+    // v4 monsters 替换 v1 enemy 美术：8 张图映射 10 个 archetype（按视觉气质匹配）
+    if (e.arche === 'turret') return 'mon_v4_3';
+    if (e.arche === 'gunship') return 'mon_v4_3';
+    if (e.arche === 'heal') return 'mon_v4_5';
+    if (e.arche === 'split') return 'mon_v4_6';
+    if (e.arche === 'looter') return 'mon_v4_7';
+    if (e.arche === 'shoot') return 'mon_v4_0';
+    if (e.arche === 'sniper') return 'mon_v4_0';
+    if (e.arche === 'shielder') return 'mon_v4_4';
+    if (e.arche === 'swarm') return 'mon_v4_1';
+    return 'mon_v4_2'; // ram 默认：羊头冲撞
   }
   function bulletSprite(b) {
     if (b.kind === 'boss') return 'bul_boss';
