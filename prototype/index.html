@@ -864,8 +864,7 @@
   #riftLeaveBtn { position: fixed; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 8; display: none; pointer-events: auto; padding: 8px 16px; border-radius: 10px; border: 1px solid rgba(232,220,196,0.5); background: rgba(28,20,44,0.92); color: #E8DCC4; cursor: pointer; font-size: 13px; font-weight: 700; box-shadow: 0 0 18px rgba(120,60,200,0.35); }
   #riftLeaveBtn:hover { background: rgba(48,36,72,0.95); }
   #riftLeaveBtn:active { transform: translateX(-50%) scale(0.96); }
-  /* #381-③ 裂隙出口改回"走到指定出口传送门"：离场按钮永久隐藏（防死锁走 updateRift 60s 自动安全阀 / Ctrl+Q 隐藏键） */
-  #riftLeaveBtn { display: none !important; pointer-events: none; }
+  /* #444 恢复离开裂隙按钮：进入裂隙时由 JS 显示（display:block），离开后由 JS 隐藏；不再强制 !important 隐藏 */
 
   /* 磁锁秘库·投喂借力开门 */
   #vaultPrompt { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9; display: none; flex-direction: column; align-items: center; gap: 12px; width: min(92vw, 540px); pointer-events: auto; background: rgba(26,16,6,0.94); border: 1px solid rgba(201,162,75,0.55); border-radius: 14px; padding: 20px; box-shadow: 0 0 46px rgba(201,162,75,0.45); }

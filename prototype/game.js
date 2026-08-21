@@ -5753,8 +5753,9 @@
     cam.x = clamp(player.x - W / 2, 0, Math.max(0, WORLD_W - W)); cam.y = clamp(player.y - H / 2, 0, Math.max(0, WORLD_H - H));
     var r = Math.random();
     if (r < 0.4) {
-      riftRoom = { type: 'treasury', done: false, chest: { x: WORLD_W / 2, y: RY + RH * 0.38, r: 20, chest: 'secret' } };
-      setBanner('宝物库 · 安全（触碰中央秘宝获取战利品）', 2.6);
+      riftRoom = { type: 'treasury', done: true, chest: { x: WORLD_W / 2, y: RY + RH * 0.38, r: 20, chest: 'secret' } };
+      riftExit = { x: WORLD_W / 2, y: RY + 60, r: 30 }; // 宝物库：进入即可离场（触碰秘宝是额外奖励，不再卡离场门槛）
+      setBanner('宝物库 · 触碰中央秘宝获取战利品，随时可走传送门离开', 2.6);
     } else if (r < 0.8) {
       addRiftWalls(RX, RY, RW, RH);
       riftRoom = { type: 'arena', done: false }; riftWaves = { wave: 1, gap: 0 };
@@ -5774,7 +5775,9 @@
       setBanner('机关房 · 激活 3 座机关柱解除封锁（当心旋转毒光）', 3.2);
     }
     AudioSys.sfx.extract();
-    // #381-③ 裂隙出口改回"走到指定出口传送门"：不再显示 #riftLeaveBtn（CSS 亦 display:none !important 兜底）
+    // 离开裂隙按钮：进入即显示（随时可撤，符合搜打撤核心循环；未完成离开仅保留已拾取收益）
+    var _lb = document.getElementById('riftLeaveBtn');
+    if (_lb) { _lb.style.display = 'block'; _lb.textContent = (riftRoom.type === 'treasury') ? '离开裂隙 ⟲（已可撤离）' : '离开裂隙 ⟲（未完成将放弃本房额外收益）'; }
   }
   function updateRift(dt) {
     var RR = riftRect;
@@ -5790,8 +5793,9 @@
     } else { riftStuckT = 0; }
     if (riftRoom.type === 'treasury') {
       var ch = riftRoom.chest;
-      if (!riftRoom.done && dist2(ch.x, ch.y, player.x, player.y) < (ch.r + player.pickR * 0.6) * (ch.r + player.pickR * 0.6)) {
-        riftRoom.done = true;
+      // 宝物库：进入即 done（出口已生成，见 enterRift）；触碰中央秘宝是额外奖励，用 chestTaken 防重复领取
+      if (!riftRoom.chestTaken && dist2(ch.x, ch.y, player.x, player.y) < (ch.r + player.pickR * 0.6) * (ch.r + player.pickR * 0.6)) {
+        riftRoom.chestTaken = true;
         // 宝库房·强制拾取：必出 2 件（橙/紫），背包满则自动舍弃最低价值件 → 逼出取舍
         var t1 = Math.random() < 0.45 ? 'orange' : 'purple';
         pushToLoot(riftLoot, { rarity: t1, name: pickName(t1), slot: pickSlot(), rift: true }, ch.x, ch.y, run.loot.length); // #C2 合并口径判满
@@ -5810,7 +5814,6 @@
         }
         burst(ch.x, ch.y, CHESTS.secret.color, 18, { ring: true, ringR: 40 }); AudioSys.sfx.chestOpen(4); screenFlash = { color: CHESTS.secret.flash, a: 0.42 }; addShake(3, 90, 40);
         setBanner('✦ 宝库房·强制拾取！获得 ' + RARNAME[t1] + '/' + RARNAME[t2] + '（背包满会舍弃最低件）', 3.0);
-        riftExit = { x: WORLD_W / 2, y: RR.RY + 60, r: 30 };
       }
     } else if (riftRoom.type === 'arena') {
       if (!riftRoom.done && enemies.length === 0 && !boss) {
@@ -9232,7 +9235,13 @@
   // 裂隙确认按钮
   var rb1 = document.getElementById('riftEnter'); if (rb1) rb1.onclick = function () { commitRift(true); };
   var rb2 = document.getElementById('riftCancel'); if (rb2) rb2.onclick = function () { commitRift(false); };
-  // #381-③ #riftLeaveBtn 已移除离场交互（改传送门出口），不再绑定 onclick（防死锁走 updateRift 60s 自动安全阀 / Ctrl+Q 隐藏键）
+  // #444 恢复离开裂隙按钮：随时可撤（保留已拾取收益）；未完成房间离开时给明确提示
+  var rbLeave = document.getElementById('riftLeaveBtn');
+  if (rbLeave) rbLeave.onclick = function () {
+    if (!inRift) return;
+    if (riftRoom && !riftRoom.done) setBanner('未完成房间离开 · 仅保留已拾取收益（本房额外掉落放弃）', 2.2, '#C94F4F');
+    forceExitRift();
+  };
   // 磁锁秘库按钮
   var vf1 = document.getElementById('vaultFeedBtn'); if (vf1) vf1.onclick = function () { vaultFeed(); };
   var vf2 = document.getElementById('vaultJadeBtn'); if (vf2) vf2.onclick = function () { vaultJade(); };
