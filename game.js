@@ -2445,13 +2445,87 @@
   }
 
 
-  // 视线遮挡射线检测（Line of Sight）：两点连线是否与建筑墙体（type==='wall'）相交。
+  // ---------- 多边形障碍公共函数（凸多边形，顶点存于 ob.poly，为相对中心(ob.x,ob.y)的局部坐标）----------
+  // 约定：ob.poly 为凸多边形顶点数组 [{x,y},...]，顺时针/逆时针皆可（射线法对凸/凹均成立）。
+  function pointInPolyLocal(ob, lx, ly) {
+    if (!ob.poly || ob.poly.length < 3) return false;
+    var p = ob.poly, n = p.length, inside = false;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      var xi = p[i].x, yi = p[i].y, xj = p[j].x, yj = p[j].y;
+      if (((yi > ly) !== (yj > ly)) && (lx < (xj - xi) * (ly - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    return inside;
+  }
+  function closestOnSegLocal(px, py, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+    var t = len2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    if (t < 0) t = 0; else if (t > 1) t = 1;
+    return { x: ax + dx * t, y: ay + dy * t };
+  }
+  // 点(局部坐标)到凸多边形最近点（遍历各边取最近；内部时取最近边）
+  function closestOnPolyLocal(ob, lx, ly) {
+    var p = ob.poly, n = p.length, best = null, bd = Infinity;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      var c = closestOnSegLocal(lx, ly, p[j].x, p[j].y, p[i].x, p[i].y);
+      var d = (c.x - lx) * (c.x - lx) + (c.y - ly) * (c.y - ly);
+      if (d < bd) { bd = d; best = c; }
+    }
+    return best;
+  }
+  // 矩形→凸多边形顶点（供 generateObstacles 用既有 hw/hh 兼容描述，也用于把墙写成 poly）
+  function rectPoly(hw, hh, rot) {
+    var c = Math.cos(rot || 0), s = Math.sin(rot || 0);
+    var v = [{ x: -hw, y: -hh }, { x: hw, y: -hh }, { x: hw, y: hh }, { x: -hw, y: hh }];
+    if (!rot) return v;
+    for (var i = 0; i < 4; i++) { var x = v[i].x, y = v[i].y; v[i] = { x: x * c - y * s, y: x * s + y * c }; }
+    return v;
+  }
+  // 线段 vs 凸多边形（局部坐标）：任一端点在多边形内，或线段与任一边相交 → true
+  function segPolyHitLocal(ob, x1, y1, x2, y2) {
+    if (pointInPolyLocal(ob, x1, y1) || pointInPolyLocal(ob, x2, y2)) return true;
+    var p = ob.poly, n = p.length;
+    for (var i = 0, j = n - 1; i < n; j = i++) {
+      if (segSegHit(x1, y1, x2, y2, p[j].x, p[j].y, p[i].x, p[i].y)) return true;
+    }
+    return false;
+  }
+  // 线段 vs 线段相交（标准参数法）
+  function segSegHit(ax, ay, bx, by, cx, cy, dx, dy) {
+    function ccw(ax, ay, bx, by, cx, cy) { return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax); }
+    return ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy) && ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy);
+  }
+  // 通用「点到障碍表面最近距离」（用于 genDecor / 视线）：返回带符号距离（负=内部）
+  function distToObstacleSurface(x, y, ob) {
+    if (ob.type === 'rock') return Math.hypot(x - ob.x, y - ob.y) - ob.r;
+    if (ob.type === 'wall') {
+      var nx = clamp(x, ob.x - ob.hw, ob.x + ob.hw), ny = clamp(y, ob.y - ob.hh, ob.y + ob.hh);
+      return Math.hypot(x - nx, y - ny);
+    }
+    if (ob.type === 'poly') {
+      var lx = x - ob.x, ly = y - ob.y;
+      if (pointInPolyLocal(ob, lx, ly)) {
+        // 内部：距离 = -最近边距离
+        var c = closestOnPolyLocal(ob, lx, ly);
+        return -Math.hypot(lx - c.x, ly - c.y);
+      }
+      var cc = closestOnPolyLocal(ob, lx, ly);
+      return Math.hypot(lx - cc.x, ly - cc.y);
+    }
+    return Infinity;
+  }
+
+  // 视线遮挡射线检测（Line of Sight）：两点连线是否与建筑墙体（type==='wall'）或多边形（type==='poly'）相交。
   // 供狙击手断线重索敌、普通敌机盲区双倍衰减警戒调用。
   function pointClearOfWalls(x, y, r) {
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
-      if (ob.type !== 'wall') continue;
-      if (Math.abs(x - ob.x) < ob.hw + r && Math.abs(y - ob.y) < ob.hh + r) return false;
+      if (ob.type === 'wall') {
+        if (Math.abs(x - ob.x) < ob.hw + r && Math.abs(y - ob.y) < ob.hh + r) return false;
+      } else if (ob.type === 'poly') {
+        if (ob.mirrorGhost) continue;     // 镜像倒影仅作氛围，不参与任何碰撞/视线
+        // 膨胀最近距离判定：点在多边形膨胀 r 内即视为受阻
+        if (distToObstacleSurface(x, y, ob) < r) return false;
+      }
     }
     return true;
   }
@@ -2470,8 +2544,13 @@
   function checkLineOfSight(x1, y1, x2, y2) {
     for (var i = 0; i < obstacles.length; i++) {
       var ob = obstacles[i];
-      if (ob.type !== 'wall') continue;
-      if (segRectHit(x1, y1, x2, y2, ob.x - ob.hw, ob.y - ob.hh, ob.x + ob.hw, ob.y + ob.hh)) return false;
+      if (ob.type === 'wall') {
+        if (segRectHit(x1, y1, x2, y2, ob.x - ob.hw, ob.y - ob.hh, ob.x + ob.hw, ob.y + ob.hh)) return false;
+      } else if (ob.type === 'poly') {
+        if (ob.mirrorGhost) continue;     // 镜像倒影仅作氛围，不挡视线
+        // 线段(世界) → 多边形(局部)：两端点各减中心
+        if (segPolyHitLocal(ob, x1 - ob.x, y1 - ob.y, x2 - ob.x, y2 - ob.y)) return false;
+      }
     }
     return true;
   }
@@ -2518,57 +2597,110 @@
       var cy = clamp(ay + rand(-16, 16), 80, WORLD_H - 80);
 
       if (blk === 'shenjian') {
-        // 幽壑·沉舰：窄而高的竖井塔柱（竖向走廊结构），玩家在塔柱之间上下穿梭；
-        // 上升气流带靠塔柱间净空充当「电梯」，失重漂移由 env 乘子处理（见 updatePlayer）。
-        var TW2 = rand(120, 168), TH2 = rand(360, 520);
-        obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW2 / 2, hh: TH2 / 2, building: true, helipad: true, seed: rand(0, 1) });
+        // 幽壑·沉舰：竖向峡谷——左右两片不规则岩脊夹峙成幽深峡谷，玩家在净空中上下穿梭；
+        // 岩脊用凸多边形锯齿顶点模拟峭壁（非四方格子），并保留 ledge 横撑平台。
+        // 失重漂移由 env 乘子处理（见 updatePlayer），峡谷净空充当「电梯」。
+        var GH = rand(420, 600);            // 峡谷高度
+        var gap = rand(150, 210);           // 峡谷净空（左右岩脊间距）
+        var ridgeW = rand(120, 170);        // 单侧岩脊宽度
+        // 左岩脊：朝右齿状，凸多边形
+        var leftRidge = [
+          { x: -gap / 2 - ridgeW, y: -GH / 2 },
+          { x: -gap / 2 - ridgeW * 0.4, y: -GH / 2 + rand(40, 90) },
+          { x: -gap / 2 - ridgeW * 0.7, y: -GH / 2 + GH * 0.35 },
+          { x: -gap / 2 - ridgeW * 0.2, y: -GH / 2 + GH * 0.62 },
+          { x: -gap / 2 - ridgeW * 0.55, y: GH / 2 - rand(30, 70) },
+          { x: -gap / 2 - ridgeW, y: GH / 2 }
+        ];
+        obstacles.push({ type: 'poly', x: cx, y: cy, poly: leftRidge, building: true, helipad: true, seed: rand(0, 1) });
+        // 右岩脊：朝左齿状（镜像）
+        var rightRidge = [
+          { x: gap / 2 + ridgeW, y: -GH / 2 },
+          { x: gap / 2 + ridgeW * 0.45, y: -GH / 2 + rand(50, 100) },
+          { x: gap / 2 + ridgeW * 0.75, y: -GH / 2 + GH * 0.3 },
+          { x: gap / 2 + ridgeW * 0.25, y: -GH / 2 + GH * 0.58 },
+          { x: gap / 2 + ridgeW * 0.6, y: GH / 2 - rand(40, 80) },
+          { x: gap / 2 + ridgeW, y: GH / 2 }
+        ];
+        obstacles.push({ type: 'poly', x: cx, y: cy, poly: rightRidge, building: true, seed: rand(0, 1) });
+        // 横撑平台（ledge）：在峡谷内壁随机错落伸出，制造上下穿梭的落脚点/掩体
         var ledgeN = 2 + (Math.random() * 2 | 0);
         for (var li = 0; li < ledgeN; li++) {
-          obstacles.push({ type: 'wall', x: clamp(cx + rand(-TW2 / 2 - 40, TW2 / 2 + 40), 80, WORLD_W - 80), y: clamp(cy + rand(-TH2 / 2 + 60, TH2 / 2 - 60), 80, WORLD_H - 80), hw: rand(28, 46), hh: rand(14, 22), building: true, ledge: true });
+          var side = Math.random() < 0.5 ? -1 : 1;
+          var lx = clamp(cx + side * (gap / 2 + rand(10, 50)), 80, WORLD_W - 80);
+          var ly = clamp(cy + rand(-GH / 2 + 80, GH / 2 - 80), 80, WORLD_H - 80);
+          obstacles.push({ type: 'wall', x: lx, y: ly, hw: rand(30, 52), hh: rand(12, 20), building: true, ledge: true });
         }
-        buildingRooftops.push({ x: cx, y: cy - TH2 / 2 - 34, w: TW2, h: TH2 });
+        buildingRooftops.push({ x: cx, y: cy - GH / 2 - 34, w: gap + ridgeW * 2, h: GH });
 
       } else if (blk === 'fentian') {
-        // 焚天·熔脊：窄走廊——瘦高塔楼把战场挤成蛇形走道；两侧铺熔岩裂隙（烫脚），贴檐（檐下净空）安全。
-        // 难度更刺激：熔岩随 tier 扩张（层数越高，熔岩带越多、越宽、烫伤越狠）
-        var FW = rand(96, 132), FH = rand(300, 420);
-        obstacles.push({ type: 'wall', x: cx, y: cy, hw: FW / 2, hh: FH / 2, building: true, helipad: true, seed: rand(0, 1) });
-        // 走廊两侧的熔岩带：贴着塔楼外缘放一排「magma」危险区（橙红，高 dps），逼迫玩家走中间、躲檐下
-        var magmaN = 2 + (Math.random() * 2 | 0) + Math.min(3, Math.floor(t / 2)); // tier 每升 2 层 +1 带，上限 +3
-        var magmaDps = 16 + t * 3;
-        var magmaR = rand(46, 72) + Math.min(26, t * 3); // 半径随 tier 扩张
-        for (var mi = 0; mi < magmaN; mi++) {
-          var mr = rand(46, 72);
-          var mrx = clamp(cx + (Math.random() < 0.5 ? -1 : 1) * (FW / 2 + mr + 24), 120, WORLD_W - 120);
-          var mry = clamp(cy + rand(-FH / 2, FH / 2), 120, WORLD_H - 120);
-          if (pointClearOfWalls(mrx, mry, mr + 30)) {
-            obstacles.push({ type: 'rift', x: mrx, y: mry, r: magmaR, dps: magmaDps, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
+        // 焚天·熔脊：蛇形熔岩走廊——几段旋转长条墙错落排布成 Z 字走道（多边形墙，非四方格子）；
+        // 两侧贴熔岩裂隙（烫脚），玩家须沿蛇形净空蛇行前进、躲檐下。熔岩随 tier 扩张。
+        var segN = 3 + (Math.random() * 2 | 0);          // 3~4 段旋转墙
+        var segHW = rand(160, 230), segHH = rand(40, 64);
+        var rot = rand(-0.32, 0.32);                     // 段间交替反向旋转制造 Z 字
+        for (var si = 0; si < segN; si++) {
+          var off = (si - (segN - 1) / 2);
+          var sx2 = clamp(cx + off * rand(150, 230), 120, WORLD_W - 120);
+          var sy2 = clamp(cy + (Math.random() < 0.5 ? -1 : 1) * rand(40, 130), 120, WORLD_H - 120);
+          var srot = rot * (si % 2 === 0 ? 1 : -1);      // 交替旋转 → Z 字折线
+          obstacles.push({ type: 'poly', x: sx2, y: sy2, poly: rectPoly(segHW, segHH, srot), building: true, seed: rand(0, 1) });
+          // 段两端贴熔岩：沿墙长轴两端放 magma 危险区（橙红，高 dps）
+          var magmaDps = 16 + t * 3;
+          var magmaR = rand(46, 72) + Math.min(26, t * 3);
+          var endA = srot, ex = sx2 + Math.cos(endA) * (segHW + magmaR * 0.4), ey = sy2 + Math.sin(endA) * (segHW + magmaR * 0.4);
+          if (pointClearOfWalls(ex, ey, magmaR + 20) && ex > 110 && ex < WORLD_W - 110 && ey > 110 && ey < WORLD_H - 110) {
+            obstacles.push({ type: 'rift', x: ex, y: ey, r: magmaR, dps: magmaDps, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
+          }
+          var ex2 = sx2 - Math.cos(endA) * (segHW + magmaR * 0.4), ey2 = sy2 - Math.sin(endA) * (segHW + magmaR * 0.4);
+          if (pointClearOfWalls(ex2, ey2, magmaR + 20) && ex2 > 110 && ex2 < WORLD_W - 110 && ey2 > 110 && ey2 < WORLD_H - 110) {
+            obstacles.push({ type: 'rift', x: ex2, y: ey2, r: magmaR, dps: magmaDps, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
           }
         }
-        buildingRooftops.push({ x: cx, y: cy - FH / 2 - 34, w: FW, h: FH });
+        // 中段额外散点熔岩带（tier 越高越多），增加蛇形通道的烫脚压力
+        var magmaN = 2 + (Math.random() * 2 | 0) + Math.min(3, Math.floor(t / 2));
+        for (var mi = 0; mi < magmaN; mi++) {
+          var mr = rand(46, 72);
+          var mrx = clamp(cx + rand(-segHW, segHW), 120, WORLD_W - 120);
+          var mry = clamp(cy + rand(-200, 200), 120, WORLD_H - 120);
+          if (pointClearOfWalls(mrx, mry, mr + 30)) {
+            obstacles.push({ type: 'rift', x: mrx, y: mry, r: mr, dps: 16 + t * 3, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
+          }
+        }
+        buildingRooftops.push({ x: cx, y: cy, w: segHW * 2, h: segHH * 2 });
 
       } else if (blk === 'xupu') {
-        // 虚泊·镜海：宽矮镜面倒影塔（装饰感更强、横向更宽），配合「真假撤离点」机制制造信息博弈。
+        // 虚泊·镜海：镜像菱形塔——旋转 45° 的菱形主塔（凸多边形，非四方格子）+ 下方镜像倒影菱形；
+        // 配合「真假撤离点 / 镜面反转」事件引擎制造信息博弈。菱形塔为碰撞实体，倒影仅作氛围。
         var XW = rand(180, 230), XH = rand(96, 132);
-        obstacles.push({ type: 'wall', x: cx, y: cy, hw: XW / 2, hh: XH / 2, building: true, helipad: true, seed: rand(0, 1), mirror: true });
-        // 倒影感：在塔楼下方镜像位置放一道「浅」墙（视觉倒影，不强制碰撞惩罚），仅作氛围
-        obstacles.push({ type: 'wall', x: cx, y: cy + XH + rand(20, 40), hw: XW / 2, hh: XH / 2 * 0.6, building: true, mirrorGhost: true });
+        var diamond = rectPoly(XW / 2, XH / 2, Math.PI / 4);  // 旋转 45° → 菱形
+        obstacles.push({ type: 'poly', x: cx, y: cy, poly: diamond, building: true, helipad: true, seed: rand(0, 1), mirror: true });
+        // 倒影：在塔楼下方镜像位置放一道「浅」菱形（视觉倒影，非碰撞实体 → 用 wall 但不参与 resolve 检测? 保留参与但更矮，仅作氛围）
+        // 为避免倒影造成意外碰撞，单独用 mirrorGhost 标记，resolveObstacles 中跳过 mirrorGhost 的 poly 碰撞
+        var ghostDiamond = diamond.map(function (p) { return { x: p.x, y: p.y * 0.6 }; });
+        obstacles.push({ type: 'poly', x: cx, y: cy + XH + rand(20, 40), poly: ghostDiamond, building: true, mirrorGhost: true });
         var xkW = rand(60, 96), xkH = rand(36, 56);
         obstacles.push({ type: 'wall', x: clamp(cx + rand(-16, 40), 80, WORLD_W - 80), y: clamp( (cy + XH / 2 + xkH / 2 + 8), 80, WORLD_H - 80), hw: xkW / 2, hh: xkH / 2, building: true, skirt: true });
         buildingRooftops.push({ x: cx, y: cy - XH / 2 - 34, w: XW, h: XH });
 
       } else if (blk === 'jiuyou') {
-        // 九幽·锁城：迷宫网格——封印碑交错排布，留出可绕行的窄缝；
+        // 九幽·锁城：放射封印阵——中心主碑（菱形）+ 旋转菱形碑环绕成放射阵（多边形，非四方格子）；
         // 叙事核心：按「封印序列」破碑（1→N）逐步解封，错序则触发怨灵反噬；全破后唤醒城心 Boss。
-        var PW = rand(48, 70), PH = rand(48, 70);
-        var _seal = { type: 'wall', x: cx, y: cy, hw: PW / 2, hh: PH / 2, building: true, seal: true, sealOrder: 0, sealHp: 60 + run.tier * 18, sealMax: 60 + run.tier * 18, sealBroken: false, seed: rand(0, 1) };
+        var PW = rand(60, 86), PH = rand(60, 86);
+        // 中心主封印碑（菱形，旋转 45°）
+        var centerDiamond = rectPoly(PW / 2, PH / 2, Math.PI / 4);
+        var _seal = { type: 'poly', x: cx, y: cy, poly: centerDiamond, building: true, seal: true, sealOrder: 0, sealHp: 60 + run.tier * 18, sealMax: 60 + run.tier * 18, sealBroken: false, seed: rand(0, 1), core: true };
         obstacles.push(_seal); run.seals.push(_seal);
-        // 环绕 4 个小封印碑（形成局部迷宫格，顺序随机化以制造解谜感）
-        for (var pi = 0; pi < 4; pi++) {
-          var ang = pi * Math.PI / 2 + rand(-0.4, 0.4);
-          var bx = clamp(cx + Math.cos(ang) * rand(90, 150), 100, WORLD_W - 100);
-          var by = clamp(cy + Math.sin(ang) * rand(90, 150), 100, WORLD_H - 100);
-          var _s2 = { type: 'wall', x: bx, y: by, hw: rand(28, 44), hh: rand(28, 44), building: true, seal: true, sealOrder: 0, sealHp: 40 + run.tier * 14, sealMax: 40 + run.tier * 14, sealBroken: false };
+        // 环绕 5~6 个旋转菱形小碑，放射对称排布（角度均分 + 微调），形成封印法阵
+        var ringN = 5 + (Math.random() < 0.5 ? 1 : 0);
+        var ringR = rand(150, 210);
+        for (var pi = 0; pi < ringN; pi++) {
+          var ang = (pi / ringN) * Math.PI * 2 + rand(-0.12, 0.12);
+          var bx = clamp(cx + Math.cos(ang) * ringR, 100, WORLD_W - 100);
+          var by = clamp(cy + Math.sin(ang) * ringR, 100, WORLD_H - 100);
+          var sw = rand(34, 50), sh = rand(34, 50);
+          var smallDiamond = rectPoly(sw / 2, sh / 2, Math.PI / 4 + rand(-0.2, 0.2));
+          var _s2 = { type: 'poly', x: bx, y: by, poly: smallDiamond, building: true, seal: true, sealOrder: 0, sealHp: 40 + run.tier * 14, sealMax: 40 + run.tier * 14, sealBroken: false };
           obstacles.push(_s2); run.seals.push(_s2);
         }
         buildingRooftops.push({ x: cx, y: cy, w: PW, h: PH });
@@ -2624,6 +2756,23 @@
             if (m === lft) ent.x = ob.x - ob.hw - rad; else if (m === rgt) ent.x = ob.x + ob.hw + rad; else if (m === top) ent.y = ob.y - ob.hh - rad; else ent.y = ob.y + ob.hh + rad;
           }
         }
+      } else if (ob.type === 'poly') {
+        if (ob.mirrorGhost) continue;     // 镜像倒影仅作氛围，不阻挡实体
+        // 凸多边形：世界→局部，求最近点，向外推 rad
+        var plx = ent.x - ob.x, ply = ent.y - ob.y;
+        if (pointInPolyLocal(ob, plx, ply)) {
+          // 实体中心在多边形内：推向最近边外
+          var cp = closestOnPolyLocal(ob, plx, ply);
+          var cdx = plx - cp.x, cdy = ply - cp.y, cd = Math.hypot(cdx, cdy) || 1;
+          ent.x = ob.x + cp.x + cdx / cd * rad; ent.y = ob.y + cp.y + cdy / cd * rad;
+        } else {
+          var cc2 = closestOnPolyLocal(ob, plx, ply);
+          var ddx2 = plx - cc2.x, ddy2 = ply - cc2.y, dd2 = Math.hypot(ddx2, ddy2);
+          if (dd2 < rad) {
+            if (dd2 > 0.001) { var p3 = rad - dd2; ent.x += ddx2 / dd2 * p3; ent.y += ddy2 / dd2 * p3; }
+            else { ent.x += rad; }
+          }
+        }
       }
     }
   }
@@ -2647,6 +2796,12 @@
         var nx = clamp(probeX, ob.x - ob.hw, ob.x + ob.hw), ny = clamp(probeY, ob.y - ob.hh, ob.y + ob.hh);
         dist = Math.hypot(probeX - nx, probeY - ny) - rad;
         push = -dist;
+      } else if (ob.type === 'poly') {
+        if (ob.mirrorGhost) continue;     // 镜像倒影仅作氛围，敌人不绕行
+        var plx = probeX - ob.x, ply = probeY - ob.y;
+        var cpp = closestOnPolyLocal(ob, plx, ply);
+        dist = Math.hypot(plx - cpp.x, ply - cpp.y) - rad;
+        push = -dist;
       } else continue;
       if (push > bestPush) { bestPush = push; best = ob; }
     }
@@ -2654,7 +2809,11 @@
     // 前方有障碍：取"从实体指向实体"的法线作为绕行方向（沿切向滑开）
     var ox, oy;
     if (best.type === 'rock') { ox = probeX - best.x; oy = probeY - best.y; }
-    else {
+    else if (best.type === 'poly') {
+      var plx2 = probeX - best.x, ply2 = probeY - best.y;
+      var cpp2 = closestOnPolyLocal(best, plx2, ply2);
+      ox = plx2 - cpp2.x; oy = ply2 - cpp2.y;
+    } else {
       var nx2 = clamp(probeX, best.x - best.hw, best.x + best.hw), ny2 = clamp(probeY, best.y - best.hh, best.y + best.hh);
       ox = probeX - nx2; oy = probeY - ny2;
     }
@@ -5766,6 +5925,20 @@
               bullets.splice(b, 1); _blk = false; break; // 封印碑击穿后子弹消失，但不阻挡后续
             } else { _blk = true; break; }
           }
+        } else if (_ob.type === 'poly' && !_ob.mirrorGhost) {
+          // 多边形墙：用「点在多边形(膨胀 _bsr)内」判定子弹命中
+          var _plx = bl.x - _ob.x, _ply = bl.y - _ob.y;
+          var _hit = false;
+          if (pointInPolyLocal(_ob, _plx, _ply)) _hit = true;
+          else { var _cc = closestOnPolyLocal(_ob, _plx, _ply); if (Math.hypot(_plx - _cc.x, _ply - _cc.y) < _bsr) _hit = true; }
+          if (_hit) {
+            if (bl.from === 'player' && _ob.seal && !_ob.sealBroken) {
+              _ob.sealHp -= calcDamage(bl.dmg, bl.crit, null);
+              burst(bl.x, bl.y, '#C94F4F', 3); spawnElementHit(bl.elem, bl.x, bl.y, 0.7);
+              if (_ob.sealHp <= 0) breakSeal(_ob, oi3);
+              bullets.splice(b, 1); _blk = false; break;
+            } else { _blk = true; break; }
+          }
         }
       }
       if (_blk) { if (bl.from === 'player') { burst(bl.x, bl.y, '#9fd0e0', 3); spawnElementHit(bl.elem, bl.x, bl.y, 0.7); } bullets.splice(b, 1); continue; }
@@ -6381,12 +6554,8 @@
   function genDecor() {
     decor = [];
     if (!WORLD_W) return;
-    var wallOb = obstacles.filter(function (o) { return o.type === 'wall' || o.type === 'rock'; });
-    function distToWall(x, y, ob) {
-      if (ob.type === 'rock') return Math.hypot(x - ob.x, y - ob.y) - ob.r;
-      var nx = clamp(x, ob.x - ob.hw, ob.x + ob.hw), ny = clamp(y, ob.y - ob.hh, ob.y + ob.hh);
-      return Math.hypot(x - nx, y - ny);
-    }
+    var wallOb = obstacles.filter(function (o) { return o.type === 'wall' || o.type === 'rock' || o.type === 'poly'; });
+    function distToWall(x, y, ob) { return distToObstacleSurface(x, y, ob); }
     function insideWall(x, y) { for (var i = 0; i < wallOb.length; i++) if (distToWall(x, y, wallOb[i]) < -2) return true; return false; }
     function tooCloseWall(x, y, thr) { for (var i = 0; i < wallOb.length; i++) if (distToWall(x, y, wallOb[i]) < thr) return true; return false; }
 
@@ -6524,6 +6693,55 @@
           ctx.fillStyle = 'rgba(201,162,75,' + (0.85 + hp * 0.15) + ')';
           ctx.font = 'bold ' + Math.min(20, ob.hw * 0.32) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('H', hcx, hcy);
+          ctx.restore();
+        }
+      } else if (ob.type === 'poly') {
+        // 多边形障碍（幽壑峡谷岩脊 / 焚天蛇形熔岩墙 / 虚泊菱形镜塔 / 九幽放射封印阵）：
+        // 鎏金暗色矢量渲染，沿用墙体材质语言（暗褐渐变 + 鎏金描边），与四方格子视觉彻底区分。
+        var poly = ob.poly; if (!poly || poly.length < 3) continue;
+        ctx.save(); ctx.translate(ob.x, ob.y);
+        // 2.5D 立体投影（顶点整体偏移）
+        ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.48)';
+        ctx.beginPath(); ctx.moveTo(poly[0].x + 12, poly[0].y + 14);
+        for (var pi2 = 1; pi2 < poly.length; pi2++) ctx.lineTo(poly[pi2].x + 12, poly[pi2].y + 14);
+        ctx.closePath(); ctx.fill(); ctx.restore();
+        // 主体暗褐渐变（按轴向包围盒做渐变，避免非矩形无法用 rect 渐变）
+        var _bb = { minx: Infinity, miny: Infinity, maxx: -Infinity, maxy: -Infinity };
+        for (var pi3 = 0; pi3 < poly.length; pi3++) { var pv = poly[pi3]; if (pv.x < _bb.minx) _bb.minx = pv.x; if (pv.y < _bb.miny) _bb.miny = pv.y; if (pv.x > _bb.maxx) _bb.maxx = pv.x; if (pv.y > _bb.maxy) _bb.maxy = pv.y; }
+        var pgrd = ctx.createLinearGradient(0, _bb.miny, 0, _bb.maxy);
+        if (ob.skirt) { pgrd.addColorStop(0, '#1a1612'); pgrd.addColorStop(1, '#0d0b08'); }
+        else { pgrd.addColorStop(0, '#241f1a'); pgrd.addColorStop(0.55, '#15120e'); pgrd.addColorStop(1, '#0a0907'); }
+        ctx.beginPath(); ctx.moveTo(poly[0].x, poly[0].y);
+        for (var pi4 = 1; pi4 < poly.length; pi4++) ctx.lineTo(poly[pi4].x, poly[pi4].y);
+        ctx.closePath();
+        ctx.fillStyle = pgrd; ctx.fill();
+        // 鎏金窗格（仅主建筑塔，按局部包围盒撒点）
+        if (ob.building && !ob.skirt && !ob.mirrorGhost) {
+          ctx.fillStyle = 'rgba(201,162,75,0.10)'; ctx.strokeStyle = 'rgba(201,162,75,0.28)'; ctx.lineWidth = 1;
+          var _oseed2 = (ob.seed || 0) * 97;
+          for (var gyy2 = _bb.miny + 14; gyy2 < _bb.maxy - 10; gyy2 += 16) {
+            for (var gxx2 = _bb.minx + 14; gxx2 < _bb.maxx - 10; gxx2 += 22) {
+              if (((((gxx2 * 7 + gyy2 * 13 + _oseed2) | 0) % 5) === 0)) {
+                // 仅在点落在多边形内才画（粗略：包围盒点 → 局部）
+                if (pointInPolyLocal(ob, gxx2 - ob.x, gyy2 - ob.y)) { ctx.fillRect(gxx2, gyy2, 11, 7); ctx.strokeRect(gxx2, gyy2, 11, 7); }
+              }
+            }
+          }
+        }
+        // 鎏金描边 + 外发光
+        ctx.beginPath(); ctx.moveTo(poly[0].x, poly[0].y);
+        for (var pi5 = 1; pi5 < poly.length; pi5++) ctx.lineTo(poly[pi5].x, poly[pi5].y);
+        ctx.closePath();
+        if (glowOn) { ctx.shadowColor = '#C9A24B'; ctx.shadowBlur = 8; }
+        ctx.strokeStyle = '#C9A24B'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+        // 封印碑标记（九幽）：显示封印顺序号
+        if (ob.seal) {
+          ctx.save(); ctx.translate(ob.x, ob.y);
+          ctx.fillStyle = ob.sealBroken ? 'rgba(120,120,140,0.5)' : '#C94F4F';
+          ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(ob.sealBroken ? '✕' : ('' + ob.sealOrder), 0, 0);
           ctx.restore();
         }
       } else { // 灵脉裂隙：持续伤害区
@@ -7664,7 +7882,17 @@
       ctx.fillStyle = mc;
       ctx.fillRect(mx + mz.x * sx - pulse * 0.5, my + mz.y * sy - pulse * 0.5, mz.w * sx + pulse, mz.h * sy + pulse);
     }
-    for (var oi = 0; oi < obstacles.length; oi++) { var ob = obstacles[oi]; ctx.fillStyle = ob.type === 'rock' ? 'rgba(150,160,175,0.9)' : (ob.type === 'wall' ? 'rgba(120,130,145,0.9)' : 'rgba(176,111,208,0.9)'); var os = ob.type === 'rock' ? 3 : (ob.type === 'wall' ? 7 : 2.5); if (ob.type === 'wall') ctx.fillRect(mx + (ob.x - ob.hw) * sx, my + (ob.y - ob.hh) * sy, ob.hw * 2 * sx, ob.hh * 2 * sy); else ctx.fillRect(mx + ob.x * sx - os / 2, my + ob.y * sy - os / 2, os, os); }
+    for (var oi = 0; oi < obstacles.length; oi++) {
+      var ob = obstacles[oi];
+      ctx.fillStyle = ob.type === 'rock' ? 'rgba(150,160,175,0.9)' : (ob.type === 'wall' ? 'rgba(120,130,145,0.9)' : (ob.type === 'poly' ? 'rgba(120,130,145,0.9)' : 'rgba(176,111,208,0.9)'));
+      var os = ob.type === 'rock' ? 3 : (ob.type === 'wall' ? 7 : (ob.type === 'poly' ? 7 : 2.5));
+      if (ob.type === 'wall') ctx.fillRect(mx + (ob.x - ob.hw) * sx, my + (ob.y - ob.hh) * sy, ob.hw * 2 * sx, ob.hh * 2 * sy);
+      else if (ob.type === 'poly' && ob.poly) {
+        ctx.beginPath(); ctx.moveTo(mx + (ob.x + ob.poly[0].x) * sx, my + (ob.y + ob.poly[0].y) * sy);
+        for (var _ppi = 1; _ppi < ob.poly.length; _ppi++) ctx.lineTo(mx + (ob.x + ob.poly[_ppi].x) * sx, my + (ob.y + ob.poly[_ppi].y) * sy);
+        ctx.closePath(); ctx.fill();
+      } else ctx.fillRect(mx + ob.x * sx - os / 2, my + ob.y * sy - os / 2, os, os);
+    }
     // 灵脉（v11）：菱形点，就绪显元素色 / 冷却显灰
     for (var gv = 0; gv < veins.length; gv++) {
       var vn = veins[gv]; ctx.save(); ctx.translate(mx + vn.x * sx, my + vn.y * sy); ctx.rotate(Math.PI / 4);
