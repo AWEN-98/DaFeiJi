@@ -2408,19 +2408,33 @@
     if (anchors.length < 5) tryPlace(minDist * 0.7);
 
     // 复合楼宇预制组装（直接注入已有的 obstacles 墙体数组，碰撞解算管线不变）
+    var isShenjian = (run && run.block === 'shenjian');
     for (var bi = 0; bi < anchors.length; bi++) {
       var ax = anchors[bi].x, ay = anchors[bi].y;
-      var TW = rand(208, 258), TH = rand(140, 182);
       var cx = clamp(ax + rand(-16, 16), 80, WORLD_W - 80);
       var cy = clamp(ay + rand(-16, 16), 80, WORLD_H - 80);
-      // 主塔楼：大型实心矩形（楼顶停机坪）
-      obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW / 2, hh: TH / 2, building: true, helipad: true, seed: rand(0, 1) });
-      // L / 凹型裙楼：右侧竖裙 + 底部横裙 → 天然拐角安全区（Safe Pocket）
-      var skW = rand(64, 104), skH = rand(40, 66);
-      obstacles.push({ type: 'wall', x: clamp(cx + TW / 2 + skW / 2 + 8, 80, WORLD_W - 80), y: clamp(cy + rand(-26, 26), 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
-      obstacles.push({ type: 'wall', x: clamp(cx + rand(-18, 44), 80, WORLD_W - 80), y: clamp(cy + TH / 2 + skH / 2 + 8, 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
-      // 楼顶停机坪锚点（主塔楼正上方开阔空域，战机可飞抵“落地”）
-      buildingRooftops.push({ x: cx, y: cy - TH / 2 - 34, w: TW, h: TH });
+      if (isShenjian) {
+        // 幽壑·沉舰：窄而高的竖井塔柱（竖向走廊结构），玩家在塔柱之间上下穿梭；
+        // 上升气流带靠塔柱间净空充当「电梯」，失重漂移由 env 乘子处理（见 updatePlayer）。
+        var TW2 = rand(120, 168), TH2 = rand(360, 520);
+        obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW2 / 2, hh: TH2 / 2, building: true, helipad: true, seed: rand(0, 1) });
+        // 错位的横隔板（每隔一段出现，制造可借力的踏台与绕柱空间）
+        var ledgeN = 2 + (Math.random() * 2 | 0);
+        for (var li = 0; li < ledgeN; li++) {
+          obstacles.push({ type: 'wall', x: clamp(cx + rand(-TW2 / 2 - 40, TW2 / 2 + 40), 80, WORLD_W - 80), y: clamp(cy + rand(-TH2 / 2 + 60, TH2 / 2 - 60), 80, WORLD_H - 80), hw: rand(28, 46), hh: rand(14, 22), building: true, ledge: true });
+        }
+        buildingRooftops.push({ x: cx, y: cy - TH2 / 2 - 34, w: TW2, h: TH2 });
+      } else {
+        // 悬圃·蚀空（基线）：横向铺展的复合塔楼 + L/凹型裙楼（Safe Pocket）
+        var TW = rand(208, 258), TH = rand(140, 182);
+        obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW / 2, hh: TH / 2, building: true, helipad: true, seed: rand(0, 1) });
+        // L / 凹型裙楼：右侧竖裙 + 底部横裙 → 天然拐角安全区（Safe Pocket）
+        var skW = rand(64, 104), skH = rand(40, 66);
+        obstacles.push({ type: 'wall', x: clamp(cx + TW / 2 + skW / 2 + 8, 80, WORLD_W - 80), y: clamp(cy + rand(-26, 26), 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
+        obstacles.push({ type: 'wall', x: clamp(cx + rand(-18, 44), 80, WORLD_W - 80), y: clamp(cy + TH / 2 + skH / 2 + 8, 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
+        // 楼顶停机坪锚点（主塔楼正上方开阔空域，战机可飞抵“落地”）
+        buildingRooftops.push({ x: cx, y: cy - TH / 2 - 34, w: TW, h: TH });
+      }
     }
 
     // 灵脉裂隙：保留为刻意布置的空域危害区（落在开阔主干道/广场外围，绝不埋进楼体）
@@ -2642,7 +2656,7 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _earlyUnlocked: false, _riftSdFrozen: 0 };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, block: selectedBlock, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _earlyUnlocked: false, _riftSdFrozen: 0 };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）；深渊异变·潮汐：含 tide_fast 时周期 ×0.6
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -4101,7 +4115,8 @@
   function spawnBoss() {
     bossSpawned = true;
     var kinds = ['taowu', 'qiongqi', 'taotie', 'hundun'];
-    var kind = kinds[randi(0, kinds.length - 1)];
+    // 区块指定 Boss（方案 A）：幽壑·沉舰强制梼杌，其余区块随机
+    var kind = (run && BLOCKS[run.block] && BLOCKS[run.block].boss) ? BLOCKS[run.block].boss : kinds[randi(0, kinds.length - 1)];
     var hpMul = { taowu: 1.0, qiongqi: 0.92, taotie: 1.08, hundun: 0.95 };
     var radius = { taowu: 46, qiongqi: 50, taotie: 52, hundun: 48 };
     // #B1 修复：血量改「搜刮进度为主 + 少量封顶时间压力」，不再随真实时间线性膨胀惩罚慢速搜刮流
@@ -4776,8 +4791,11 @@
       player.vy += (targetvy - player.vy) * ak;
     } else {
       // 松键：阻尼滑行（每帧保留 DRAG_COEFF），呈现跟手惯性
-      var damp = Math.pow(DRAG_COEFF, dt * 60);
-      player.vx *= damp; player.vy *= damp;
+      // 幽壑·沉舰：失重漂移 —— 阻尼大幅降低，松键后保留更多动量，纵向尤为明显（飘忽手感）
+      var driftEnv = (run && run.block === 'shenjian') ? 0.985 : 1;
+      var damp = Math.pow(DRAG_COEFF * driftEnv, dt * 60);
+      player.vx *= damp;
+      player.vy *= damp * (run && run.block === 'shenjian' ? 0.94 : 1); // 纵向更滑，模拟失重
       if (Math.hypot(player.vx, player.vy) < 4) { player.vx = 0; player.vy = 0; }
     }
     // 引擎尾焰粒子（移动时）
@@ -8221,6 +8239,13 @@
     codex: ['assets/v2/base/base_hub_codex.jpg', 'assets/v3/ui/cropped/tab_codex_normal.png', 'assets/v3/ui/cropped/tab_codex_hover.png', 'assets/v3/ui/cropped/tab_codex_selected.png', 'assets/v3/ui/cropped/tab_codex_disabled.png', 'assets/v3/ui/special/ui_codex_book.png?v=1019b']
   };
   var selectedAircraft = 'a', selectedTier = 1;
+  // 区块（关卡）选择：方案 A「主题区块换皮」。当前可选区块；幽壑·沉舰为新增，其余沿用悬圃基线。
+  // 仅改地形语言 + 锚点布局 + Boss 组合，机制（相位/灵脉/秘库/动态悬赏）全部复用悬圃。
+  var BLOCKS = {
+    xuantu: { name: '悬圃·蚀空', glyph: '悬', desc: '悬浮平台 · 相位潮汐', boss: null, env: 'phase' },
+    shenjian: { name: '幽壑·沉舰', glyph: '幽', desc: '垂直竖井 · 失重漂移', boss: 'taowu', env: 'drift' }
+  };
+  var selectedBlock = 'xuantu';
   // 出击配置战力预览（机体+永久强化+已装法器）
   function calcLoadout() {
     var a = AIRCRAFT[selectedAircraft];
@@ -8371,6 +8396,29 @@
             if (ti >= 1 && ti <= meta.maxTier) { selectedTier = ti; renderBase(); AudioSys.sfx.ui(); }
           });
         })(dotsEls[di]);
+      }
+    }
+    // === 出击区块选择（方案 A 主题换皮）===
+    var br = document.getElementById('blockRow');
+    if (br) {
+      var bkeys = Object.keys(BLOCKS);
+      var bhtml = '';
+      for (var bk = 0; bk < bkeys.length; bk++) {
+        var bk2 = bkeys[bk], bInfo = BLOCKS[bk2];
+        bhtml += '<div class="bcard' + (selectedBlock === bk2 ? ' picked' : '') + '" data-bk="' + bk2 + '">' +
+          '<div class="bglyph">' + bInfo.glyph + '</div>' +
+          '<div><div class="bname">' + bInfo.name + '</div><div class="bdesc">' + bInfo.desc + '</div></div>' +
+        '</div>';
+      }
+      br.innerHTML = bhtml;
+      var bEls = br.querySelectorAll('.bcard');
+      for (var bj = 0; bj < bEls.length; bj++) {
+        (function (elm) {
+          elm.addEventListener('click', function () {
+            selectedBlock = elm.dataset.bk;
+            renderBase(); AudioSys.sfx.ui();
+          });
+        })(bEls[bj]);
       }
     }
     // === 机体轮播 + 信息（V43 结构） ===

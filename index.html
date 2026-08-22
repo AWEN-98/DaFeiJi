@@ -404,6 +404,22 @@
   .tcard .ttitle { font-size: 15px; font-weight: 900; color: var(--c-gold); letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
   .tcard .mini { font-size: 10px; color: var(--c-muted); margin-top: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
   .tcard .lock { font-size: 9px; color: #E08A9A; margin-top: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
+  /* 出击区块选择（方案 A 主题换皮） */
+  #blockRow { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
+  #blockRow::-webkit-scrollbar { display: none; }
+  .bcard {
+    position: relative; flex-shrink: 0; min-width: 150px; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(0,0,0,.45), rgba(201,162,75,.05));
+    border: 1px solid rgba(201,162,75,.3); cursor: pointer;
+    display: flex; align-items: center; gap: 10px; padding: 10px 12px; transition: all .15s;
+  }
+  .bcard:hover { border-color: rgba(201,162,75,.55); background: linear-gradient(180deg, rgba(0,0,0,.35), rgba(201,162,75,.12)); box-shadow: 0 0 14px rgba(201,162,75,.18); }
+  .bcard.picked { border-color: var(--c-gold); background: linear-gradient(180deg, rgba(201,162,75,.2), rgba(201,162,75,.05)); box-shadow: 0 0 16px rgba(201,162,75,.3); }
+  .bcard .bglyph { width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: var(--c-gold); background: rgba(201,162,75,.12); border: 1px solid rgba(201,162,75,.4); }
+  .bcard.picked .bglyph { color: var(--c-gold-light); }
+  .bcard .bname { font-size: 14px; font-weight: 900; color: var(--c-gold); letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+  .bcard .bdesc { font-size: 10px; color: var(--c-muted); margin-top: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.9); }
+  .block-area { margin-top: 10px; }
 
   /* 永久强化商店 */
   #shopList { display: flex; flex-direction: column; gap: 10px; }
@@ -2690,6 +2706,11 @@
             <section class="frame r-area tier-area">
               <div class="r-title">难度选择</div>
               <div class="tier-box" id="tierRow"></div>
+            </section>
+
+            <section class="frame r-area block-area">
+              <div class="r-title">出击区块</div>
+              <div class="tier-box" id="blockRow"></div>
             </section>
 
             <section class="frame r-area deploy-area">
