@@ -8,9 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="空域撤离" />
 <meta name="theme-color" content="#0E0B08" />
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
+<!-- 允许浏览器长缓存静态资源（靠 game.js/audio-data.js 的 ?v= 版本串破缓存，发版改 v 即可强制刷新） -->
+<meta http-equiv="Cache-Control" content="public, max-age=3600, must-revalidate" />
 <title>空域撤离 · MVP</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -106,6 +105,28 @@
   .card:hover { border-color: rgba(201,162,75,0.65); box-shadow: 0 6px 24px rgba(201,162,75,0.22); }
   .card.picked { border-color: #C9A24B; box-shadow: 0 0 20px rgba(201,162,75,0.45); }
   .sec-label { font-size: var(--fs-xxs); color: var(--c-muted); letter-spacing: 2px; text-transform: uppercase; margin: 0 0 8px; }
+
+  /* ============ 资产加载遮罩 ============ */
+  #loadMask { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+    background:
+      repeating-linear-gradient(0deg, rgba(201,162,75,0.04) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(201,162,75,0.04) 0 1px, transparent 1px 46px),
+      radial-gradient(ellipse at 50% -15%, rgba(201,162,75,0.14), transparent 62%),
+      rgba(14,11,8,0.97);
+    transition: opacity 0.5s ease; }
+  #loadMask.hide { opacity: 0; pointer-events: none; }
+  #loadMask .load-inner { text-align: center; padding: 0 24px; }
+  #loadMask .load-logo { font-size: 40px; font-weight: 800; letter-spacing: 6px;
+    background: linear-gradient(180deg, #E8D68C, #C9A24B 55%, #8A6F2E); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  #loadMask .load-sub { font-size: 12px; letter-spacing: 4px; color: var(--text-muted); margin-top: 6px; }
+  #loadMask .load-tip { font-size: 14px; color: var(--text); margin: 26px 0 14px; letter-spacing: 1px; }
+  #loadMask .load-tip.warn { color: var(--c-ember); }
+  #loadMask .load-bar { width: min(320px, 70vw); height: 8px; margin: 0 auto; border-radius: 999px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(201,162,75,0.25); overflow: hidden; }
+  #loadMask .load-bar-fill { width: 0%; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #8A6F2E, #C9A24B, #E8D68C); transition: width 0.25s ease;
+    box-shadow: 0 0 12px rgba(201,162,75,0.5); }
+  #loadMask .load-pct { font-size: 13px; color: var(--c-gold); margin-top: 10px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 
   /* ============ 基地四层架构 ============ */
   /* Layer 1: 背景 */
@@ -2543,6 +2564,16 @@
   <div class="enter-sub">NEON SHANHAI · SKY EXTRACTION</div>
   <div class="enter-tap">点击进入</div>
   <div class="enter-hint">将切换至横屏全屏模式<br>建议横屏握持手机</div>
+</div>
+<!-- 资产加载遮罩（鎏金暗色）：加载中可见，区分「还在加载」与「资产缺失」 -->
+<div id="loadMask">
+  <div class="load-inner">
+    <div class="load-logo">空域撤离</div>
+    <div class="load-sub">NEON SHANHAI · SKY EXTRACTION</div>
+    <div class="load-tip" id="loadTip">正在召唤资产…</div>
+    <div class="load-bar"><div class="load-bar-fill" id="loadBarFill"></div></div>
+    <div class="load-pct" id="loadPct">0%</div>
+  </div>
 </div>
 <canvas id="game"></canvas>
 <div id="tipCard" class="tip-card" style="display:none"></div>

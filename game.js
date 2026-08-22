@@ -9145,35 +9145,73 @@
   function AllAssetsReady() {
     return AssetManager.isReady() && HtmlAssets.isReady();
   }
-  // 全资产等待：rAF 轮询 + 5s 超时兜底（坏图/404 也放行，不卡死启动）
-  function waitForAllAssets(cb) {
-    if (AllAssetsReady()) { if (cb) cb(); return; }
+  // ---------- 资产加载遮罩（区分「还在加载」与「资产缺失」）----------
+  var loadMaskEl, loadBarFillEl, loadPctEl, loadTipEl;
+  function initLoadMask() {
+    loadMaskEl = document.getElementById('loadMask');
+    loadBarFillEl = document.getElementById('loadBarFill');
+    loadPctEl = document.getElementById('loadPct');
+    loadTipEl = document.getElementById('loadTip');
+  }
+  // 双轨进度聚合（Canvas 资产 + HTML UI 资产），返回 0~1
+  function assetProgress() {
+    var tA = AssetManager.total || 0, lA = AssetManager.loaded || 0;
+    var tH = HtmlAssets.total || 0, lH = HtmlAssets.loaded || 0;
+    var tot = tA + tH, done = Math.min(lA, tA) + Math.min(lH, tH);
+    if (tot === 0) return AllAssetsReady() ? 1 : 0;
+    return done / tot;
+  }
+  function renderLoadProgress() {
+    if (!loadBarFillEl) return;
+    var p = assetProgress();
+    var pct = Math.round(p * 100);
+    loadBarFillEl.style.width = pct + '%';
+    if (loadPctEl) loadPctEl.textContent = pct + '%';
+  }
+  function showLoadMask(tip) {
+    if (!loadMaskEl) initLoadMask();
+    if (!loadMaskEl) return;
+    loadMaskEl.classList.remove('hide');
+    if (loadTipEl) loadTipEl.textContent = tip || '正在召唤资产…';
+    if (loadTipEl) loadTipEl.classList.remove('warn');
+    renderLoadProgress();
+  }
+  function hideLoadMask() {
+    if (!loadMaskEl) initLoadMask();
+    if (!loadMaskEl) return;
+    // 加 .hide：CSS 触发 opacity 0.5s 淡出 + pointer-events:none（淡出期间不挡触控/不挡 canvas）
+    loadMaskEl.classList.add('hide');
+  }
+  // 带遮罩的资产等待：轮询进度更新 UI，6s 超时切换为「加载较慢」提示（不静默、不卡死）
+  function waitAssetsWithMask(cb, opts) {
+    opts = opts || {};
+    showLoadMask(opts.tip);
+    if (AllAssetsReady()) { renderLoadProgress(); hideLoadMask(); if (cb) cb(); return; }
     var t0 = performance.now();
     var poll = function () {
-      if (AllAssetsReady()) { if (cb) cb(); return; }
-      if (performance.now() - t0 > 5000) { if (cb) cb(); return; }
+      renderLoadProgress();
+      if (AllAssetsReady()) { hideLoadMask(); if (cb) cb(); return; }
+      var el = (performance.now() - t0) / 1000;
+      if (el > 6 && loadTipEl && !loadTipEl.classList.contains('warn')) {
+        loadTipEl.classList.add('warn');
+        loadTipEl.textContent = '资产较多，加载较慢…请稍候（若长时间无变化，可能是网络问题）';
+      }
+      if (el > 15) { hideLoadMask(); if (cb) cb(); return; } // 15s 硬兜底，绝不卡死
       requestAnimationFrame(poll);
     };
     requestAnimationFrame(poll);
   }
-  // 启动级全局加载门：鎏金遮罩 → 全部资产就绪（或 5s 超时）→ 淡出遮罩 + 进基地。
-  // 修复 Boss 反馈「首次刷新基地资产不加载」：之前两处启动直接 showScene('base')，
-  // 未等 HTML <img>/CSS background-image 从网络加载完，导致首刷闪空白/破图。
+  // 启动级全局加载门：显示加载遮罩 → 双轨就绪（或超时）→ 淡出遮罩 + 进基地
   function enterBase() {
     if (AllAssetsReady()) { showScene('base'); return; }
-    // 资产未就绪：等待（rAF 轮询 + 超时兜底）后再进基地，期间不显示任何遮罩
-    waitForAllAssets(function () {
-      showScene('base');
-    });
+    waitAssetsWithMask(function () { showScene('base'); }, { tip: '正在召唤基地资产…' });
   }
   function doStartMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
   function startMission() {
     if (!meta.unlocked[selectedAircraft]) { return; }
-    // 异步图片预加载门：未就绪时等待（不弹遮罩），就绪后出击
     if (!AssetManager.isReady()) {
-      AssetManager.waitForAll(function () {
-        doStartMission();
-      });
+      // 出击前资产未就绪：显示加载遮罩等待（不再静默黑屏）
+      waitAssetsWithMask(function () { doStartMission(); }, { tip: '正在装载出击资产…' });
       return;
     }
     doStartMission();
