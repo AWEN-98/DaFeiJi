@@ -1696,7 +1696,7 @@
         showJoystick(x, y);
       } // 右摇杆改为右下角静态 #right-stick-container 独立接收触摸，画布右半屏不再生成浮动瞄准摇杆
     }
-  }, { passive: true });
+  }, { passive: false });
   canvas.addEventListener('touchmove', function (e) {
     if (!isMobile) return;
     for (var i = 0; i < e.changedTouches.length; i++) {
