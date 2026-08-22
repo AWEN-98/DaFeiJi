@@ -2464,7 +2464,8 @@
   }
   // 点(局部坐标)到凸多边形最近点（遍历各边取最近；内部时取最近边）
   function closestOnPolyLocal(ob, lx, ly) {
-    var p = ob.poly, n = p.length, best = null, bd = Infinity;
+    var p = ob.poly, n = p ? p.length : 0, best = null, bd = Infinity;
+    if (n < 3) return { x: 0, y: 0 }; // 退化多边形（顶点不足）按中心点处理，避免后续 null.x 崩溃
     for (var i = 0, j = n - 1; i < n; j = i++) {
       var c = closestOnSegLocal(lx, ly, p[j].x, p[j].y, p[i].x, p[i].y);
       var d = (c.x - lx) * (c.x - lx) + (c.y - ly) * (c.y - ly);
@@ -2503,13 +2504,13 @@
     }
     if (ob.type === 'poly') {
       var lx = x - ob.x, ly = y - ob.y;
+      var _c = closestOnPolyLocal(ob, lx, ly);
+      if (!_c) return Infinity; // 退化多边形，按「无障碍」处理
       if (pointInPolyLocal(ob, lx, ly)) {
         // 内部：距离 = -最近边距离
-        var c = closestOnPolyLocal(ob, lx, ly);
-        return -Math.hypot(lx - c.x, ly - c.y);
+        return -Math.hypot(lx - _c.x, ly - _c.y);
       }
-      var cc = closestOnPolyLocal(ob, lx, ly);
-      return Math.hypot(lx - cc.x, ly - cc.y);
+      return Math.hypot(lx - _c.x, ly - _c.y);
     }
     return Infinity;
   }
