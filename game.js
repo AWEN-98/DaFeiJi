@@ -2713,7 +2713,7 @@
     if (c.key === 'silver') return '◆ 银宝箱开启 · 获得 ' + got.length + ' 件战利品';
     return '搜刮 +' + got.length + ' 件';
   }
-  function hexToRgba(hex, a) { var h = hex.replace('#', ''); return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + a + ')'; }
+  function hexToRgba(hex, a) { if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,' + (a == null ? 1 : a) + ')'; var h = hex.replace('#', ''); if (h.length < 6) h = h + '000000'.slice(h.length); return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + a + ')'; }
 
   // ---------- 敌人原型 ----------
   function pickArchetype(tier) {
