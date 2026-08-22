@@ -1170,38 +1170,78 @@
     'assets/v3/ui/special/ui_codex_book.png?v=1019b', 'assets/v3/ui/special/ui_forge_table.png', 'assets/v3/ui/special/ui_lab_scroll.png?v=1019b',
     'assets/v4/ui/buttons/btn_sheet.png?v=1018a', 'assets/v4/ui/rarity/rarity_trim_sheet.png'
   ];
+  // 拆批预加载：first = 首屏可见必需（机库/按钮 normal/框架/立绘/商店卡）；lazy = 各 Tab 内部图标 + hover/pressed/selected/disabled 态
+  // 目标：首屏加载门只等 first（数 MB），lazy 在进基地后后台预热 + 切 Tab 时按需补预热，彻底消除「召唤资产」超长等待。
   function collectHtmlUiAssets() {
-    var set = {}, out = [];
-    function add(p) { if (!p || set[p]) return; set[p] = 1; out.push(p); }
-    // (a) index.html 静态清单（含 ?v= 版本串）
-    STATIC_HTML_UI_ASSETS.forEach(add);
-    // (b) 机库槽位背景 4 槽 × normal/selected（hover 态已含于静态清单）
+    var set = {}, first = [], lazy = [];
+    function addF(p) { if (!p || set[p]) return; set[p] = 1; first.push(p); }
+    function addL(p) { if (!p || set[p]) return; set[p] = 1; lazy.push(p); }
+    // (a) index.html 静态清单（含 ?v= 版本串）—— 仅保留首屏可见所必需，其余态降级 lazy
+    //   first：基础框架、按钮 normal、稀有度角环(常用)、机库/商店卡 normal 背景、rarity trim sheet
+    [
+      'assets/icons/rarity_badges.png',
+      'assets/v3/ui/cropped/btn_primary_normal.png', 'assets/v3/ui/cropped/btn_secondary_normal.png', 'assets/v3/ui/cropped/btn_utility_normal.png',
+      'assets/v3/ui/cropped/rarity_common_corner.png', 'assets/v3/ui/cropped/rarity_common_ring.png',
+      'assets/v3/ui/cropped/rarity_uncommon_corner.png', 'assets/v3/ui/cropped/rarity_uncommon_ring.png',
+      'assets/v3/ui/cropped/rarity_rare_corner.png', 'assets/v3/ui/cropped/rarity_rare_ring.png',
+      'assets/v3/ui/cropped/rarity_epic_corner.png', 'assets/v3/ui/cropped/rarity_epic_ring.png',
+      'assets/v3/ui/cropped/rarity_legendary_corner.png', 'assets/v3/ui/cropped/rarity_legendary_ring.png',
+      'assets/v3/ui/cropped/slot_weapon_normal.png', 'assets/v3/ui/cropped/slot_armor_normal.png', 'assets/v3/ui/cropped/slot_core_normal.png', 'assets/v3/ui/cropped/slot_ammo_normal.png',
+      'assets/v3/ui/cropped/tab_hangar_normal.png',
+      'assets/v3/ui/special/ui_base_frame.png?v=1019b', 'assets/v3/ui/special/ui_base_frame.png?v=1019c',
+      'assets/v4/ui/buttons/btn_sheet.png?v=1018a', 'assets/v4/ui/rarity/rarity_trim_sheet.png',
+      'assets/v3/ui/cropped/card_shop_normal.png', 'assets/v3/ui/cropped/card_shop_locked.png'
+    ].forEach(addF);
+    //   lazy：按钮 hover/pressed/disabled、tab 各态(arsenal/codex/forge/lab)、tab_hangar hover/selected/disabled、slot hover/selected
+    [
+      'assets/v3/ui/cropped/btn_primary_disabled.png', 'assets/v3/ui/cropped/btn_primary_hover.png', 'assets/v3/ui/cropped/btn_primary_pressed.png',
+      'assets/v3/ui/cropped/btn_secondary_disabled.png', 'assets/v3/ui/cropped/btn_secondary_hover.png', 'assets/v3/ui/cropped/btn_secondary_pressed.png',
+      'assets/v3/ui/cropped/btn_utility_disabled.png', 'assets/v3/ui/cropped/btn_utility_hover.png', 'assets/v3/ui/cropped/btn_utility_pressed.png',
+      'assets/v3/ui/cropped/tab_arsenal_disabled.png', 'assets/v3/ui/cropped/tab_arsenal_hover.png', 'assets/v3/ui/cropped/tab_arsenal_normal.png', 'assets/v3/ui/cropped/tab_arsenal_selected.png',
+      'assets/v3/ui/cropped/tab_codex_disabled.png', 'assets/v3/ui/cropped/tab_codex_hover.png', 'assets/v3/ui/cropped/tab_codex_normal.png', 'assets/v3/ui/cropped/tab_codex_selected.png',
+      'assets/v3/ui/cropped/tab_forge_disabled.png', 'assets/v3/ui/cropped/tab_forge_hover.png', 'assets/v3/ui/cropped/tab_forge_normal.png', 'assets/v3/ui/cropped/tab_forge_selected.png',
+      'assets/v3/ui/cropped/tab_hangar_disabled.png', 'assets/v3/ui/cropped/tab_hangar_hover.png', 'assets/v3/ui/cropped/tab_hangar_selected.png',
+      'assets/v3/ui/cropped/tab_lab_disabled.png', 'assets/v3/ui/cropped/tab_lab_hover.png', 'assets/v3/ui/cropped/tab_lab_normal.png', 'assets/v3/ui/cropped/tab_lab_selected.png',
+      'assets/v3/ui/cropped/slot_weapon_hover.png', 'assets/v3/ui/cropped/slot_weapon_selected.png',
+      'assets/v3/ui/cropped/slot_armor_hover.png', 'assets/v3/ui/cropped/slot_armor_selected.png',
+      'assets/v3/ui/cropped/slot_core_hover.png', 'assets/v3/ui/cropped/slot_core_selected.png',
+      'assets/v3/ui/cropped/slot_ammo_hover.png', 'assets/v3/ui/cropped/slot_ammo_selected.png',
+      'assets/v3/ui/cropped/card_shop_selected.png'
+    ].forEach(addL);
+    // (b) 机库槽位背景（selected 态首屏可见 → first；hover 已入 lazy）
     ['weapon', 'armor', 'core', 'ammo'].forEach(function (s) {
-      ['normal', 'selected'].forEach(function (st) { add('assets/v3/ui/cropped/slot_' + s + '_' + st + '.png'); });
+      addF('assets/v3/ui/cropped/slot_' + s + '_normal.png');
+      addL('assets/v3/ui/cropped/slot_' + s + '_selected.png');
     });
-    // (c) 机库机体立绘（?v=5 与 renderHangarAircraft 渲染串一致）
-    ['acft_qingfalcon', 'acft_xuanwu', 'acft_chilan'].forEach(function (p) { add('assets/v3/ui/portrait/' + p + '.png?v=5'); });
-    // (d) 武器图标 5 品质(行) × 3 列（weaponIconHtml 的 r/c 命名）
-    for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) add('assets/v4/weapons/weapon_r' + r + '_c' + c + '.png');
-    // (e) 装备图标 3 槽 × 5 品质（gearIconHtml 的 slot_rarity 命名；weapon 槽走 weaponIconHtml 用 weapon_r*c*.png，gear_weapon_* 不存在故排除）
+    // (c) 机库机体立绘（首屏轮播可见 → first；?v=5 与 renderHangarAircraft 渲染串一致）
+    ['acft_qingfalcon', 'acft_xuanwu', 'acft_chilan'].forEach(function (p) { addF('assets/v3/ui/portrait/' + p + '.png?v=5'); });
+    // (d) 武器图标 5 品质(行) × 3 列 —— 机库首屏仅展示当前机体已装备武器用得到，但全量 15 张首屏非必需 → lazy（切军械库/机库 hover 时补）
+    for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) addL('assets/v4/weapons/weapon_r' + r + '_c' + c + '.png');
+    // (e) 装备图标 3 槽 × 5 品质 —— 仅在军械库/熔炼台 Tab 内展示 → lazy
     ['armor', 'core', 'ammo'].forEach(function (s) {
-      ['white', 'green', 'blue', 'purple', 'orange'].forEach(function (q) { add('assets/v4/gear/gear_' + s + '_' + q + '.png'); });
+      ['white', 'green', 'blue', 'purple', 'orange'].forEach(function (q) { addL('assets/v4/gear/gear_' + s + '_' + q + '.png'); });
     });
-    // (f) 研究院/图鉴/商店图标全集 + 兜底 icon_32（RES_ICONS/TECH_ICONS/CODEX_CATS/ICON）
-    ['icon_00', 'icon_01', 'icon_02', 'icon_03', 'icon_10', 'icon_11', 'icon_12', 'icon_13', 'icon_20', 'icon_21', 'icon_22', 'icon_23', 'icon_30', 'icon_31', 'icon_32', 'icon_33'].forEach(function (ic) { add('assets/v3/ui/cropped/' + ic + '.png'); });
-    // (g) 商店卡背景（renderBase 动态使用 card_shop_*）
-    ['card_shop_normal', 'card_shop_locked', 'card_shop_selected'].forEach(function (p) { add('assets/v3/ui/cropped/' + p + '.png'); });
-    // (h) 运行时补充（空守卫，桩环境 querySelectorAll 返回 [] 不抛错）：
-    //    DOM 中已存在的 assets <img>（取原始属性值，避免浏览器把 src 解析成绝对路径）
+    // (f) 研究院/图鉴/商店图标全集 —— 首屏仅商店用到 icon_00(dmg 外多数)，但 icon 全集在 Tab 内才用满 → 拆：icon_00/icon_10/icon_11/icon_12 首屏(商店卡用)，其余 lazy
+    ['icon_00', 'icon_10', 'icon_11', 'icon_12'].forEach(function (ic) { addF('assets/v3/ui/cropped/' + ic + '.png'); });
+    ['icon_01', 'icon_02', 'icon_03', 'icon_13', 'icon_20', 'icon_21', 'icon_22', 'icon_23', 'icon_30', 'icon_31', 'icon_32', 'icon_33'].forEach(function (ic) { addL('assets/v3/ui/cropped/' + ic + '.png'); });
+    // (g) 商店卡 selected 背景已入 lazy；normal/locked 已入 first
+    // (h) 静态 special 其余（codex_book/forge_table/lab_scroll）首屏 base 框架之外，切 Tab 才用 → lazy
+    addL('assets/v3/ui/special/ui_codex_book.png?v=1019b');
+    addL('assets/v3/ui/special/ui_forge_table.png');
+    addL('assets/v3/ui/special/ui_lab_scroll.png?v=1019b');
+    // (i) 运行时补充（空守卫，桩环境 querySelectorAll 返回 [] 不抛错）：
+    //    DOM 中已存在的 assets <img>（首屏真正在 DOM 里的 → first；其余动态注入的走各自 Tab 懒加载）
     try {
       var imgs = document.querySelectorAll ? document.querySelectorAll('img[src^="assets/"]') : [];
       for (var i = 0; i < (imgs && imgs.length || 0); i++) {
         var s0 = imgs[i] && imgs[i].getAttribute ? imgs[i].getAttribute('src') : null;
         if (!s0 && imgs[i]) s0 = imgs[i].src;
-        if (s0) add(s0);
+        if (s0) addF(s0);
       }
     } catch (e) {}
     //    样式表 url(assets/...)（跨域/未就绪时 cssRules 不可读 → 跳过；容错解析相对或绝对 URL）
+    //    这里不主动全量拉入（此前 v3/ui + v4 全量扫描是卡慢根因），仅作兜底：把当前可见 DOM 已引用到的合并进 first，
+    //    其他交给各 Tab 的 lazy 预热与 CSS 自身由浏览器按需解码。
     try {
       if (document.styleSheets) {
         for (var si = 0; si < document.styleSheets.length; si++) {
@@ -1216,42 +1256,89 @@
               if (qi < 0) continue;
               var rel = u.slice(qi), qm = u.match(/\?[^)'"]*$/);
               if (qm) rel = u.slice(qi, u.indexOf('?', qi)) + qm[0];
-              add(rel);
+              // 排除各 Tab 专属背景（base_hub_*.jpg/png）：仅在对应 Tab 激活时由浏览器自然加载 / 懒预热，不放首屏门
+              if (/assets\/v2\/base\/base_hub_/.test(rel)) continue;
+              // 其余首屏常驻背景类合并进 first（如 body/#scene 背景、框架）
+              addF(rel);
             }
           }
         }
       }
     } catch (e3) {}
-    return out;
+    return { first: first, lazy: lazy };
   }
   var HtmlAssets = {
     total: 0, loaded: 0, done: false,
-    paths: [], _imgs: [],
+    firstTotal: 0, firstLoaded: 0, firstDone: false,
+    lazyTotal: 0, lazyLoaded: 0,
+    paths: [], _imgs: [], _lazyWarmed: false,
     preload: function () {
       var self = this;
-      this.paths = collectHtmlUiAssets();
-      this.total = this.paths.length;
-      for (var i = 0; i < this.paths.length; i++) {
+      var batches = collectHtmlUiAssets();
+      var firstPaths = batches.first, lazyPaths = batches.lazy;
+      this.firstTotal = firstPaths.length;
+      this.lazyTotal = lazyPaths.length;
+      this.total = this.firstTotal; // 加载门仅以 first 计总（首屏）
+      this.loaded = 0;
+      this.allPaths = firstPaths.concat(lazyPaths); // 供桩覆盖断言（含 lazy 批）
+      var warmOne = function (p, onMark) {
+        var im = new Image();
+        var mark = function () { onMark(); };
+        if (!('complete' in im)) { mark(); return im; } // 桩安全：同步计满
+        im.onload = mark; im.onerror = mark;
+        im.src = p;
+        return im;
+      };
+      // first 批：阻塞加载门
+      for (var i = 0; i < firstPaths.length; i++) {
+        (function (p) {
+          self._imgs.push(warmOne(p, function () {
+            self.firstLoaded++; self.loaded++;
+            if (self.firstLoaded >= self.firstTotal) self.firstDone = true;
+          }));
+        })(firstPaths[i]);
+      }
+      // lazy 批：不阻塞门，后台预热（进基地后由 warmLazy 显式触发，避免首屏并发抢带宽）
+    },
+    warmLazy: function () {
+      if (this._lazyWarmed) return;
+      this._lazyWarmed = true;
+      var self = this;
+      var batches = collectHtmlUiAssets();
+      var lazyPaths = batches.lazy;
+      for (var i = 0; i < lazyPaths.length; i++) {
         (function (p) {
           var im = new Image();
-          var mark = function () { self.loaded++; if (self.loaded >= self.total) self.done = true; };
-          // 桩安全路径：Node 桩的 Image 无 complete 属性（无真实解码）→ 同步计满，避免加载门永久 pending
-          if (!('complete' in im)) { mark(); return; }
-          self._imgs.push(im);
-          im.onload = mark;
-          im.onerror = mark; // 坏图/404 也计数（避免坏图永久卡死加载门）
+          if (!('complete' in im)) { self.lazyLoaded++; return; }
+          im.onload = function () { self.lazyLoaded++; };
+          im.onerror = function () { self.lazyLoaded++; };
           im.src = p;
-        })(this.paths[i]);
+        })(lazyPaths[i]);
+      }
+    },
+    warm: function (paths) {
+      // 切 Tab 时按需补预热指定路径（去重）
+      if (!paths || !paths.length) return;
+      var self = this;
+      for (var i = 0; i < paths.length; i++) {
+        (function (p) {
+          var im = new Image();
+          if (!('complete' in im)) return;
+          im.onload = function () {}; im.onerror = function () {};
+          im.src = p;
+        })(paths[i]);
       }
     },
     isReady: function () {
-      if (this.done || this.total === 0) return true;
+      // 仅判 first 批（首屏门）；桩强制 pending 优先
+      if (this._forcedPending) return false;
+      if (this.firstDone || this.firstTotal === 0) return true;
       var all = true;
       for (var i = 0; i < this._imgs.length; i++) {
         var im = this._imgs[i];
         if (!im || !im.complete) { all = false; break; }
       }
-      if (all) { this.done = true; return true; }
+      if (all) { this.firstDone = true; return true; }
       return false;
     }
   };
@@ -8119,11 +8206,20 @@
   function hideAllOverlays() { ['title', 'base', 'buffOverlay', 'mergeOverlay', 'pauseOverlay', 'result'].forEach(function (id) { document.getElementById(id).style.display = 'none'; }); }
   function showScene(name) {
     scene = name; hideAllOverlays();
-    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); }
+    if (name === 'base') { document.getElementById('base').style.display = 'flex'; renderBase(); HtmlAssets.warmLazy(); if (TAB_LAZY_ASSETS[baseTab]) HtmlAssets.warm(TAB_LAZY_ASSETS[baseTab]); /* 进基地后后台预热 lazy 批 + 当前 Tab 资产，不阻塞门 */ }
     else if (name === 'title') { document.getElementById('title').style.display = 'flex'; }
     else if (name === 'result') { document.getElementById('result').style.display = 'flex'; }
     showMobileControls(); checkOrientation();
   }
+  // 各 Tab 懒加载资产清单（切到对应 Tab 时按需补预热；首屏不预载以缩短加载门）
+  // 含各 Tab 专属背景 base_hub_*.jpg（从首屏门排除，仅切 Tab 时预热/由浏览器自然加载）
+  var TAB_LAZY_ASSETS = {
+    hangar: ['assets/v2/base/base_hub_hangar.jpg', 'assets/v3/ui/cropped/slot_weapon_selected.png', 'assets/v3/ui/cropped/slot_armor_selected.png', 'assets/v3/ui/cropped/slot_core_selected.png', 'assets/v3/ui/cropped/slot_ammo_selected.png', 'assets/v3/ui/cropped/tab_hangar_selected.png', 'assets/v3/ui/cropped/tab_hangar_hover.png'],
+    arsenal: (function () { var a = ['assets/v2/base/base_hub_arsenal.jpg', 'assets/v3/ui/cropped/tab_arsenal_normal.png', 'assets/v3/ui/cropped/tab_arsenal_hover.png', 'assets/v3/ui/cropped/tab_arsenal_selected.png', 'assets/v3/ui/cropped/tab_arsenal_disabled.png']; for (var r = 0; r < 5; r++) for (var c = 0; c < 3; c++) a.push('assets/v4/weapons/weapon_r' + r + '_c' + c + '.png'); for (var s = 0; s < ['armor','core','ammo'].length; s++) for (var q = 0; q < ['white','green','blue','purple','orange'].length; q++) a.push('assets/v4/gear/gear_' + ['armor','core','ammo'][s] + '_' + ['white','green','blue','purple','orange'][q] + '.png'); return a; })(),
+    forge: (function () { var a = ['assets/v2/base/base_hub_forge.jpg', 'assets/v3/ui/cropped/tab_forge_normal.png', 'assets/v3/ui/cropped/tab_forge_hover.png', 'assets/v3/ui/cropped/tab_forge_selected.png', 'assets/v3/ui/cropped/tab_forge_disabled.png', 'assets/v3/ui/special/ui_forge_table.png']; for (var s = 0; s < ['armor','core','ammo'].length; s++) for (var q = 0; q < ['white','green','blue','purple','orange'].length; q++) a.push('assets/v4/gear/gear_' + ['armor','core','ammo'][s] + '_' + ['white','green','blue','purple','orange'][q] + '.png'); return a; })(),
+    lab: ['assets/v2/base/base_hub_lab.jpg', 'assets/v3/ui/cropped/tab_lab_normal.png', 'assets/v3/ui/cropped/tab_lab_hover.png', 'assets/v3/ui/cropped/tab_lab_selected.png', 'assets/v3/ui/cropped/tab_lab_disabled.png', 'assets/v3/ui/special/ui_lab_scroll.png?v=1019b', 'assets/v3/ui/cropped/icon_01.png', 'assets/v3/ui/cropped/icon_02.png', 'assets/v3/ui/cropped/icon_03.png', 'assets/v3/ui/cropped/icon_13.png', 'assets/v3/ui/cropped/icon_20.png', 'assets/v3/ui/cropped/icon_21.png', 'assets/v3/ui/cropped/icon_22.png', 'assets/v3/ui/cropped/icon_23.png', 'assets/v3/ui/cropped/icon_30.png', 'assets/v3/ui/cropped/icon_31.png', 'assets/v3/ui/cropped/icon_32.png', 'assets/v3/ui/cropped/icon_33.png'],
+    codex: ['assets/v2/base/base_hub_codex.jpg', 'assets/v3/ui/cropped/tab_codex_normal.png', 'assets/v3/ui/cropped/tab_codex_hover.png', 'assets/v3/ui/cropped/tab_codex_selected.png', 'assets/v3/ui/cropped/tab_codex_disabled.png', 'assets/v3/ui/special/ui_codex_book.png?v=1019b']
+  };
   var selectedAircraft = 'a', selectedTier = 1;
   // 出击配置战力预览（机体+永久强化+已装法器）
   function calcLoadout() {
@@ -9138,6 +9234,7 @@
       var el = document.getElementById('tab-' + panes[j]);
       if (el) el.className = 'tab-pane' + (panes[j] === name ? ' on' : '');
     }
+    if (TAB_LAZY_ASSETS[name]) HtmlAssets.warm(TAB_LAZY_ASSETS[name]); // 切 Tab 时按需补预热该 Tab 资产
   }
   // 启动/出击加载门：保留「资产就绪前不进场景」的等待逻辑（防首刷白屏/破图）；
   // 原鎏金黑遮罩与「灵脉加载中」文案已移除（Boss 2026-08-21 指令：多余）。
@@ -9153,10 +9250,11 @@
     loadPctEl = document.getElementById('loadPct');
     loadTipEl = document.getElementById('loadTip');
   }
-  // 双轨进度聚合（Canvas 资产 + HTML UI 资产），返回 0~1
+  // 双轨进度聚合（Canvas 资产 + HTML UI 资产 first 批），返回 0~1
+  // 注：进度条只跟踪「阻塞门」的资产（Canvas + HtmlAssets.first），lazy 批后台预热不计入，避免门已放行却进度条卡住。
   function assetProgress() {
     var tA = AssetManager.total || 0, lA = AssetManager.loaded || 0;
-    var tH = HtmlAssets.total || 0, lH = HtmlAssets.loaded || 0;
+    var tH = HtmlAssets.firstTotal || 0, lH = HtmlAssets.firstLoaded || 0;
     var tot = tA + tH, done = Math.min(lA, tA) + Math.min(lH, tH);
     if (tot === 0) return AllAssetsReady() ? 1 : 0;
     return done / tot;
