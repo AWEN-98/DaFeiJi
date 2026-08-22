@@ -4206,7 +4206,8 @@
   // #381-① 常规周期刷怪间隔（秒）：起幕慢→合幕快，配合 gameTime 梯度再缩短；玩家清完预置遭遇后场上仍持续有增援
   var SPAWN_INT = { qi: 6.0, cheng: 4.5, zhuan: 3.0, he: 2.5 };
   // ===== 机体手感（加速度-阻尼模型 + 冲刺残影）/ 打击感三件套 =====
-  var SPRINT_MULT = 1.35;         // v18.9：冲刺极速 = 基础移速 × 1.35（原 1.8，更狠：不再像闪现，距离短但加速感明显）
+  var SPRINT_MULT = 1.35;         // v18.9：PC 冲刺极速 = 基础移速 × 1.35（原 1.8，更狠：不再像闪现）
+  var SPRINT_MULT_MOBILE = 1.18;  // v19.0：移动端冲刺极速 = 基础移速 × 1.18（PC 1.35 在触屏摇杆下太远，收一收）
   var ACCEL_TAU = 0.05;           // 加速时间常数（移动端）：~0.12s 即贴满极速（移动端手感保持）
   var ACCEL_TAU_PC = 0.035;       // v18.9：PC 专用更跟手加速常数（比移动端更小→更快贴满，消除"笨重"起步迟滞）
   var DRAG_COEFF = 0.90;          // 松键阻尼：每帧(60fps)保留 90%（按手感规格），配合下方急停阈值即时止滑
@@ -5199,17 +5200,17 @@
     // 虚泊·镜海·镜面反转：左右操控颠倒（镜像 X 轴）——仅影响玩家移动输入，不影响射击朝向
     if (run && run.mirrorControl) { dirx = -dirx; }
     var curSpeed = player.speed * (player.galeActive ? 1.6 : 1) * PLAYER_SPEED_MULT; // 常规巡航锚点（含倒退减速 ×0.6）；冲刺峰值另用 topSpeed
-    var topSpeed = player.speed * SPRINT_MULT;   // 黄金库：冲刺极速 = 基础移速 × 1.35（v18.9 原 1.8），仅冲刺用
+    var topSpeed = player.speed * (isMobile ? SPRINT_MULT_MOBILE : SPRINT_MULT);   // 冲刺极速锚点（移动端更低）
     // 倒退减速：移动方向与朝向夹角>100°时降速至65%
     if (mag > 0.05) {
       var facingDot = dirx * Math.cos(player.ang) + diry * Math.sin(player.ang);
       if (facingDot < -0.17) curSpeed *= 0.6; // cos(100°)≈-0.17，超过100°算倒退
     }
     // --- 标准加速度-阻尼模型（Velocity & Drag）+ 冲刺（闪避）方向锁定缓升 ---
-    var _tau = isMobile ? ACCEL_TAU : ACCEL_TAU_PC; // v18.9：PC 用更小 tau→更跟手，移动端保持原手感
+    var _tau = isMobile ? 0.08 : ACCEL_TAU_PC; // v19.0：移动端 0.08（比原 0.05 更柔，起步不瞬移）；PC 0.035 更跟手
     // 冲刺中：方向锁定 + ease-out 爬升至 1.35× 基础（dashDX/dashDY 已在触发时锁定），杜绝瞬移；结束后自然阻尼滑行
     if (player.dashT > 0) {
-      var dashPeak = player.speed * SPRINT_MULT; // = 1.35× 基础巡航（v18.9：原 1.8×）
+      var dashPeak = player.speed * (isMobile ? SPRINT_MULT_MOBILE : SPRINT_MULT); // 冲刺峰值（移动端更低）
       var dak = 1 - Math.exp(-dt / _tau);
       player.vx += (player.dashDX * dashPeak - player.vx) * dak;
       player.vy += (player.dashDY * dashPeak - player.vy) * dak;
@@ -5266,8 +5267,9 @@
       var dlen = Math.hypot(ddx, ddy) || 1;
       player.dashDX = ddx / dlen; player.dashDY = ddy / dlen; // 仅锁定方向，速度走 ease-out 爬升（杜绝瞬移）
       player.dashT = DASH_DUR;
-      player.iframe = Math.max(player.iframe, 0.7); // v18.9：冲刺无敌帧 0.5→0.7（用户确认合适）
-      player.dashCd = 3.5; // v18.9：冲刺冷却 1.1→3.5s（更长冷却，杜绝连闪）
+      // v19.0：冲刺无敌帧/冷却 平台分流——PC 0.7s/3.5s（已确认）；移动端更克制 0.5s/4.5s（用户：移动端太猛）
+      player.iframe = Math.max(player.iframe, isMobile ? 0.5 : 0.7);
+      player.dashCd = isMobile ? 4.5 : 3.5;
       player.dashAnimT = DASH_DUR;
       AudioSys.sfx.dash();
       spawnRing(player.x, player.y, player.color, 64); // 起手冲击环
