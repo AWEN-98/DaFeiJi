@@ -1,0 +1,1359 @@
+{
+  "atlases": [
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_tabs_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_tabs_v1.png",
+      "size": [
+        1690,
+        932
+      ],
+      "grid": {
+        "cols": 5,
+        "rows": 4,
+        "cell_w": 338,
+        "cell_h": 233
+      },
+      "slices": [
+        {
+          "file": "tab_hangar_normal.png",
+          "type": "tabs",
+          "name": "tab_hangar_normal",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_arsenal_normal.png",
+          "type": "tabs",
+          "name": "tab_arsenal_normal",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_forge_normal.png",
+          "type": "tabs",
+          "name": "tab_forge_normal",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_lab_normal.png",
+          "type": "tabs",
+          "name": "tab_lab_normal",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_codex_normal.png",
+          "type": "tabs",
+          "name": "tab_codex_normal",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            4,
+            0
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_hangar_hover.png",
+          "type": "tabs",
+          "name": "tab_hangar_hover",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_arsenal_hover.png",
+          "type": "tabs",
+          "name": "tab_arsenal_hover",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_forge_hover.png",
+          "type": "tabs",
+          "name": "tab_forge_hover",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_lab_hover.png",
+          "type": "tabs",
+          "name": "tab_lab_hover",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_codex_hover.png",
+          "type": "tabs",
+          "name": "tab_codex_hover",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            4,
+            1
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_hangar_selected.png",
+          "type": "tabs",
+          "name": "tab_hangar_selected",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_arsenal_selected.png",
+          "type": "tabs",
+          "name": "tab_arsenal_selected",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_forge_selected.png",
+          "type": "tabs",
+          "name": "tab_forge_selected",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_lab_selected.png",
+          "type": "tabs",
+          "name": "tab_lab_selected",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_codex_selected.png",
+          "type": "tabs",
+          "name": "tab_codex_selected",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            4,
+            2
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_hangar_disabled.png",
+          "type": "tabs",
+          "name": "tab_hangar_disabled",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            0,
+            3
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_arsenal_disabled.png",
+          "type": "tabs",
+          "name": "tab_arsenal_disabled",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            1,
+            3
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_forge_disabled.png",
+          "type": "tabs",
+          "name": "tab_forge_disabled",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            2,
+            3
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_lab_disabled.png",
+          "type": "tabs",
+          "name": "tab_lab_disabled",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            3,
+            3
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        },
+        {
+          "file": "tab_codex_disabled.png",
+          "type": "tabs",
+          "name": "tab_codex_disabled",
+          "size": [
+            338,
+            233
+          ],
+          "grid": [
+            4,
+            3
+          ],
+          "source_atlas": "atlas_tabs_v1.png"
+        }
+      ]
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_icons_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_icons_v1.png",
+      "size": [
+        1256,
+        1256
+      ],
+      "grid": {
+        "cols": 4,
+        "rows": 4,
+        "cell_w": 314,
+        "cell_h": 314
+      },
+      "slices": [
+        {
+          "file": "icon_00.png",
+          "type": "icons",
+          "name": "icon_00",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_01.png",
+          "type": "icons",
+          "name": "icon_01",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_02.png",
+          "type": "icons",
+          "name": "icon_02",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_03.png",
+          "type": "icons",
+          "name": "icon_03",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_10.png",
+          "type": "icons",
+          "name": "icon_10",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_11.png",
+          "type": "icons",
+          "name": "icon_11",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_12.png",
+          "type": "icons",
+          "name": "icon_12",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_13.png",
+          "type": "icons",
+          "name": "icon_13",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_20.png",
+          "type": "icons",
+          "name": "icon_20",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_21.png",
+          "type": "icons",
+          "name": "icon_21",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_22.png",
+          "type": "icons",
+          "name": "icon_22",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_23.png",
+          "type": "icons",
+          "name": "icon_23",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_30.png",
+          "type": "icons",
+          "name": "icon_30",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            0,
+            3
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_31.png",
+          "type": "icons",
+          "name": "icon_31",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            1,
+            3
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_32.png",
+          "type": "icons",
+          "name": "icon_32",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            2,
+            3
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        },
+        {
+          "file": "icon_33.png",
+          "type": "icons",
+          "name": "icon_33",
+          "size": [
+            314,
+            314
+          ],
+          "grid": [
+            3,
+            3
+          ],
+          "source_atlas": "atlas_icons_v1.png"
+        }
+      ]
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_slots_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_slots_v1.png",
+      "size": [
+        1256,
+        1254
+      ],
+      "grid": {
+        "cols": 4,
+        "rows": 3,
+        "cell_w": 314,
+        "cell_h": 418
+      },
+      "slices": [
+        {
+          "file": "slot_weapon_normal.png",
+          "type": "slots",
+          "name": "slot_weapon_normal",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_armor_normal.png",
+          "type": "slots",
+          "name": "slot_armor_normal",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_core_normal.png",
+          "type": "slots",
+          "name": "slot_core_normal",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_ammo_normal.png",
+          "type": "slots",
+          "name": "slot_ammo_normal",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_weapon_hover.png",
+          "type": "slots",
+          "name": "slot_weapon_hover",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_armor_hover.png",
+          "type": "slots",
+          "name": "slot_armor_hover",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_core_hover.png",
+          "type": "slots",
+          "name": "slot_core_hover",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_ammo_hover.png",
+          "type": "slots",
+          "name": "slot_ammo_hover",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_weapon_selected.png",
+          "type": "slots",
+          "name": "slot_weapon_selected",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_armor_selected.png",
+          "type": "slots",
+          "name": "slot_armor_selected",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_core_selected.png",
+          "type": "slots",
+          "name": "slot_core_selected",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        },
+        {
+          "file": "slot_ammo_selected.png",
+          "type": "slots",
+          "name": "slot_ammo_selected",
+          "size": [
+            314,
+            418
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_slots_v1.png"
+        }
+      ]
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_rarity_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_rarity_v1.png",
+      "size": [
+        1255,
+        1254
+      ],
+      "grid": {
+        "cols": 5,
+        "rows": 3,
+        "cell_w": 251,
+        "cell_h": 418
+      },
+      "slices": [
+        {
+          "file": "rarity_common_ring.png",
+          "type": "rarity",
+          "name": "rarity_common_ring",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_uncommon_ring.png",
+          "type": "rarity",
+          "name": "rarity_uncommon_ring",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_rare_ring.png",
+          "type": "rarity",
+          "name": "rarity_rare_ring",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_epic_ring.png",
+          "type": "rarity",
+          "name": "rarity_epic_ring",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_legendary_ring.png",
+          "type": "rarity",
+          "name": "rarity_legendary_ring",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            4,
+            0
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_common_corner.png",
+          "type": "rarity",
+          "name": "rarity_common_corner",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_uncommon_corner.png",
+          "type": "rarity",
+          "name": "rarity_uncommon_corner",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_rare_corner.png",
+          "type": "rarity",
+          "name": "rarity_rare_corner",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_epic_corner.png",
+          "type": "rarity",
+          "name": "rarity_epic_corner",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_legendary_corner.png",
+          "type": "rarity",
+          "name": "rarity_legendary_corner",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            4,
+            1
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_common_emblem.png",
+          "type": "rarity",
+          "name": "rarity_common_emblem",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_uncommon_emblem.png",
+          "type": "rarity",
+          "name": "rarity_uncommon_emblem",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_rare_emblem.png",
+          "type": "rarity",
+          "name": "rarity_rare_emblem",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_epic_emblem.png",
+          "type": "rarity",
+          "name": "rarity_epic_emblem",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        },
+        {
+          "file": "rarity_legendary_emblem.png",
+          "type": "rarity",
+          "name": "rarity_legendary_emblem",
+          "size": [
+            251,
+            418
+          ],
+          "grid": [
+            4,
+            2
+          ],
+          "source_atlas": "atlas_rarity_v1.png"
+        }
+      ]
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_buttons_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_buttons_v1.png",
+      "size": [
+        1536,
+        1026
+      ],
+      "grid": {
+        "cols": 4,
+        "rows": 3,
+        "cell_w": 384,
+        "cell_h": 342
+      },
+      "slices": [
+        {
+          "file": "btn_primary_normal.png",
+          "type": "buttons",
+          "name": "btn_primary_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_primary_hover.png",
+          "type": "buttons",
+          "name": "btn_primary_hover",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_primary_pressed.png",
+          "type": "buttons",
+          "name": "btn_primary_pressed",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_primary_disabled.png",
+          "type": "buttons",
+          "name": "btn_primary_disabled",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_secondary_normal.png",
+          "type": "buttons",
+          "name": "btn_secondary_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_secondary_hover.png",
+          "type": "buttons",
+          "name": "btn_secondary_hover",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_secondary_pressed.png",
+          "type": "buttons",
+          "name": "btn_secondary_pressed",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_secondary_disabled.png",
+          "type": "buttons",
+          "name": "btn_secondary_disabled",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_utility_normal.png",
+          "type": "buttons",
+          "name": "btn_utility_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_utility_hover.png",
+          "type": "buttons",
+          "name": "btn_utility_hover",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_utility_pressed.png",
+          "type": "buttons",
+          "name": "btn_utility_pressed",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        },
+        {
+          "file": "btn_utility_disabled.png",
+          "type": "buttons",
+          "name": "btn_utility_disabled",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_buttons_v1.png"
+        }
+      ]
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\atlas_cards_green_v1.png",
+      "atlas": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\atlas\\atlas_cards_v1.png",
+      "size": [
+        1536,
+        1026
+      ],
+      "grid": {
+        "cols": 4,
+        "rows": 3,
+        "cell_w": 384,
+        "cell_h": 342
+      },
+      "slices": [
+        {
+          "file": "card_tier_normal.png",
+          "type": "cards",
+          "name": "card_tier_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            0
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_aircraft_normal.png",
+          "type": "cards",
+          "name": "card_aircraft_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            0
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_shop_normal.png",
+          "type": "cards",
+          "name": "card_shop_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            0
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_item_normal.png",
+          "type": "cards",
+          "name": "card_item_normal",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            0
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_tier_selected.png",
+          "type": "cards",
+          "name": "card_tier_selected",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            1
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_aircraft_selected.png",
+          "type": "cards",
+          "name": "card_aircraft_selected",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            1
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_shop_selected.png",
+          "type": "cards",
+          "name": "card_shop_selected",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            1
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_item_selected.png",
+          "type": "cards",
+          "name": "card_item_selected",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            1
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_tier_locked.png",
+          "type": "cards",
+          "name": "card_tier_locked",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            0,
+            2
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_aircraft_locked.png",
+          "type": "cards",
+          "name": "card_aircraft_locked",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            1,
+            2
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_shop_locked.png",
+          "type": "cards",
+          "name": "card_shop_locked",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            2,
+            2
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        },
+        {
+          "file": "card_item_locked.png",
+          "type": "cards",
+          "name": "card_item_locked",
+          "size": [
+            384,
+            342
+          ],
+          "grid": [
+            3,
+            2
+          ],
+          "source_atlas": "atlas_cards_v1.png"
+        }
+      ]
+    }
+  ],
+  "special": [
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\ui_forge_table_green.png",
+      "file": "ui_forge_table.png",
+      "size": [
+        800,
+        520
+      ],
+      "path": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\special\\ui_forge_table.png"
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\ui_lab_scroll_new.jpg",
+      "file": "ui_lab_scroll.png",
+      "size": [
+        1123,
+        1401
+      ],
+      "path": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\special\\ui_lab_scroll.png",
+      "usage": "U24研究院科技卷轴：6个圆形槽放永久升级图标，下方空白框叠加升级名称与等级，连接线表示科技树前置关系，左右留白区域放详细效果/灵玉消耗/解锁按钮"
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\ui_codex_book.jpg",
+      "file": "ui_codex_book.png",
+      "size": [
+        1536,
+        1024
+      ],
+      "path": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\special\\ui_codex_book.png",
+      "usage": "图鉴书页：左侧6格展示已解锁条目，右侧大面板展示条目详情/属性/ Lore"
+    },
+    {
+      "source": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\sources\\ui_frame_or_border.png",
+      "file": "ui_base_frame.png",
+      "size": [
+        1672,
+        941
+      ],
+      "path": "D:\\WorkBuddy Stido\\2026-08-12-12-58-18\\prototype\\assets\\v3\\ui\\special\\ui_base_frame.png",
+      "usage": "基地主内容边框：包裹基地各tab主内容区的外框"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>特殊 UI 单体图预览</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px;
+    background: #07101F;
+    color: #E8DCC4;
+    font-family: "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 22px; margin-bottom: 8px; }
+  .desc { color: #9aa3b2; margin-bottom: 30px; font-size: 14px; }
+  .card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(201,162,75,0.25);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+  }
+  .card h2 { margin: 0 0 10px 0; font-size: 16px; color: #FFC24B; }
+  .card p { margin: 0 0 15px 0; font-size: 13px; color: #9aa3b2; }
+  .card img {
+    max-width: 100%;
+    max-height: 60vh;
+    display: block;
+    margin: 0 auto;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .tag {
+    display: inline-block;
+    background: rgba(43,212,196,0.15);
+    color: #2BD4C4;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+  <h1>特殊 UI 单体图 —— 透明底预览</h1>
+  <div class="desc">下面把处理后的 PNG 放在深色背景上，检查是否还有白边、是否可直接叠加到游戏页面。</div>
+
+  <div class="card">
+    <h2><span class="tag">基地主内容边框</span>ui_base_frame.png</h2>
+    <p>1672×941 · 已透明 · 用途：基地三栏主内容区的外框</p>
+    <img src="ui_base_frame.png" alt="基地主内容边框">
+  </div>
+
+  <div class="card">
+    <h2><span class="tag">图鉴书页</span>ui_codex_book.png</h2>
+    <p>1536×1024 · 外部白底已抠 · 用途：图鉴 tab 主界面</p>
+    <img src="ui_codex_book.png" alt="图鉴书页">
+  </div>
+
+  <div class="card">
+    <h2><span class="tag">研究院科技卷轴</span>ui_lab_scroll.png</h2>
+    <p>1123×1401 · 外部白底已抠 · 用途：研究院 tab 主界面（替换旧绿幕卷轴）</p>
+    <img src="ui_lab_scroll.png" alt="研究院科技卷轴">
+  </div>
+</body>
+</html>

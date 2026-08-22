@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>基地页面新资产接入预览</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: #07101F;
+    color: #E8DCC4;
+    font-family: "Microsoft YaHei", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 { font-size: 20px; margin: 0 0 8px 0; }
+  .desc { color: #9aa3b2; font-size: 13px; margin-bottom: 20px; }
+  .tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .tab {
+    width: 120px; height: 54px;
+    background: url('../../../assets/v4/ui/tabs/base_tab_sheet.png') no-repeat;
+    background-size: 500% 400%;
+    border: none;
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .tab.on { opacity: 1; filter: brightness(1.2); }
+  .tab1 { background-position: 0% 0%; }
+  .tab2 { background-position: 25% 0%; }
+  .tab3 { background-position: 50% 0%; }
+  .tab4 { background-position: 75% 0%; }
+  .tab5 { background-position: 100% 0%; }
+
+  .stage {
+    position: relative;
+    width: min(1600px, 95vw);
+    aspect-ratio: 1672 / 941;
+    background: url('ui_base_frame.png') no-repeat center/contain;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4% 6% 5% 6%;
+  }
+
+  .pane { display: none; width: 100%; height: 100%; }
+  .pane.on { display: flex; }
+
+  /* 研究院卷轴场景 */
+  .lab-scene {
+    width: 100%; height: 100%;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  .lab-scroll {
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* 图鉴书页场景 */
+  .codex-scene {
+    width: 100%; height: 100%;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  .codex-book {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  /* 普通占位场景 */
+  .placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border: 1px dashed rgba(201,162,75,0.3);
+    color: #9aa3b2;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+  <h1>基地页面新资产接入预览</h1>
+  <div class="desc">点击下方 tab 切换，查看「基地主边框 + 研究院卷轴 + 图鉴书页」的叠加效果</div>
+
+  <div class="tabs">
+    <button class="tab tab1 on" data-tab="hangar"></button>
+    <button class="tab tab2" data-tab="arsenal"></button>
+    <button class="tab tab3" data-tab="forge"></button>
+    <button class="tab tab4" data-tab="lab"></button>
+    <button class="tab tab5" data-tab="codex"></button>
+  </div>
+
+  <div class="stage">
+    <div class="pane hangar on">
+      <div class="placeholder">机库内容区<br>（保持现有布局）</div>
+    </div>
+    <div class="pane arsenal">
+      <div class="placeholder">军械库内容区<br>（保持现有布局）</div>
+    </div>
+    <div class="pane forge">
+      <div class="placeholder">熔炼台内容区<br>（保持现有布局）</div>
+    </div>
+    <div class="pane lab">
+      <div class="lab-scene">
+        <img class="lab-scroll" src="ui_lab_scroll.png" alt="研究院科技卷轴">
+      </div>
+    </div>
+    <div class="pane codex">
+      <div class="codex-scene">
+        <img class="codex-book" src="ui_codex_book.png" alt="图鉴书页">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+        document.querySelectorAll('.pane').forEach(p => p.classList.remove('on'));
+        btn.classList.add('on');
+        document.querySelector('.pane.' + btn.dataset.tab).classList.add('on');
+      });
+    });
+  </script>
+</body>
+</html>
