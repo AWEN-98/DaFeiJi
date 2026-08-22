@@ -9874,20 +9874,28 @@
   function waitAssetsWithMask(cb, opts) {
     opts = opts || {};
     showLoadMask(opts.tip);
-    if (AllAssetsReady()) { renderLoadProgress(); hideLoadMask(); if (cb) cb(); return; }
+    var _done = false;
+    function finish() { if (_done) return; _done = true; hideLoadMask(); if (cb) cb(); }
+    if (AllAssetsReady()) { renderLoadProgress(); finish(); return; }
     var t0 = performance.now();
+    // #489 修复：用 setTimeout 轮询替代 requestAnimationFrame——预览面板/后台标签页里 rAF 可能被冻结，
+    // 导致 poll 永不执行、加载遮罩(z-index:9999)永久挡住所有点击（表现为"连开始/出击按钮都点不动"）。
+    // setTimeout 在后台标签仅被节流（>=1s 间隔）不会被完全取消，且即便 rAF 被禁也能持续推进。
     var poll = function () {
       renderLoadProgress();
-      if (AllAssetsReady()) { hideLoadMask(); if (cb) cb(); return; }
+      if (AllAssetsReady()) { finish(); return; }
       var el = (performance.now() - t0) / 1000;
       if (el > 6 && loadTipEl && !loadTipEl.classList.contains('warn')) {
         loadTipEl.classList.add('warn');
         loadTipEl.textContent = '资产较多，加载较慢…请稍候（若长时间无变化，可能是网络问题）';
       }
-      if (el > 15) { hideLoadMask(); if (cb) cb(); return; } // 15s 硬兜底，绝不卡死
+      if (el > 15) { finish(); return; } // 15s 硬兜底，绝不卡死
       requestAnimationFrame(poll);
     };
     requestAnimationFrame(poll);
+    // #489 独立硬兜底：不依赖 rAF poll（预览面板/后台标签页可能冻结 rAF 导致其永不执行、
+    // 加载遮罩 z-index:9999 永久挡点击）。用 setTimeout 计时，启动后 9s 无条件淡出遮罩。
+    setTimeout(finish, 9000);
   }
   // 启动级全局加载门：显示加载遮罩 → 双轨就绪（或超时）→ 淡出遮罩 + 进基地
   function enterBase() {
@@ -10117,6 +10125,17 @@
   } else {
     enterBase(); // 2026-08-18 去掉开场标题，直接进基地（走启动级加载门：遮罩→资产就绪→进基地）
   }
+  // #489 全局兜底：无论启动流程怎样，用户首次任意交互（点/触/键）立即强制关闭所有启动级遮罩，
+  // 杜绝"加载遮罩/进入遮罩因 rAF 冻结或绑定时序问题永久挡住点击"导致"按钮点不动"。
+  function forceClearStartMasks() {
+    var lm = document.getElementById('loadMask'); if (lm) lm.classList.add('hide');
+    var eo = document.getElementById('enterOverlay'); if (eo) eo.style.display = 'none';
+  }
+  ['mousedown', 'touchstart', 'keydown', 'pointerdown'].forEach(function (ev) {
+    window.addEventListener(ev, forceClearStartMasks, { once: false, passive: true });
+  });
+  // 额外双保险：即便没有任何交互，启动后 6s 也强制清遮罩（覆盖 enterOverlay 未绑定成功的极端情况）
+  setTimeout(forceClearStartMasks, 6000);
   // 确保初始尺寸正确
   resize();
   checkOrientation();
