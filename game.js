@@ -3147,17 +3147,17 @@
     var looter = (run && run.loot.length > 0) ? (0.05 + tier * 0.02) : 0;
     // 狙击手：高层更多，强迫玩家走位
     var sniper = 0.05 + tier * 0.02;
-    // 护盾兵：中高层出现，改变目标优先级
-    var shielder = tier >= 2 ? (0.04 + tier * 0.02) : 0;
+    // 护盾兵：v18.8 起 tier1 即少量出现（原 tier>=2 才出现），改变目标优先级
+    var shielder = 0.03 + tier * 0.02;
     // 蜂群：成群出现，制造弹幕压力
     var swarm = 0.05 + tier * 0.015;
     // v12.6 机制型怪：识破前摇、翻相躲致命招
     // 自爆突进蜂：低层起出现，逼迫冲刺/引力裂隙借力甩尾
     var kamikaze = 0.055 + tier * 0.012;
-    // 相位狙击手：高层更多，1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
-    var phaseSniper = tier >= 2 ? (0.03 + tier * 0.022) : 0;
-    // 引力编织者：中高层，发微型引力奇点球 + 8 向螺旋余烬飞刃（中距风筝）
-    var weaver = tier >= 2 ? (0.03 + tier * 0.018) : 0;
+    // 相位狙击手：v18.8 起 tier1 即少量出现（原 tier>=2），1.2s 跟踪细激光 → 0.2s 闪 → 贯穿全屏光束（翻相 0.35s 无敌帧反打）
+    var phaseSniper = 0.025 + tier * 0.02;
+    // 引力编织者：v18.8 起 tier1 即少量出现（原 tier>=2），发微型引力奇点球 + 8 向螺旋余烬飞刃（中距风筝）
+    var weaver = 0.025 + tier * 0.016;
     // 鎏金重盾巨舰（精英）：高层稀有，正面 120° 无敌金盾 + 波浪扩散弹幕（绕后/余烬相破盾）
     var bastion = tier >= 3 ? (0.02 + tier * 0.012) : 0;
     var sum = ram + shoot + turret + heal + gunship + split + looter + sniper + shielder + swarm + kamikaze + phaseSniper + weaver + bastion; r *= sum;
@@ -3311,6 +3311,46 @@
       if (e.pursueT > ALERT.pursueTime) { e.alert = 0; e.alertClock = 0; e.decayT = 0; }
     }
   }
+  // ===== 敌人智能增强辅助函数（v18.8：「怪物太无聊」重构）=====
+  // ① 弹幕规避：检测逼近自身的玩家子弹，计算横向闪避分量（温和，仅叠加微扰，不瞬移）
+  // 返回 {x,y} 单位闪避向量（无威胁时返回 {0,0}）；仅对低速直射弹做反应（追踪弹/贯穿弹忽略，避免抖动）
+  function evadeBullets(e) {
+    var ax = 0, ay = 0, threat = false;
+    // 玩家子弹池：from==='player' 且非 homing/非 explode/非 pierce 的常规弹（避免对智能弹过度反应）
+    for (var bi = 0; bi < bullets.length; bi++) {
+      var b = bullets[bi];
+      if (b.from !== 'player' || b.homing || b.explode || b.pierce > 0) continue;
+      var dx = e.x - b.x, dy = e.y - b.y, d = Math.hypot(dx, dy);
+      if (d > 150) continue; // 仅近身威胁
+      // 子弹速度方向（朝敌人飞来的反方向）：预测 0.35s 后会否命中自身半径+余量
+      var bx = b.x + b.vx * 0.35, by = b.y + b.vy * 0.35;
+      var fx = e.x - bx, fy = e.y - by, fd = Math.hypot(fx, fy);
+      if (fd < e.r + 26) {
+        // 命中威胁：横向闪避（垂直子弹速度方向），方向取离弹道最近的一侧
+        var sp = Math.hypot(b.vx, b.vy) || 1;
+        var px = -b.vy / sp, py = b.vx / sp; // 垂直单位向量
+        if (px * dx + py * dy < 0) { px = -px; py = -py; } // 选远离子弹来向的一侧
+        var w = (150 - d) / 150; // 越近权重越大
+        ax += px * w; ay += py * w; threat = true;
+      }
+    }
+    if (threat) { var ml = Math.hypot(ax, ay) || 1; return { x: ax / ml, y: ay / ml }; }
+    return { x: 0, y: 0 };
+  }
+  // ② 通用侧翼包抄：非幽壑关也激活 flankSide 标签——中距时从玩家左/右后侧切入，近身后背后收口
+  // 返回 {x,y} 单位移动向量（未激活包抄时返回 null）；仅对「追击型近战/通用」敌人在中距(170~360)生效，小队规模温和
+  function applyFlank(e, d, ux, uy) {
+    if (e.arche === 'swarm' || e.arche === 'ram' || e.arche === 'split' || e.arche === 'kamikaze' ||
+        e.arche === 'shielder' || e.arche === 'heal' || e.arche === 'sniper' || e.arche === 'phaseSniper' ||
+        e.arche === 'bastion' || e.arche === 'weaver' || e.arche === 'looter' || e.arche === 'turret' ||
+        e.arche === 'gunship') return null; // 这些原型各有专属行为，不抢 flank 逻辑
+    if (d < 150 || d > 380) return null; // 仅中距包夹，近身/远距走各自逻辑
+    var _pa = player.ang; // 玩家当前朝向（稳定，不依赖速度）
+    var _fa = _pa + (e.flankSide || 1) * 1.05; // 玩家左/右后侧约 60°
+    var _tx = player.x + Math.cos(_fa) * 210, _ty = player.y + Math.sin(_fa) * 210;
+    var _fdx = _tx - e.x, _fdy = _ty - e.y, _fd = Math.hypot(_fdx, _fdy) || 1;
+    return { x: _fdx / _fd, y: _fdy / _fd };
+  }
   // 2026-08-18：自治射击例程（"怪物失去攻击欲望/不射击" 修复核心）
   // 关键修复：开火不再依赖 e.alert === 2 硬门。只要 冷却就绪 + 玩家在战斗半径内 + 在屏幕内，远程原型即开火。
   // e.alert 仍用于移动 AI / 进攻性，但不再是唯一开火开关。狙击手保留激光预警 + LOS 逻辑（躲入大楼背侧即断线重索）。
@@ -3327,7 +3367,15 @@
     var _rad = (e.arche === 'shoot' || e.arche === 'turret') ? 560 : (e.arche === 'gunship' ? 640 : 700);
     if (DBG_ENEMY_AI) console.log('[AI] shoot arche=' + e.arche + ' alert=' + e.alert + ' fireCd=' + e.fireCd.toFixed(2) + ' d=' + d.toFixed(0) + ' rad=' + _rad + ' onScreen=' + onScreen + ' canFire=' + (onScreen && d < _rad) + ' ready=' + (e.fireCd <= 0));
     if (e.arche === 'shoot') {
-      if (e.fireCd <= 0 && d < 560 && onScreen) { fireBullet(e.x, e.y, Math.atan2(dy, dx), 'enemy', EDMG_NORMAL * e.dmgMul, 175); e.fireCd = rand(1.6, 3.0); }
+      if (e.fireCd <= 0 && d < 560 && onScreen) {
+        // v18.8：预判提前量——玩家冲刺时朝其速度方向 lead（子弹飞行时间×玩家速度），温和增强
+        var _sa = Math.atan2(dy, dx);
+        if (player.dashT > 0) {
+          var _lead = (d / 175) * 0.55; // 子弹飞行时间 × 系数
+          _sa = Math.atan2(dy + player.vy * _lead, dx + player.vx * _lead);
+        }
+        fireBullet(e.x, e.y, _sa, 'enemy', EDMG_NORMAL * e.dmgMul, 175); e.fireCd = rand(1.6, 3.0);
+      }
     } else if (e.arche === 'turret') {
       if (e.fireCd <= 0 && d < 560 && onScreen) { for (var tb = -1; tb <= 1; tb++) fireBullet(e.x, e.y, Math.atan2(dy, dx) + tb * 0.12, 'enemy', EDMG_NORMAL * e.dmgMul, 180); e.fireCd = rand(2.0, 3.0); }
     } else if (e.arche === 'gunship') {
@@ -4158,8 +4206,9 @@
   // #381-① 常规周期刷怪间隔（秒）：起幕慢→合幕快，配合 gameTime 梯度再缩短；玩家清完预置遭遇后场上仍持续有增援
   var SPAWN_INT = { qi: 6.0, cheng: 4.5, zhuan: 3.0, he: 2.5 };
   // ===== 机体手感（加速度-阻尼模型 + 冲刺残影）/ 打击感三件套 =====
-  var SPRINT_MULT = 1.8;          // 黄金库：冲刺极速 = 基础移速 × 1.8（0.2s ease-out 爬升至此）
-  var ACCEL_TAU = 0.05;           // 加速时间常数收窄：~0.12s 即贴满极速（推到多少就是多少速度，消除起步迟滞的“飘”）
+  var SPRINT_MULT = 1.35;         // v18.9：冲刺极速 = 基础移速 × 1.35（原 1.8，更狠：不再像闪现，距离短但加速感明显）
+  var ACCEL_TAU = 0.05;           // 加速时间常数（移动端）：~0.12s 即贴满极速（移动端手感保持）
+  var ACCEL_TAU_PC = 0.035;       // v18.9：PC 专用更跟手加速常数（比移动端更小→更快贴满，消除"笨重"起步迟滞）
   var DRAG_COEFF = 0.90;          // 松键阻尼：每帧(60fps)保留 90%（按手感规格），配合下方急停阈值即时止滑
   var GHOST_TRIG = 0.72;          // 残影触发：速度 ≥ 极速×此比例（含 dash）
   var GHOST_LIFE = 0.2;           // 残影淡出时长（秒）
@@ -4775,6 +4824,7 @@
       return;
     }
     player.ultCharge = 0;
+    player.ultDispT = 1.4; // v18.8：绝技散开计时——附近敌人短暂横向散开规避（AI 行为树读取）
     var el = dominantElem(), col = el ? ELEMCOL[el] : '#D9B64A';
     var nm = ULT_NAMES[el] || '天诛';
     setBanner('绝技「' + nm + '」！', 2.2, col);
@@ -5149,24 +5199,25 @@
     // 虚泊·镜海·镜面反转：左右操控颠倒（镜像 X 轴）——仅影响玩家移动输入，不影响射击朝向
     if (run && run.mirrorControl) { dirx = -dirx; }
     var curSpeed = player.speed * (player.galeActive ? 1.6 : 1) * PLAYER_SPEED_MULT; // 常规巡航锚点（含倒退减速 ×0.6）；冲刺峰值另用 topSpeed
-    var topSpeed = player.speed * SPRINT_MULT;   // 黄金库：冲刺极速 = 基础移速 × 1.8，0.2s ease-out 爬升至此（仅冲刺用）
+    var topSpeed = player.speed * SPRINT_MULT;   // 黄金库：冲刺极速 = 基础移速 × 1.35（v18.9 原 1.8），仅冲刺用
     // 倒退减速：移动方向与朝向夹角>100°时降速至65%
     if (mag > 0.05) {
       var facingDot = dirx * Math.cos(player.ang) + diry * Math.sin(player.ang);
       if (facingDot < -0.17) curSpeed *= 0.6; // cos(100°)≈-0.17，超过100°算倒退
     }
     // --- 标准加速度-阻尼模型（Velocity & Drag）+ 冲刺（闪避）方向锁定缓升 ---
-    // 冲刺中：方向锁定 + ease-out 爬升至 1.8× 基础（dashDX/dashDY 已在触发时锁定），杜绝瞬移；结束后自然阻尼滑行
+    var _tau = isMobile ? ACCEL_TAU : ACCEL_TAU_PC; // v18.9：PC 用更小 tau→更跟手，移动端保持原手感
+    // 冲刺中：方向锁定 + ease-out 爬升至 1.35× 基础（dashDX/dashDY 已在触发时锁定），杜绝瞬移；结束后自然阻尼滑行
     if (player.dashT > 0) {
-      var dashPeak = player.speed * SPRINT_MULT; // = 1.8× 基础巡航
-      var dak = 1 - Math.exp(-dt / ACCEL_TAU);
+      var dashPeak = player.speed * SPRINT_MULT; // = 1.35× 基础巡航（v18.9：原 1.8×）
+      var dak = 1 - Math.exp(-dt / _tau);
       player.vx += (player.dashDX * dashPeak - player.vx) * dak;
       player.vy += (player.dashDY * dashPeak - player.vy) * dak;
     } else if (mag > 0.05) {
       // 常规巡航用 curSpeed（已含倒退减速惩罚）；仅冲刺走 topSpeed(1.8×)
       var targetvx = dirx * curSpeed * mag, targetvy = diry * curSpeed * mag;
-      // 加速：指数逼近（Ease-Out），时间常数 ACCEL_TAU → ~0.2s 平滑到极速
-      var ak = 1 - Math.exp(-dt / ACCEL_TAU);
+      // 加速：指数逼近（Ease-Out），时间常数 _tau → PC 更跟手 / 移动端保持
+      var ak = 1 - Math.exp(-dt / _tau);
       player.vx += (targetvx - player.vx) * ak;
       player.vy += (targetvy - player.vy) * ak;
     } else {
@@ -5203,6 +5254,7 @@
       }
     }
     if (player.dashCd > 0) player.dashCd -= dt;
+    if (player.ultDispT > 0) player.ultDispT -= dt; // v18.8：绝技散开计时衰减
     // 侧倾平滑（与帧率无关）
     var targetBank = clamp(player.vx / Math.max(180, player.speed * 1.0), -0.35, 0.35);
     player.bankSmooth += (targetBank - player.bankSmooth) * Math.min(1, 6 * dt);
@@ -5214,8 +5266,8 @@
       var dlen = Math.hypot(ddx, ddy) || 1;
       player.dashDX = ddx / dlen; player.dashDY = ddy / dlen; // 仅锁定方向，速度走 ease-out 爬升（杜绝瞬移）
       player.dashT = DASH_DUR;
-      player.iframe = Math.max(player.iframe, 0.5);
-      player.dashCd = 1.1;
+      player.iframe = Math.max(player.iframe, 0.7); // v18.9：冲刺无敌帧 0.5→0.7（用户确认合适）
+      player.dashCd = 3.5; // v18.9：冲刺冷却 1.1→3.5s（更长冷却，杜绝连闪）
       player.dashAnimT = DASH_DUR;
       AudioSys.sfx.dash();
       spawnRing(player.x, player.y, player.color, 64); // 起手冲击环
@@ -5804,7 +5856,12 @@
           var KW = e.kamikaze ? e.kamikazeWind : CHARGE_TELE;     // 自爆蜂 0.5s 前摇
           var KCR = e.kamikaze ? CHARGE_RANGE * 1.15 : CHARGE_RANGE;
           if (e.chargeState === 0) {
-            mvx = ux; mvy = uy; spd *= e.kamikaze ? 1.0 : 0.85;
+            if (e.kamikaze) { mvx = ux; mvy = uy; spd *= 1.0; }
+            else {
+              // v18.8：冲撞者非蓄力态——螺旋逼近（径向 0.8 + 切向 0.55），不再笔直冲脸木头硬撞
+              var _tang = { x: -uy, y: ux };
+              mvx = ux * 0.8 + _tang.x * 0.55; mvy = uy * 0.8 + _tang.y * 0.55; spd *= 0.85;
+            }
             if (e.alert === 2 && d < KCR && chargingNow < CHARGE_MAX) { e.chargeState = 1; e.chargeT = 0; chargingNow++; }
           } else if (e.chargeState === 1) {
             e.chargeT += dt; e.chargeDir = Math.atan2(dy, dx);
@@ -5831,6 +5888,8 @@
           else if (d > bHi) { mvx = ux; mvy = uy; spd *= 0.8; }
           else { var ts = (Math.floor(e.patrolAng / 6.283) % 2 === 0) ? 1 : -1; mvx = -uy * ts; mvy = ux * ts; spd *= (e.arche === 'turret' ? 0.18 : 0.7); }
           e.zig += dt * 3; mvx += Math.cos(e.zig) * 0.12; mvy += Math.sin(e.zig) * 0.12;
+          // v18.8：弹幕规避——玩家子弹近身来袭时横向闪避（温和微扰叠加）
+          var _ev = evadeBullets(e); if (_ev.x || _ev.y) { mvx += _ev.x * 0.9; mvy += _ev.y * 0.9; }
         } else if (e.arche === 'weaver') {
           // 引力编织者：中距风筝，绕玩家缓慢游走（不直冲），便于持续吐奇点球 + 飞刃
           if (d < 360) { mvx = -ux; mvy = -uy; spd *= 0.9; }
@@ -5873,8 +5932,16 @@
             // 逼近到近身后（<170px）转入「背后收口」：沿玩家朝向反方向绕到正后方封堵退路
             if (d < 170) { mvx = -ux * 0.3 + Math.cos(_fa) * 0.7; mvy = -uy * 0.3 + Math.sin(_fa) * 0.7; }
           } else {
-            mvx = ux; mvy = uy; spd *= 0.7;
+            // v18.8：通用包抄——普通关也激活 flankSide 侧翼切入（中距），近身/远距走各自逻辑
+            var _fl = applyFlank(e, d, ux, uy);
+            if (_fl) { mvx = _fl.x; mvy = _fl.y; spd *= 0.85; }
+            else { mvx = ux; mvy = uy; spd *= 0.7; }
           }
+        }
+        // v18.8：绝技散开——玩家刚放绝技时，附近敌人短暂横向散开规避（不与玩家死缠）
+        if (player.ultDispT > 0 && d < 280) {
+          var _dispAng = Math.atan2(e.y - player.y, e.x - player.x) + (e.flankSide || 1) * 0.6;
+          mvx += Math.cos(_dispAng) * 1.1; mvy += Math.sin(_dispAng) * 1.1;
         }
         // 分离力（Boids）：防止多敌重叠成一点
         var sep = sepForce(e); mvx += sep.x * 0.85; mvy += sep.y * 0.85;
@@ -8401,10 +8468,17 @@
     else { ctx.fillStyle = '#C9A24B'; ctx.textAlign = 'right'; ctx.fillText(player.xp + '/' + player.xpNeed, lpX + lpW - 10, xpY + 5); ctx.textAlign = 'left'; }
     // 行2：HP 条
     var hpY = lpY + (isMobile ? 32 : 22);
+    var _lowHp = player.hp < player.maxhp * 0.3 && player.hp > 0;        // #491 残血判定
+    var _hpPulse = _lowHp ? (0.5 + 0.5 * Math.sin(gameTime * 9)) : 0;     // 更快更跳的脉冲（9 rad/s，约 1.4Hz）
     ctx.fillStyle = 'rgba(255,255,255,0.12)'; hp(lpX + 10, hpY, hpBarW, isMobile ? 10 : 12, 6);
     var hpw = hpBarW * Math.max(0, Math.min(1, player.hp / player.maxhp));
     var hpg = ctx.createLinearGradient(lpX + 10, 0, lpX + 10 + hpBarW, 0); hpg.addColorStop(0, '#D96A7E'); hpg.addColorStop(1, '#C81E3E');
-    ctx.fillStyle = hpg; ctx.strokeStyle = 'rgba(255,255,255,0.2)'; hp(lpX + 10, hpY, Math.max(4, hpw), isMobile ? 10 : 12, 6);
+    ctx.fillStyle = hpg;
+    // #491 残血：血条描边随脉冲闪白 + 加粗，制造「告警闪烁」一眼可见
+    if (_lowHp) { ctx.strokeStyle = 'rgba(255,255,255,' + (0.35 + 0.65 * _hpPulse).toFixed(3) + ')'; ctx.lineWidth = 2 + 2 * _hpPulse; }
+    else { ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; }
+    hp(lpX + 10, hpY, Math.max(4, hpw), isMobile ? 10 : 12, 6);
+    ctx.lineWidth = 1;
     // 行3：护盾条
     var shY = lpY + (isMobile ? 47 : 40);
     ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.strokeStyle = 'transparent'; hp(lpX + 10, shY, hpBarW, isMobile ? 7 : 8, 4);
@@ -8424,7 +8498,10 @@
       ctx.textAlign = 'left';
     }
     // 行4：数值与层数击杀（移动端收紧在面板内，不出框）
-    ctx.fillStyle = '#E8E4D8'; ctx.font = 'bold ' + (isMobile ? 9 : 11) + 'px sans-serif'; ctx.strokeStyle = 'transparent';
+    // #491 残血：HP 数值随脉冲在米白↔警示红之间闪，强化「快没血了」的警觉
+    if (_lowHp) { ctx.fillStyle = (Math.sin(gameTime * 9) > 0) ? '#FF6B6B' : '#E8E4D8'; }
+    else { ctx.fillStyle = '#E8E4D8'; }
+    ctx.font = 'bold ' + (isMobile ? 9 : 11) + 'px sans-serif'; ctx.strokeStyle = 'transparent';
     ctx.fillText('HP ' + Math.ceil(player.hp) + '/' + player.maxhp, lpX + 10, lpY + (isMobile ? 84 : 78));
     ctx.fillStyle = '#E8DCC4'; ctx.font = (isMobile ? '9px' : 'bold 11px') + ' sans-serif';
     ctx.fillText('第' + run.tier + '层 · 杀' + run.kills + ' · 峰' + player.comboBest, lpX + (isMobile ? 66 : 78), lpY + (isMobile ? 84 : 78));
@@ -8706,13 +8783,15 @@
         ctx.fillStyle = hexToRgba(screenFlash.color, screenFlash.a); ctx.fillRect(0, 0, W, H);
       }
     }
-    // 低血量警报：HP<30% 红色呼吸 vignette（边缘径向渐变 + vfx_low_health 贴图，缺图回退到渐变）
+    // 低血量警报：HP<30% 红色呼吸 vignette（#491 强化：更快跳动脉冲 + 更深的边缘红 + 轻度全屏红闪）
     if (scene === 'mission' && player && player.hp < player.maxhp * 0.3 && player.hp > 0) {
-      var _lva = 0.3 + 0.3 * Math.sin(gameTime * 6);
-      var lgrd = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.32, W / 2, H / 2, Math.max(W, H) * 0.62);
-      lgrd.addColorStop(0, 'rgba(0,0,0,0)'); lgrd.addColorStop(1, 'rgba(201,79,79,' + _lva.toFixed(3) + ')');
+      var _lva = 0.35 + 0.4 * Math.abs(Math.sin(gameTime * 9));   // 更快更跳（9 rad/s），峰值更深
+      var lgrd = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.30, W / 2, H / 2, Math.max(W, H) * 0.66);
+      lgrd.addColorStop(0, 'rgba(0,0,0,0)'); lgrd.addColorStop(0.7, 'rgba(201,79,79,' + (0.12 * _lva).toFixed(3) + ')'); lgrd.addColorStop(1, 'rgba(201,30,30,' + _lva.toFixed(3) + ')');
       ctx.fillStyle = lgrd; ctx.fillRect(0, 0, W, H);
-      ctx.save(); ctx.globalAlpha = 0.30 + 0.35 * Math.abs(Math.sin(gameTime * 6)); if (!blit('vfx_low_health', W / 2, H / 2, W * 1.05, H * 1.05, 0)) {} ctx.restore(); ctx.globalAlpha = 1;
+      // #491 全屏轻红闪：最弱一档（a≤0.16）只覆盖中心盲区，让「残血」在整个视野都跳得出来
+      if (Math.sin(gameTime * 9) > 0.6) { ctx.fillStyle = 'rgba(201,30,30,0.14)'; ctx.fillRect(0, 0, W, H); }
+      ctx.save(); ctx.globalAlpha = 0.35 + 0.4 * Math.abs(Math.sin(gameTime * 9)); if (!blit('vfx_low_health', W / 2, H / 2, W * 1.05, H * 1.05, 0)) {} ctx.restore(); ctx.globalAlpha = 1;
     }
     // 危险网格：Boss 战（已苏醒）时暗角网格预警（vfx_danger_grid 贴图，缺图回退）
     if (scene === 'mission' && boss && boss.wake <= 0) {
