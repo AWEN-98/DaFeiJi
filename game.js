@@ -2036,8 +2036,104 @@
   // 绝技（J）：击杀充能；流派随主元素变化，构筑决定大招形态
   var ULT_MAX = 100, ULT_KILL_GAIN = 3.2, ULT_COMBO_GAIN = 0.09; // 高连杀显著加速充能
   var ULT_NAMES = { '火': '离火·燎原', '水': '坎水·潮盾', '雷': '震雷·天罚', '风': '巽风·千羽', '土': '坤土·镇岳' };
-  // 流派觉醒：单局内某系首次满 4 阶 → 永久 +15% 攻击 + 绝技充满 + 25% 回血（构筑 payoff 时刻）
+  // 流派觉醒：单局内某 系首次满 4 阶 → 永久 +15% 攻击 + 绝技充满 + 25% 回血（构筑 payoff 时刻）
   var EVOLVE_ATK = 0.15, EVOLVE_HEAL = 0.25;
+
+  // ===== 虚泊·镜海 · 随机事件引擎（通用事件框架）=====
+  // 设计意图：解决「地图全是信息博弈但玩法单薄」——用定时随机事件给镜海注入不确定性爽点。
+  // EVENTS 为可扩展定义表；run.eventClock 控制下一场事件间隔；run.activeEvents 记录进行中的事件。
+  // 默认仅 run.block==='xupu' 启用，但框架本身通用（其他区块可后续挂事件）。
+  var EVENT_DEFS = [
+    {
+      id: 'mirror_flip', name: '镜面反转', color: '#9FD8E6', icon: '⇄',
+      min: 18, max: 28, dur: 7, weight: 1.0,
+      start: function () { run.mirrorControl = true; setBanner('镜海异变·镜面反转！左右操控颠倒 ' + this.dur + 's', 3.0, '#9FD8E6', 'top'); },
+      end: function () { run.mirrorControl = false; setBanner('镜面反转结束，操控复原', 1.6, '#9FD8E6', 'bot'); }
+    },
+    {
+      id: 'phantom_raid', name: '幻影突袭', color: '#B06FD0', icon: '✦',
+      min: 22, max: 34, dur: 9, weight: 1.0,
+      start: function () {
+        setBanner('镜海异变·幻影突袭！空间裂隙溢出镜中残影', 3.0, '#B06FD0', 'top');
+        var n = 3 + Math.floor(run.tier / 2);
+        for (var i = 0; i < n; i++) {
+          var ang = rand(0, 6.28), rr = rand(380, 620);
+          var px = clamp(player.x + Math.cos(ang) * rr, 60, WORLD_W - 60);
+          var py = clamp(player.y + Math.sin(ang) * rr, 60, WORLD_H - 60);
+          // 幻影：半透明镜像敌机，穿墙、不直接撞击、仅发追踪弹，击破给小额灵玉，存在 dur 秒后消散
+          var ph = {
+            x: px, y: py, vx: 0, vy: 0, hp: 30 + run.tier * 8, maxhp: 30 + run.tier * 8, r: 16,
+            arche: 'phantom', phantom: true, mirror: true, col: '#B06FD0', edge: '#5a3a7a',
+            fireCd: rand(1.2, 2.2), tier: 1, dmgMul: tierDmgMul(run.tier) * 0.7, flash: 0, wake: 0,
+            spawnGhost: true, life: this.dur, face: player.ang
+          };
+          enemies.push(ph);
+        }
+      },
+      end: function () {
+        // 清理未击破的幻影（消散不掉落）
+        for (var i = enemies.length - 1; i >= 0; i--) { if (enemies[i].phantom) { burst(enemies[i].x, enemies[i].y, '#B06FD0', 6, { smin: 20, smax: 60 }); enemies.splice(i, 1); } }
+        setBanner('幻影突袭平息', 1.6, '#B06FD0', 'bot');
+      }
+    },
+    {
+      id: 'true_point_drift', name: '真点漂移', color: '#C9A24B', icon: '◇',
+      min: 26, max: 40, dur: 12, weight: 1.0,
+      start: function () {
+        setBanner('镜海异变·真点漂移！真实撤离点正在转移，注意小地图', 3.2, '#C9A24B', 'top');
+        // 事件期间：真实撤离点（非 decoy）缓慢向新锚点漂移，逼迫重新规划路线
+        run._driftT = 0; run._driftAnchor = 0;
+        run._driftTargets = [
+          { x: WORLD_W * 0.3, y: WORLD_H * 0.3 }, { x: WORLD_W * 0.7, y: WORLD_H * 0.66 },
+          { x: WORLD_W * 0.5, y: WORLD_H * 0.78 }, { x: WORLD_W * 0.18, y: WORLD_H * 0.7 }
+        ];
+      },
+      tick: function (dt) {
+        run._driftT = (run._driftT || 0) + dt;
+        if (run._driftT > 4) { run._driftT = 0; run._driftAnchor = (run._driftAnchor + 1) % run._driftTargets.length; }
+        var tgt = run._driftTargets[run._driftAnchor];
+        for (var i = 0; i < extractPoints.length; i++) {
+          var z = extractPoints[i];
+          if (z.decoy) continue; // 假点不动
+          var cx = z.x + z.w / 2, cy = z.y + z.h / 2;
+          z.x += (tgt.x - cx) * Math.min(1, dt * 0.6);
+          z.y += (tgt.y - cy) * Math.min(1, dt * 0.6);
+        }
+      },
+      end: function () { setBanner('真点漂移停止', 1.6, '#C9A24B', 'bot'); }
+    }
+  ];
+  function pickEvent() {
+    var total = 0; for (var i = 0; i < EVENT_DEFS.length; i++) total += EVENT_DEFS[i].weight;
+    var r = Math.random() * total;
+    for (var j = 0; j < EVENT_DEFS.length; j++) { r -= EVENT_DEFS[j].weight; if (r <= 0) return EVENT_DEFS[j]; }
+    return EVENT_DEFS[0];
+  }
+  function updateEvents(dt) {
+    if (!run || run.block !== 'xupu') return;
+    if (!run.eventClock) run.eventClock = rand(14, 22); // 首场事件延迟
+    if (run.activeEvents && run.activeEvents.length) {
+      for (var i = run.activeEvents.length - 1; i >= 0; i--) {
+        var ev = run.activeEvents[i];
+        ev.t -= dt;
+        if (ev.def.tick) ev.def.tick(dt);
+        if (ev.t <= 0) {
+          if (ev.def.end) ev.def.end();
+          run.activeEvents.splice(i, 1);
+          run.eventClock = rand(ev.def.min, ev.def.max); // 下一场间隔
+        }
+      }
+      return;
+    }
+    run.eventClock -= dt;
+    if (run.eventClock <= 0) {
+      var def = pickEvent();
+      var inst = { def: def, t: def.dur };
+      if (!run.activeEvents) run.activeEvents = [];
+      run.activeEvents.push(inst);
+      if (def.start) def.start();
+    }
+  }
 
   // ===== 相位潮汐 Phase Tide（悬圃·蚀空区块 关卡机制，见 design/level-design-xuantu-raid.md）=====
   var PHASE = { GOLD: 'gold', EMBER: 'ember' };
@@ -2058,6 +2154,13 @@
   var FLIP_IFRAME = 0.35, FLIP_GHOST_N = 4, PHASE_COUNTER_MULT = 1.5;         // 翻相：无敌帧/残影数/异相克制倍率
   // v12.7 战斗平衡重构：敌人伤害基数集中常量（便于 Boss 调参）
   var EDMG_NORMAL = 25, EDMG_ELITE = 72, EDMG_HEAVY = 120;
+  // 焚天·熔脊：过热压力系统（仅该区块生效）
+  var HEAT_PER_SHOT = 7;       // 每次开火积热
+  var HEAT_MAX = 100;          // 触发过热阈值
+  var HEAT_COOL = 26;          // 每秒自然散热（未过热时）
+  var HEAT_RECOVER = 40;       // 过热后每秒强制散热速率（解锁所需时间更长）
+  var OVERHEAT_TAKEN_MULT = 1.6; // 过热期间受伤倍率（暴露破绽）
+  var OVERHEAT_LOCK = 1.6;     // 过热锁定持续（秒）：期间哑火，无法开火
   var _lsCd = 0;        // 吸血内置冷却计时器（v12.7）
   var _lowHpT = 0;      // 残血心跳微震计时器（v12.7）
   var phase = PHASE.GOLD, phaseTimer = PHASE_GOLD_DUR, phaseTransT = 0, emberOpenWindow = 0;
@@ -2427,16 +2530,19 @@
 
       } else if (blk === 'fentian') {
         // 焚天·熔脊：窄走廊——瘦高塔楼把战场挤成蛇形走道；两侧铺熔岩裂隙（烫脚），贴檐（檐下净空）安全。
+        // 难度更刺激：熔岩随 tier 扩张（层数越高，熔岩带越多、越宽、烫伤越狠）
         var FW = rand(96, 132), FH = rand(300, 420);
         obstacles.push({ type: 'wall', x: cx, y: cy, hw: FW / 2, hh: FH / 2, building: true, helipad: true, seed: rand(0, 1) });
         // 走廊两侧的熔岩带：贴着塔楼外缘放一排「magma」危险区（橙红，高 dps），逼迫玩家走中间、躲檐下
-        var magmaN = 2 + (Math.random() * 2 | 0);
+        var magmaN = 2 + (Math.random() * 2 | 0) + Math.min(3, Math.floor(t / 2)); // tier 每升 2 层 +1 带，上限 +3
+        var magmaDps = 16 + t * 3;
+        var magmaR = rand(46, 72) + Math.min(26, t * 3); // 半径随 tier 扩张
         for (var mi = 0; mi < magmaN; mi++) {
           var mr = rand(46, 72);
           var mrx = clamp(cx + (Math.random() < 0.5 ? -1 : 1) * (FW / 2 + mr + 24), 120, WORLD_W - 120);
           var mry = clamp(cy + rand(-FH / 2, FH / 2), 120, WORLD_H - 120);
           if (pointClearOfWalls(mrx, mry, mr + 30)) {
-            obstacles.push({ type: 'rift', x: mrx, y: mry, r: mr, dps: 16 + t * 3, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
+            obstacles.push({ type: 'rift', x: mrx, y: mry, r: magmaR, dps: magmaDps, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
           }
         }
         buildingRooftops.push({ x: cx, y: cy - FH / 2 - 34, w: FW, h: FH });
@@ -2452,16 +2558,18 @@
         buildingRooftops.push({ x: cx, y: cy - XH / 2 - 34, w: XW, h: XH });
 
       } else if (blk === 'jiuyou') {
-        // 九幽·锁城：迷宫网格——大量细窄封印碑（pillar）交错排布，留出可绕行的窄缝；
-        // 破碑逻辑由 game 层另做（此处仅铺设迷宫骨架）。
+        // 九幽·锁城：迷宫网格——封印碑交错排布，留出可绕行的窄缝；
+        // 叙事核心：按「封印序列」破碑（1→N）逐步解封，错序则触发怨灵反噬；全破后唤醒城心 Boss。
         var PW = rand(48, 70), PH = rand(48, 70);
-        obstacles.push({ type: 'wall', x: cx, y: cy, hw: PW / 2, hh: PH / 2, building: true, seal: true, seed: rand(0, 1) });
-        // 环绕 4 个小封印碑（形成局部迷宫格）
+        var _seal = { type: 'wall', x: cx, y: cy, hw: PW / 2, hh: PH / 2, building: true, seal: true, sealOrder: 0, sealHp: 60 + run.tier * 18, sealMax: 60 + run.tier * 18, sealBroken: false, seed: rand(0, 1) };
+        obstacles.push(_seal); run.seals.push(_seal);
+        // 环绕 4 个小封印碑（形成局部迷宫格，顺序随机化以制造解谜感）
         for (var pi = 0; pi < 4; pi++) {
           var ang = pi * Math.PI / 2 + rand(-0.4, 0.4);
           var bx = clamp(cx + Math.cos(ang) * rand(90, 150), 100, WORLD_W - 100);
           var by = clamp(cy + Math.sin(ang) * rand(90, 150), 100, WORLD_H - 100);
-          obstacles.push({ type: 'wall', x: bx, y: by, hw: rand(28, 44), hh: rand(28, 44), building: true, seal: true });
+          var _s2 = { type: 'wall', x: bx, y: by, hw: rand(28, 44), hh: rand(28, 44), building: true, seal: true, sealOrder: 0, sealHp: 40 + run.tier * 14, sealMax: 40 + run.tier * 14, sealBroken: false };
+          obstacles.push(_s2); run.seals.push(_s2);
         }
         buildingRooftops.push({ x: cx, y: cy, w: PW, h: PH });
 
@@ -2485,6 +2593,16 @@
       if (dist2(rx2, ry2, spawnPoint.x, spawnPoint.y) < 240 * 240) continue;
       if (dist2(rx2, ry2, plaza.x, plaza.y) < 120 * 120) continue;
       obstacles.push({ type: 'rift', x: rx2, y: ry2, r: rr2, dps: 9 + t * 2, col: '#B06FD0', pulse: rand(0, 6.28) });
+    }
+    // 九幽·锁城：封印序列随机化——打乱封印碑破解顺序，玩家须依次击破才能解封城心
+    if (blk === 'jiuyou' && run.seals.length) {
+      var _ord = [];
+      for (var _s = 0; _s < run.seals.length; _s++) _ord.push(_s);
+      for (var _s2i = _ord.length - 1; _s2i > 0; _s2i--) { var _r = Math.floor(Math.random() * (_s2i + 1)); var _tmp = _ord[_s2i]; _ord[_s2i] = _ord[_r]; _ord[_r] = _tmp; }
+      for (var _s3 = 0; _s3 < run.seals.length; _s3++) run.seals[_s3].sealOrder = _ord[_s3] + 1;
+      run.sealNext = 1;
+      run.sealsTotal = run.seals.length;
+      setBanner('九幽·锁城：残碑封印着城心凶煞。依序击破封印（' + run.sealsTotal + ' 道）方可解封——错序将招致怨灵反噬', 4.2, '#C94F4F', 'top');
     }
     // 障碍布局完成后，生成有逻辑的装饰残垣（沿簇边缘/世界边界，不堵路）
     genDecor();
@@ -2687,6 +2805,8 @@
       bondTiers: {}, killExplode: 0, freezeChance: 0, skyStrike: 0, skyCd: 0, skyT: 0, gale: false, galeActive: false, outOfCombatT: 0,
       runeDefs: [], // #BP2：本局已拾取符文定义（含 .apply 闭包），供 recomputeRunStats 重放，避免重算时丢失符文加成
       execute: 0, overload: 0, undying: false, undyingUsed: false, guardShock: 0,
+      // 焚天·熔脊：过热压力系统 —— 开火积热，过热则哑火+易伤，需冷却
+      heat: 0, overheat: false, overheatT: 0,
       // 灵潮构筑流（v10）：连击 / 绝技充能 / 流派觉醒
       combo: 0, comboT: 0, comboBest: 0, ultCharge: 0, evolved: {}, aimLineT: 0
     };
@@ -2695,7 +2815,11 @@
     extractPoints = []; exfil = false; boss = null; bossSpawned = false;
     combatTimer = 0; exfilStarted = false; exfilChoice = null; exfilChoicePending = null; exfilJadePenalty = 0; exfilAlarmT = 0; exfilCenter = null; exfilAutoT = 0; lootArrow = null; edgeArrow = null;
     rifts = []; inRift = false; riftReturn = null; riftSnapshot = null; riftRoom = null; riftLoot = []; riftPrompt = false; riftExit = null; riftWaves = null; riftTrapT = 0; riftHidden = null; riftActive = null;
-    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, block: selectedBlock, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _earlyUnlocked: false, _riftSdFrozen: 0 };
+    run = { loot: [], kills: 0, oreCollected: 0, picked: 0, time: 0, aircraft: aircraftId, tier: tier, block: selectedBlock, affixes: tierAffixes(tier), nodes: 0, killedBoss: false, enemyKills: {}, pity: 0, lootBonus: 0, jade: 0, artBudget: randi(12, 20), equipped: { weapon: null, armor: null, core: null, ammo: null }, _uid: 0, pickupFilter: (meta && meta.pickupFilter ? meta.pickupFilter.slice() : [true, true, true, true, true]), selfDestruct: 0, evacBeacon: false, _earlyUnlocked: false, _riftSdFrozen: 0,
+      // 虚泊·镜海 · 随机事件引擎运行时状态
+      eventClock: 0, activeEvents: [], mirrorControl: false,
+      // 九幽·锁城 · 封印叙事状态：按顺序破碑解锁核心与剧情碎片
+      seals: [], sealNext: 1, sealsTotal: 0 };
     runPhase = 'qi'; huntActive = false; huntWarnT = 0; huntRamp = 1.0; phaseSpeedMul = 1.0; // 起承转合·重置幕章 + 围猎平滑系数
     // 相位潮汐初始化（悬圃·蚀空区块）；深渊异变·潮汐：含 tide_fast 时周期 ×0.6
     phase = PHASE.GOLD; phaseTimer = PHASE_GOLD_DUR; if (hasAffix('tide_fast')) phaseTimer *= 0.6; phaseTransT = 0; emberOpenWindow = 0; devourBorrowUsed = false;
@@ -2937,7 +3061,9 @@
       alert: 0, alertClock: 0, decayT: 0, quietT: 0,      // 0=无察觉 1=警觉 2=锁定
       homeX: ex, homeY: ey, patrolAng: rand(0, 6.28),     // 巡逻锚点
       pursueStage: 0, pursueT: 0, alarmIgnored: false, chargeState: 0, chargeT: 0, chargeDir: 0, chargeDist: 0,    // 追击三阶段 / 冲撞者状态机
-      chestTrig: false, forceAlert: arche === 'swarm',     // 蜂群天生警觉
+      chestTrig: 0, forceAlert: arche === 'swarm',     // 蜂群天生警觉
+      // 幽壑·协同围剿：小队侧翼标识（左/右侧夹击）
+      flankSide: (Math.random() < 0.5 ? 1 : -1),
       // —— 新敌人特有字段 ——
       sniperCharge: 0, sniperAim: 0,     // 狙击手：充能计时 + 瞄准角度
       shieldRadius: 120, shieldPulse: 0, // 护盾兵：护盾范围 + 脉冲动画
@@ -4016,6 +4142,49 @@
     exfilStarted = false; exfilChoice = null; exfilCenter = null; exfilAutoT = 0;
     setBanner('撤离中断！被惊动敌机撤退，撤离点冷却 ' + Math.ceil(EXFIL2.abortCd) + 's', 2.8, null, 'top');
   }
+  // 九幽·锁城：击破封印碑——按顺序解封，错序则怨灵反噬，全破唤醒城心 Boss
+  var SEAL_FRAGMENTS = [
+    '碑文其一·「城心封煞，九幽不渡。妄动者，永锢其间。」',
+    '碑文其二·「余承天命镇此城，奈何兵燹蚀骨，封印渐松。」',
+    '碑文其三·「怨魂夜哭，皆昔年未归之卒。慎勿逆序，免召其怒。」',
+    '碑文其四·「锁链断处，凶煞将苏。持刃者，速决。」',
+    '碑文其五·「封尽则门开，门开则煞出。此城不设生门，唯以战止战。」',
+    '碑文其六·「残碑无字，唯心可鉴。解封者，当承其重。」'
+  ];
+  function breakSeal(ob, idx) {
+    if (!ob || ob.sealBroken) return;
+    ob.sealBroken = true;
+    // 顺序校验：必须按 sealOrder 递增击破
+    if (ob.sealOrder === run.sealNext) {
+      run.sealNext++;
+      var frag = SEAL_FRAGMENTS[(ob.sealOrder - 1) % SEAL_FRAGMENTS.length];
+      setBanner('封印 ' + ob.sealOrder + '/' + run.sealsTotal + ' 解封！ ' + frag, 3.4, '#C9A24B', 'mid');
+      burst(ob.x, ob.y, '#C9A24B', 16, { ring: true, ringR: 36 });
+      dropLoot(ob.x + rand(-10, 10), ob.y, 'blue', 'jade', null, { amount: 8 + run.tier });
+      if (run.sealNext > run.sealsTotal) {
+        run.sealsBrokenAll = true;
+        setBanner('★ 封印尽破！城心凶煞苏醒——摧毁核心，方可撤离！', 4.0, '#C94F4F', 'top');
+        addShake(8, 600, 200, true); addTint('#C94F4F', 0.3); screenFlash = { color: '#C94F4F', a: 0.3 };
+        AudioSys.sfx.alarm();
+        // 唤醒城心：在战场中央生成一只强化 Boss（唤醒态，立即交战）
+        spawnBoss();
+      }
+    } else {
+      // 错序反噬：怨灵反扑——召唤 2 只怨灵 + 玩家受创
+      setBanner('✗ 错序破碑！怨灵反噬——封印序列被打乱，重头计数', 3.2, '#C94F4F', 'mid');
+      damagePlayer(14);
+      run.sealNext = 1; // 计数重置，须重新依序
+      addShake(5, 300, 120, true);
+      for (var _i = 0; _i < 2; _i++) {
+        var ang = rand(0, 6.28), rr = rand(160, 260);
+        var gx = clamp(player.x + Math.cos(ang) * rr, 40, WORLD_W - 40), gy = clamp(player.y + Math.sin(ang) * rr, 40, WORLD_H - 40);
+        var ge = spawnEnemy(gx, gy, run.tier, { arche: 'kamikaze', allowClose: true });
+        ge.wake = 0; ge.alert = 2; ge.alarmIgnored = true;
+      }
+    }
+    // 从障碍中移除（封印碑破碎后不再阻挡通行）
+    var _oi = obstacles.indexOf(ob); if (_oi >= 0) obstacles.splice(_oi, 1);
+  }
   function updateExtractPoints(dt) {
     // v12.6：全局战场自毁倒计时（领主击破、beacon 激活后启动）
     if (run && run.selfDestruct > 0) {
@@ -4161,6 +4330,7 @@
     AudioSys.sfx.bossPhase();
   }
   function spawnBoss() {
+    if (bossSpawned && boss) return; // 已在场则忽略（避免九幽解封与节点触发重复生成）
     bossSpawned = true;
     var kinds = ['taowu', 'qiongqi', 'taotie', 'hundun'];
     // 区块指定 Boss（方案 A）：幽壑·沉舰强制梼杌，其余区块随机
@@ -4816,6 +4986,8 @@
       if (keys['d'] || keys['arrowright']) mx += 1;
       if (mx || my) { var ml = Math.hypot(mx, my); dirx = mx / ml; diry = my / ml; mag = 1; }
     }
+    // 虚泊·镜海·镜面反转：左右操控颠倒（镜像 X 轴）——仅影响玩家移动输入，不影响射击朝向
+    if (run && run.mirrorControl) { dirx = -dirx; }
     var curSpeed = player.speed * (player.galeActive ? 1.6 : 1) * PLAYER_SPEED_MULT; // 常规巡航锚点（含倒退减速 ×0.6）；冲刺峰值另用 topSpeed
     var topSpeed = player.speed * SPRINT_MULT;   // 黄金库：冲刺极速 = 基础移速 × 1.8，0.2s ease-out 爬升至此（仅冲刺用）
     // 倒退减速：移动方向与朝向夹角>100°时降速至65%
@@ -5005,9 +5177,11 @@
     var _diff = angDiff(_targetAng, player.ang);
     player.ang += _diff * (1 - Math.exp(-dt / TURN_TAU));
     player.fireCd -= dt;
+    var _firedNow = false; // 焚天·过热：本帧玩家是否主动开火
     if (player.firedT > 0) player.firedT -= dt;
     // 开火条件（移动端）：右摇杆按住持续开火 / 点按保底发射 / 可选 autoFire；PC 端保持鼠标左键或空格
     var firing = isMobile ? (((aimJoy.active || aimTapFire || autoFire) && !pickupOpen && !paused && !overlaysOpen())) : (mouse.down || keys[' ']);
+    if (player.overheat) firing = false; // 焚天：过热哑火，期间无法射击（强制冷却）
     if (firing) { player.firedT = 0.35; player.aimLineT = 0.22; }   // 开火窗口 + 瞄准激光显示计时
     var craft = run.aircraft || 'a';
     var isQing = craft === 'a';
@@ -5059,6 +5233,7 @@
         spawnVfx('vfx_muzzle_flash_sheet', rmzX, rmzY, 52, 0.12, qang2 + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 }); spawnVfx('vfx_muzzle_player', rmzX, rmzY, 46, 0.12, qang2 + Math.PI / 2, 0);
         AudioSys.sfx.shoot();
         player.attackSide = 1;
+        if (run && run.block === 'fentian') _firedNow = true;
       }
     }
 
@@ -5085,6 +5260,7 @@
         // 枪口闪光：赤鸾专属
         spawnVfx('vfx_chilan_muzzle_sheet', player.x + Math.cos(cang) * 14, player.y + Math.sin(cang) * 14, 56, 0.15, cang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 26 }); spawnVfx('vfx_muzzle_player', player.x + Math.cos(cang) * 14, player.y + Math.sin(cang) * 14, 50, 0.15, cang + Math.PI / 2, 0);
         AudioSys.sfx.shoot();
+        if (run && run.block === 'fentian') _firedNow = true;
       }
     }
 
@@ -5121,6 +5297,7 @@
         }
       }
       player.fireCd = 1 / player.fireRate;
+      if (run && run.block === 'fentian') _firedNow = true;
       AudioSys.sfx.shoot();
       // 开火动画计时（玄武/其他）
       player.attackAnimT = 0.4;
@@ -5138,6 +5315,25 @@
         my = player.y + Math.sin(player.ang) * 22;
       }
       spawnVfx(mKey, mx, my, mSize, 0.12, player.ang + Math.PI / 2, 0, { cols: 4, rows: 2, fps: 24 }); spawnVfx('vfx_muzzle_player', mx, my, mSize * 0.9, 0.12, player.ang + Math.PI / 2, 0);
+    }
+    // 焚天·熔脊：过热压力结算（仅该区块）
+    if (run && run.block === 'fentian') {
+      if (_firedNow) {
+        player.heat += HEAT_PER_SHOT;
+        if (player.heat >= HEAT_MAX && !player.overheat) {
+          player.overheat = true; player.overheatT = OVERHEAT_LOCK;
+          setBanner('⚠ 武器过热！强制冷却，暴露破绽 · 受伤 ×' + OVERHEAT_TAKEN_MULT, 2.2, '#C8642A', 'top');
+          addShake(2.5, 140, 60); AudioSys.sfx.hit();
+        }
+      }
+      if (player.overheat) {
+        player.overheatT -= dt;
+        player.heat = Math.max(0, player.heat - HEAT_RECOVER * dt);
+        if (player.overheatT <= 0) { player.overheat = false; }
+      } else {
+        // 未过热时缓慢散热（需要时让玩家持续压制会逼近阈值，逼出走位间隙）
+        player.heat = Math.max(0, player.heat - HEAT_COOL * dt);
+      }
     }
     aimTapFire = false; // 点按保底仅触发一次
     if (player.shield < player.maxshield) player.shield = Math.min(player.maxshield, player.shield + (player.regen + (player.shieldRegen || 0)) * dt);
@@ -5230,6 +5426,7 @@
     if (edgeArrow && edgeArrow.timer > 0) edgeArrow.timer -= dt;
     if (lootArrow && lootArrow.timer > 0) lootArrow.timer -= dt;
     updateExtractPoints(dt); // 撤离点限时开放状态机 + 围堵
+    updateEvents(dt); // 虚泊·镜海 · 随机事件引擎（仅 xupu 区块触发）
     updateVaults(dt); // 封印/符文宝箱状态机（解封/击柱解锁）
     if (!inRift && !bossSpawned && run.nodes >= 3 + run.tier) spawnBoss(); // 裂隙内不触发主图Boss
 
@@ -5400,7 +5597,23 @@
           var li = enemies.indexOf(e); if (li >= 0) enemies.splice(li, 1);
         }
         resolveObstacles(e, e.r);
-        // 空域：敌人仅受障碍与边界约束；逃跑的劫掠者照常离场
+        // ,空域：敌人仅受障碍与边界约束；逃跑的劫掠者照常离场
+        continue;
+      }
+      if (e.phantom) {
+        // 虚泊·幻影突袭：镜像残影——穿墙、无接触伤害、缓慢追玩家并吐追踪弹；life 耗尽由事件 end 清理
+        e.life -= dt;
+        var pdx = player.x - e.x, pdy = player.y - e.y, pd = Math.hypot(pdx, pdy) || 1;
+        var pSpd = 60 * (hasAffix('frenzy') ? 1.2 : 1);
+        if (pd > 220) { e.x += (pdx / pd) * pSpd * dt; e.y += (pdy / pd) * pSpd * dt; }
+        else { e.x += (-pdy / pd) * pSpd * 0.7 * dt; e.y += (pdx / pd) * pSpd * 0.7 * dt; }
+        e.flash = Math.max(0, e.flash - dt);
+        e.fireCd -= dt;
+        if (e.fireCd <= 0) {
+          e.fireCd = rand(1.1, 1.9);
+          var bc = Math.atan2(player.y - e.y, player.x - e.x);
+          fireBullet(e.x, e.y, bc, 'enemy', e.dmgMul * 6, 240, { homing: 0.6, r: 4, col: '#D9A8FF', elem: null });
+        }
         continue;
       }
       e.px = e.x; e.py = e.y;
@@ -5489,7 +5702,19 @@
           if (wounded && wd > 60 * 60) { var wA = Math.atan2(wounded.y - e.y, wounded.x - e.x); mvx = Math.cos(wA); mvy = Math.sin(wA); spd *= 0.7; }
           else { mvx = -uy * 0.6; mvy = ux * 0.6; spd *= 0.4; }
         } else {
-          mvx = ux; mvy = uy; spd *= 0.7;
+          // 幽壑·沉舰：协同围剿 AI —— 敌人不再直冲玩家堆叠，而是分列左右侧翼包夹
+          // 多数追踪型（shoot/默认追击）在幽壑下走「侧翼切入 + 背后收口」的编队逻辑
+          if (run.block === 'shenjian' && e.arche !== 'swarm' && e.arche !== 'ram' && e.arche !== 'split' && e.arche !== 'kamikaze' && e.arche !== 'shielder' && e.arche !== 'heal' && e.arche !== 'sniper' && e.arche !== 'phaseSniper' && e.arche !== 'bastion' && e.arche !== 'weaver' && e.arche !== 'looter' && e.arche !== 'turret' && e.arche !== 'gunship') {
+            var _pa = player.ang; // 玩家当前朝向（稳定，不依赖速度）
+            var _fa = _pa + (e.flankSide || 1) * 1.05; // 玩家左/右后侧约 60°
+            var _tx = player.x + Math.cos(_fa) * 210, _ty = player.y + Math.sin(_fa) * 210;
+            var _fdx = _tx - e.x, _fdy = _ty - e.y, _fd = Math.hypot(_fdx, _fdy) || 1;
+            mvx = _fdx / _fd; mvy = _fdy / _fd; spd *= 0.9;
+            // 逼近到近身后（<170px）转入「背后收口」：沿玩家朝向反方向绕到正后方封堵退路
+            if (d < 170) { mvx = -ux * 0.3 + Math.cos(_fa) * 0.7; mvy = -uy * 0.3 + Math.sin(_fa) * 0.7; }
+          } else {
+            mvx = ux; mvy = uy; spd *= 0.7;
+          }
         }
         // 分离力（Boids）：防止多敌重叠成一点
         var sep = sepForce(e); mvx += sep.x * 0.85; mvy += sep.y * 0.85;
@@ -5531,7 +5756,17 @@
       for (var oi3 = 0; oi3 < obstacles.length; oi3++) {
         var _ob = obstacles[oi3];
         if (_ob.type === 'rock') { if (dist2(bl.x, bl.y, _ob.x, _ob.y) < _ob.r * _ob.r) { _blk = true; break; } }
-        else if (_ob.type === 'wall') { if (bl.x > _ob.x - _ob.hw - _bsr && bl.x < _ob.x + _ob.hw + _bsr && bl.y > _ob.y - _ob.hh - _bsr && bl.y < _ob.y + _ob.hh + _bsr) { _blk = true; break; } }
+        else if (_ob.type === 'wall') {
+          if (bl.x > _ob.x - _ob.hw - _bsr && bl.x < _ob.x + _ob.hw + _bsr && bl.y > _ob.y - _ob.hh - _bsr && bl.y < _ob.y + _ob.hh + _bsr) {
+            // 九幽·锁城：封印碑可被玩家子弹击破（不参与玩家弹的普通阻挡）
+            if (bl.from === 'player' && _ob.seal && !_ob.sealBroken) {
+              _ob.sealHp -= calcDamage(bl.dmg, bl.crit, null);
+              burst(bl.x, bl.y, '#C94F4F', 3); spawnElementHit(bl.elem, bl.x, bl.y, 0.7);
+              if (_ob.sealHp <= 0) breakSeal(_ob, oi3);
+              bullets.splice(b, 1); _blk = false; break; // 封印碑击穿后子弹消失，但不阻挡后续
+            } else { _blk = true; break; }
+          }
+        }
       }
       if (_blk) { if (bl.from === 'player') { burst(bl.x, bl.y, '#9fd0e0', 3); spawnElementHit(bl.elem, bl.x, bl.y, 0.7); } bullets.splice(b, 1); continue; }
       // 符文柱（符文宝箱解谜目标）：玩家子弹可击破
@@ -6097,6 +6332,7 @@
 
   function damagePlayer(dmg) {
     if (phase === PHASE.EMBER) dmg *= emberPlayerMult; // 余烬相受击增幅（主动×1.3 / 失控×1.15，§7.3/§7.4）
+    if (player.overheat) dmg *= OVERHEAT_TAKEN_MULT; // 焚天：武器过热暴露破绽，受伤大幅增加
     player.flash = 0.13;
     if (exfil) dmg *= 0.9; // 撤离期间飞船掩护，小幅减伤
     // v12.7 护甲减伤：dmgReduce + 站定威慑，硬上限 70%（minDamage = raw*0.3）
@@ -7892,6 +8128,19 @@
           ctx.fillStyle = '#C8642A'; ctx.font = 'bold 9px sans-serif'; ctx.fillText(activeEmber ? '主动余烬·狂暴' : '余烬·失控', _cardX + 10, _cardY + 50);
         }
       }
+      ctx.textAlign = 'left';
+    }
+    // 焚天·熔脊：过热条（仅该区块显示，嵌在相位仪下方同一卡片区）
+    if (run.block === 'fentian') {
+      var _hx = lpX + 8, _hy = lpY + lpH + 92, _hw = lpW - 16;
+      ctx.fillStyle = 'rgba(255,255,255,0.10)'; ctx.strokeStyle = 'rgba(200,99,42,0.5)'; ctx.lineWidth = 1;
+      hp(_hx, _hy, _hw, 9, 4);
+      var _hf = Math.max(0, Math.min(1, player.heat / HEAT_MAX));
+      var _hcol = '#C8642A';
+      if (player.overheat) _hcol = (Math.sin(gameTime * 12) > 0 ? '#FF5A2A' : '#E0B84A');
+      ctx.fillStyle = _hcol; hp(_hx, _hy, Math.max(2, _hw * _hf), 9, 4);
+      ctx.fillStyle = player.overheat ? '#FF5A2A' : '#C8642A'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'right'; ctx.strokeStyle = 'transparent';
+      ctx.fillText(player.overheat ? '过热! 冷却中' : ('过热 ' + Math.floor(player.heat) + '%'), lpX + lpW - 8, _hy + 8);
       ctx.textAlign = 'left';
     }
     // 左上：机体状态面板（lpX/lpY/lpW/lpH 已在 drawHUD 顶部定义为左上角堆叠起点）
