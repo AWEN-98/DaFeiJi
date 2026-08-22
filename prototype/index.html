@@ -8,10 +8,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="空域撤离" />
 <meta name="theme-color" content="#0E0B08" />
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
+<!-- 允许浏览器长缓存静态资源（靠 game.js/audio-data.js 的 ?v= 版本串破缓存，发版改 v 即可强制刷新） -->
+<meta http-equiv="Cache-Control" content="public, max-age=3600, must-revalidate" />
 <title>空域撤离 · MVP</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230E0B08'/%3E%3Cpath d='M16 5l3 9h9l-7.5 5.5L23 28l-7-5-7 5 2.5-8.5L4 14h9z' fill='%23C9A24B'/%3E%3C/svg%3E" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0E0B08; font-family: "PingFang SC", "Microsoft YaHei", sans-serif; color: #E8E4D8; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
@@ -106,6 +106,28 @@
   .card:hover { border-color: rgba(201,162,75,0.65); box-shadow: 0 6px 24px rgba(201,162,75,0.22); }
   .card.picked { border-color: #C9A24B; box-shadow: 0 0 20px rgba(201,162,75,0.45); }
   .sec-label { font-size: var(--fs-xxs); color: var(--c-muted); letter-spacing: 2px; text-transform: uppercase; margin: 0 0 8px; }
+
+  /* ============ 资产加载遮罩 ============ */
+  #loadMask { position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center;
+    background:
+      repeating-linear-gradient(0deg, rgba(201,162,75,0.04) 0 1px, transparent 1px 46px),
+      repeating-linear-gradient(90deg, rgba(201,162,75,0.04) 0 1px, transparent 1px 46px),
+      radial-gradient(ellipse at 50% -15%, rgba(201,162,75,0.14), transparent 62%),
+      rgba(14,11,8,0.97);
+    transition: opacity 0.5s ease; }
+  #loadMask.hide { opacity: 0; pointer-events: none; }
+  #loadMask .load-inner { text-align: center; padding: 0 24px; }
+  #loadMask .load-logo { font-size: 40px; font-weight: 800; letter-spacing: 6px;
+    background: linear-gradient(180deg, #E8D68C, #C9A24B 55%, #8A6F2E); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  #loadMask .load-sub { font-size: 12px; letter-spacing: 4px; color: var(--text-muted); margin-top: 6px; }
+  #loadMask .load-tip { font-size: 14px; color: var(--text); margin: 26px 0 14px; letter-spacing: 1px; }
+  #loadMask .load-tip.warn { color: var(--c-ember); }
+  #loadMask .load-bar { width: min(320px, 70vw); height: 8px; margin: 0 auto; border-radius: 999px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(201,162,75,0.25); overflow: hidden; }
+  #loadMask .load-bar-fill { width: 0%; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #8A6F2E, #C9A24B, #E8D68C); transition: width 0.25s ease;
+    box-shadow: 0 0 12px rgba(201,162,75,0.5); }
+  #loadMask .load-pct { font-size: 13px; color: var(--c-gold); margin-top: 10px; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 
   /* ============ 基地四层架构 ============ */
   /* Layer 1: 背景 */
@@ -1075,46 +1097,47 @@
       color:var(--gold);
       letter-spacing:1px;
       display:flex;align-items:center;gap:clamp(4px,0.6cqw,8px);
-    }#tab-hangar .ap-title::before {content:"";width:clamp(3px,0.6cqw,5px);height:clamp(11px,2cqw,18px);background:var(--gold);border-radius:2px;box-shadow:0 0 8px rgba(201,162,75,.6)}#tab-hangar .ap-body {
+    }#tab-hangar .ap-title::before {content:"";width:clamp(3px,0.6cqw,5px);height:clamp(11px,2cqw,18px);background:var(--gold);border-radius:2px;box-shadow:0 0 8px rgba(201,162,75,.6)    }#tab-hangar .ap-body {
       flex:1 1 auto;min-height:0;
-      display:grid;
-      grid-template-columns:0.85fr minmax(160px,46%);
-      gap:clamp(6px,1cqw,14px);
+      display:flex;flex-direction:column;
+      gap:clamp(4px,0.8cqw,10px);
     }#tab-hangar .ap-visual {
-      min-height:0;min-width:0;
+      flex:1 1 62%;min-height:0;min-width:0;
+      max-height:62vh;
       display:flex;flex-direction:column;align-items:center;justify-content:center;
-      position:relative;
-    }#tab-hangar .ap-carousel {flex:1 1 auto;min-height:0;width:100%;position:relative;overflow:hidden;display:flex;align-items:center}#tab-hangar .ap-track {display:flex;height:100%;width:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}#tab-hangar .ap-slide {flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;}#tab-hangar .ap-slide img {pointer-events:none;filter:drop-shadow(0 6px 22px rgba(0,0,0,.7));height:auto;max-height:118%;width:auto;max-width:115%;object-fit:contain;display:block;}#tab-hangar .ap-arrow {position:absolute;top:50%;transform:translateY(-50%);width:clamp(28px,5cqw,48px);height:clamp(28px,5cqw,48px);border-radius:50%;border:1px solid rgba(201,162,75,.5);background:rgba(10,8,6,.6);color:var(--gold);font-size:clamp(18px,3cqw,28px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;user-select:none;box-shadow:0 0 14px rgba(201,162,75,.2)}#tab-hangar .ap-arrow:hover {background:rgba(201,162,75,.18)}#tab-hangar .ap-arrow.l {left:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-arrow.r {right:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-dots {position:absolute;bottom:1%;left:50%;transform:translateX(-50%);display:flex;gap:clamp(6px,1.2cqw,12px);z-index:3}#tab-hangar .ap-dots i {width:clamp(8px,1.6cqw,12px);height:clamp(8px,1.6cqw,12px);border-radius:50%;background:rgba(201,162,75,.3);cursor:pointer;transition:all .2s}#tab-hangar .ap-dots i.on {background:var(--gold);box-shadow:0 0 10px rgba(201,162,75,.7);transform:scale(1.25)    }#tab-hangar .ap-info {
-      min-height:0;min-width:0;
+      position:relative;overflow:hidden;
+    }#tab-hangar .ap-carousel {flex:1 1 auto;min-height:0;width:100%;position:relative;overflow:hidden;display:flex;align-items:center}#tab-hangar .ap-track {display:flex;height:100%;width:100%;transition:transform .35s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}#tab-hangar .ap-slide {flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;position:relative;}#tab-hangar .ap-slide img {pointer-events:none;filter:drop-shadow(0 6px 22px rgba(0,0,0,.7));height:auto;max-height:100%;width:auto;max-width:100%;object-fit:contain;display:block;}#tab-hangar .ap-arrow {position:absolute;top:50%;transform:translateY(-50%);width:clamp(28px,5cqw,48px);height:clamp(28px,5cqw,48px);border-radius:50%;border:1px solid rgba(201,162,75,.5);background:rgba(10,8,6,.6);color:var(--gold);font-size:clamp(18px,3cqw,28px);display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;user-select:none;box-shadow:0 0 14px rgba(201,162,75,.2)}#tab-hangar .ap-arrow:hover {background:rgba(201,162,75,.18)}#tab-hangar .ap-arrow.l {left:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-arrow.r {right:clamp(2px,0.5cqw,8px)}#tab-hangar .ap-dots {position:absolute;bottom:1%;left:50%;transform:translateX(-50%);display:flex;gap:clamp(6px,1.2cqw,12px);z-index:3}#tab-hangar .ap-dots i {width:clamp(8px,1.6cqw,12px);height:clamp(8px,1.6cqw,12px);border-radius:50%;background:rgba(201,162,75,.3);cursor:pointer;transition:all .2s}#tab-hangar .ap-dots i.on {background:var(--gold);box-shadow:0 0 10px rgba(201,162,75,.7);transform:scale(1.25)    }#tab-hangar .ap-info {
+      flex:0 1 38%;min-height:0;min-width:0;
       display:flex;flex-direction:column;justify-content:flex-start;
-      gap:clamp(2px,0.4cqw,5px);
-      padding:clamp(2px,0.4cqw,5px);
+      gap:clamp(1px,0.25cqw,3px);
+      padding:clamp(2px,0.4cqw,5px) 0 0 0;
+      overflow:hidden;
     }#tab-hangar .ap-info .label {
-      font-size:clamp(14px,2.2cqw,20px);
-      color:var(--gold);font-weight:900;letter-spacing:3px;
-      text-shadow:0 0 10px rgba(201,162,75,.25);
-    }#tab-hangar .ap-info .iname {font-size:clamp(17px,2.8cqw,26px);font-weight:900;color:var(--paper);letter-spacing:2px;text-shadow:0 0 10px rgba(201,162,75,.2)}#tab-hangar .ap-info .itype {font-size:clamp(11px,1.8cqw,15px);color:var(--ember);font-weight:800;letter-spacing:1px}#tab-hangar .ap-info .imod {font-size:clamp(10px,1.5cqw,13px);color:var(--muted);letter-spacing:1px}#tab-hangar .ap-info .iweapon {font-size:clamp(9px,1.4cqw,12px);color:var(--paper);line-height:1.3}#tab-hangar .ap-info .iweapon b {color:var(--ember);margin-right:3px;font-weight:800}
+      font-size:clamp(10px,1.4cqw,14px);
+      color:var(--gold);font-weight:900;letter-spacing:2px;
+      text-shadow:0 0 8px rgba(201,162,75,.25);
+    }#tab-hangar .ap-info .iname {font-size:clamp(15px,2.2cqw,22px);font-weight:900;color:var(--paper);letter-spacing:2px;text-shadow:0 0 8px rgba(201,162,75,.2)}#tab-hangar .ap-info .itype {font-size:clamp(10px,1.5cqw,13px);color:var(--ember);font-weight:800;letter-spacing:1px}#tab-hangar .ap-info .imod {font-size:clamp(9px,1.2cqw,11px);color:var(--muted);letter-spacing:1px}#tab-hangar .ap-info .iweapon {font-size:clamp(9px,1.2cqw,11px);color:var(--paper);line-height:1.25}#tab-hangar .ap-info .iweapon b {color:var(--ember);margin-right:3px;font-weight:800}
     /* v16.3 装甲/机动/电容与机体信息 label 同基线左对齐：消除 padding 偏移 */
     #tab-hangar .ap-info .ap-bars-inline { padding-left:0 !important; margin-left:0 !important; align-self:stretch; }
     #tab-hangar .ap-info .ap-bars-inline .ibar { padding-left:0; }
     #tab-hangar .ap-info .ap-bars-inline .ibar label { text-align:left; padding-left:0; }
     /* 三维属性（装甲/机动/电容）：合并进右侧机体信息模块（紧跟弹道说明下方） */
-    #tab-hangar .ap-bars-inline {flex:0 0 auto;max-width:100%;display:flex;flex-direction:column;gap:clamp(3px,0.5cqw,6px);padding-top:clamp(4px,0.6cqw,8px);margin-top:clamp(1px,0.2cqw,3px);border-top:1px solid rgba(201,162,75,.18)}#tab-hangar .ap-bars {
-      flex:0 0 auto;max-width:320px;align-self:flex-start;
-      display:flex;flex-direction:column;gap:clamp(3px,0.5cqw,6px);
-      padding-top:clamp(4px,0.6cqw,8px);
-      padding-bottom:clamp(2px,0.4cqw,5px);
+    #tab-hangar .ap-bars-inline {flex:0 0 auto;max-width:100%;display:flex;flex-direction:column;gap:clamp(2px,0.35cqw,4px);padding-top:clamp(3px,0.45cqw,6px);margin-top:clamp(1px,0.15cqw,2px);border-top:1px solid rgba(201,162,75,.18)}#tab-hangar .ap-bars {
+      flex:0 0 auto;max-width:100%;align-self:stretch;
+      display:flex;flex-direction:column;gap:clamp(2px,0.35cqw,4px);
+      padding-top:clamp(3px,0.45cqw,6px);
+      padding-bottom:clamp(1px,0.2cqw,3px);
       border-top:1px solid rgba(201,162,75,.18);
-      min-height:clamp(56px,7cqw,80px);
-    }#tab-hangar .ibar {display:flex;align-items:center;gap:clamp(4px,0.6cqw,9px)}#tab-hangar .ibar label {width:clamp(30px,4cqw,42px);font-size:clamp(8px,1.1cqw,12px);color:var(--muted);text-align:right;flex:0 0 auto}#tab-hangar .ibar .track {flex:1 1 auto;height:clamp(7px,1.1cqw,12px);background:rgba(0,0,0,.5);border:1px solid rgba(201,162,75,.25);border-radius:99px;overflow:hidden}#tab-hangar .ibar .fill {height:100%;background:linear-gradient(90deg,var(--ember),var(--gold));box-shadow:0 0 10px rgba(201,162,75,.5);border-radius:99px;transition:width .3s}#tab-hangar .ibar .val {width:clamp(22px,3cqw,34px);font-size:clamp(8px,1.2cqw,13px);color:var(--paper);font-weight:800;text-align:left;flex:0 0 auto}#tab-hangar .ap-desc {
+      min-height:clamp(42px,5cqw,56px);
+    }#tab-hangar .ibar {display:flex;align-items:center;gap:clamp(3px,0.45cqw,7px)}#tab-hangar .ibar label {width:clamp(26px,3.4cqw,38px);font-size:clamp(7px,1cqw,10px);color:var(--muted);text-align:right;flex:0 0 auto}#tab-hangar .ibar .track {flex:1 1 auto;height:clamp(5px,0.85cqw,9px);background:rgba(0,0,0,.5);border:1px solid rgba(201,162,75,.25);border-radius:99px;overflow:hidden}#tab-hangar .ibar .fill {height:100%;background:linear-gradient(90deg,var(--ember),var(--gold));box-shadow:0 0 8px rgba(201,162,75,.5);border-radius:99px;transition:width .3s}#tab-hangar .ibar .val {width:clamp(20px,2.6cqw,30px);font-size:clamp(7px,1cqw,11px);color:var(--paper);font-weight:800;text-align:left;flex:0 0 auto}#tab-hangar .ap-desc {
       flex:0 0 auto;
       font-size:clamp(10px,1.5cqw,14px);
       color:var(--muted);
       line-height:1.5;
       padding-top:clamp(4px,0.8cqw,8px);
-    }#tab-hangar .r-area.deploy-area {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1cqw,12px);flex:0.55 1 0;min-height:0;padding-top:clamp(4px,0.6cqw,8px);padding-bottom:clamp(4px,0.6cqw,8px);overflow:hidden}#tab-hangar .launch{position:relative;width:220px;height:clamp(50px,8cqw,78px);border:1.5px solid rgba(201,162,75,.6);border-radius:12px;background:linear-gradient(180deg, rgba(201,162,75,.22), rgba(201,162,75,.05));box-shadow:0 0 16px rgba(201,162,75,.18), inset 0 0 12px rgba(201,162,75,.10);cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:filter .15s, box-shadow .15s, border-color .15s;animation:launchPulse 2.6s ease-in-out infinite;}
+    }#tab-hangar .r-area.deploy-area {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(6px,1cqw,12px);flex:1 1 0;min-height:0;padding-top:clamp(4px,0.6cqw,8px);padding-bottom:clamp(4px,0.6cqw,8px);overflow:hidden}#tab-hangar .launch{position:relative;width:220px;height:clamp(50px,8cqw,78px);border:1.5px solid rgba(201,162,75,.6);border-radius:12px;background:linear-gradient(180deg, rgba(201,162,75,.22), rgba(201,162,75,.05));box-shadow:0 0 16px rgba(201,162,75,.18), inset 0 0 12px rgba(201,162,75,.10);cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;transition:filter .15s, box-shadow .15s, border-color .15s;animation:launchPulse 2.6s ease-in-out infinite;}
     @keyframes launchPulse{0%,100%{border-color:rgba(201,162,75,.55);box-shadow:0 0 14px rgba(201,162,75,.16), inset 0 0 10px rgba(201,162,75,.08)}50%{border-color:rgba(200,100,42,.85);box-shadow:0 0 24px rgba(200,100,42,.42), inset 0 0 14px rgba(200,100,42,.14)}}
-    #tab-hangar .launch .main{position:relative;z-index:3;font-size:clamp(15px,2.6cqw,24px);font-weight:900;letter-spacing:10px;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.85);pointer-events:none;white-space:nowrap;text-align:center}
+    #tab-hangar .launch .main{position:absolute;inset:0;z-index:3;font-size:clamp(15px,2.6cqw,24px);font-weight:900;letter-spacing:10px;color:var(--gold);text-shadow:0 1px 4px rgba(0,0,0,.85);pointer-events:none;white-space:nowrap;display:flex;align-items:center;justify-content:center;line-height:1;transform:translateY(3px);}
     #tab-hangar .launch:hover{filter:brightness(1.12);animation:none;border-color:rgba(200,100,42,.95);box-shadow:0 0 28px rgba(200,100,42,.5)}
     #tab-hangar .launch:active{filter:brightness(.92)}
     #tab-hangar .right-col {
@@ -1170,7 +1193,7 @@
       border-radius:8px;
       font-size:clamp(9px,1.45cqw,13px);
       color:var(--ember);font-weight:800;
-    }@media (max-width: 1180px) {#tab-hangar .main {grid-template-columns:1.15fr minmax(350px,1fr)}#tab-hangar .ap-body {grid-template-columns:1.05fr minmax(130px,34%)}#tab-hangar .shop-grid {grid-template-columns:repeat(6,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(4,1fr)}}@media (max-width: 980px) {#tab-hangar .main {grid-template-columns:1fr;grid-template-rows:auto auto}#tab-hangar .aircraft-panel {min-height:320px}#tab-hangar .right-col {min-height:auto;max-height:none}#tab-hangar .ap-body {grid-template-columns:1.05fr minmax(140px,36%)}#tab-hangar .shop-grid {grid-template-columns:repeat(6,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(4,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr 1.2fr auto}}@media (max-width: 760px) {#tab-hangar .ap-body {grid-template-columns:1fr 1fr}#tab-hangar .ap-info {gap:clamp(6px,1cqw,10px)}#tab-hangar .shop-grid {grid-template-columns:repeat(3,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(2,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr 1fr}#tab-hangar .tier-preview {display:none}}@media (max-width: 520px) {#tab-hangar .ap-body {grid-template-columns:1fr}#tab-hangar .ap-info {border-top:1px solid rgba(201,162,75,.18);padding-top:clamp(6px,1cqw,12px)}#tab-hangar .shop-grid {grid-template-columns:repeat(2,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(2,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr}#tab-hangar .tier-lv {flex-direction:row}}@media (max-height: 720px) {#tab-hangar .r-area {padding:clamp(5px,0.8cqw,10px);gap:clamp(3px,0.5cqw,6px)}#tab-hangar .ap-bars {padding-top:clamp(4px,0.6cqw,8px)}#tab-hangar .ap-desc {display:none}#tab-hangar #startBtn {max-height:clamp(46px,7.5cqw,72px)}}
+    }@media (max-width: 1180px) {#tab-hangar .main {grid-template-columns:1.15fr minmax(350px,1fr)}#tab-hangar .ap-body {display:flex;flex-direction:column}#tab-hangar .shop-grid {grid-template-columns:repeat(6,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(4,1fr)}}@media (max-width: 980px) {#tab-hangar .main {grid-template-columns:1fr;grid-template-rows:auto auto}#tab-hangar .aircraft-panel {min-height:320px}#tab-hangar .right-col {min-height:auto;max-height:none}#tab-hangar .ap-body {display:flex;flex-direction:column}#tab-hangar .shop-grid {grid-template-columns:repeat(6,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(4,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr 1.2fr auto}}@media (max-width: 760px) {#tab-hangar .ap-body {display:flex;flex-direction:column}#tab-hangar .ap-info {gap:clamp(1px,0.25cqw,3px);padding-top:clamp(4px,0.8cqw,8px);border-top:1px solid rgba(201,162,75,.18)}#tab-hangar .shop-grid {grid-template-columns:repeat(3,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(2,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr 1fr}#tab-hangar .tier-preview {display:none}}@media (max-width: 520px) {#tab-hangar .ap-body {display:flex;flex-direction:column}#tab-hangar .ap-info {border-top:1px solid rgba(201,162,75,.18);padding-top:clamp(6px,1cqw,12px)}#tab-hangar .shop-grid {grid-template-columns:repeat(2,1fr)}#tab-hangar .loadout-row {grid-template-columns:repeat(2,1fr)}#tab-hangar .tier-box {grid-template-columns:1fr}#tab-hangar .tier-lv {flex-direction:row}}@media (max-height: 720px) {#tab-hangar .r-area {padding:clamp(5px,0.8cqw,10px);gap:clamp(3px,0.5cqw,6px)}#tab-hangar .ap-bars {padding-top:clamp(3px,0.45cqw,6px)}#tab-hangar .ap-desc {display:none}#tab-hangar #startBtn {max-height:clamp(46px,7.5cqw,72px)}}
 
   /* 全局底栏已并入机库出击框，隐藏以匹配 mockup（mockup 无独立底栏） */
   .hall-bottom { display: none; }
@@ -1273,7 +1296,7 @@
   #tab-arsenal .inv-row .gear-icon-row { width:28px; height:28px; }
   #tab-hangar .wpn-icon-hangar, #tab-hangar .gear-icon-hangar {
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    width:46%; height:46%; max-width:120px; max-height:120px; filter:drop-shadow(0 2px 5px rgba(0,0,0,.8));
+    width:62%; height:62%; max-width:180px; max-height:180px; filter:drop-shadow(0 2px 5px rgba(0,0,0,.8));
   }
   #tab-arsenal .eq-slot[data-slot="weapon"] .eq-icon { background-image:url('assets/v3/ui/cropped/slot_weapon_normal.png'); }
   #tab-arsenal .eq-slot[data-slot="armor"] .eq-icon { background-image:url('assets/v3/ui/cropped/slot_armor_normal.png'); }
@@ -1673,17 +1696,18 @@
   /* ============ 全平台响应式：横屏保持双栏 / 竖屏单列吸底 ============ */
   /* 横屏（含手机横屏）：始终保留机库左右双栏，结合 safe-area 留白 */
   @media (orientation: landscape) {
-    #tab-hangar .main { grid-template-columns: 1.15fr minmax(350px, 1fr) !important; grid-template-rows: 1fr !important; }
+    #tab-hangar .main { grid-template-columns: minmax(420px, 1.45fr) minmax(280px, 1fr) !important; grid-template-rows: 1fr !important; }
     /* 矮横屏：右栏内容多时纵向滚动，杜绝 4 区块互相挤压/裁切重叠 */
-    #tab-hangar .right-col { overflow-y: auto; overflow-x: hidden; }
+    #tab-hangar .right-col { overflow-y: auto; overflow-x: hidden; min-width: 280px !important; }
     #tab-hangar .r-area { overflow: visible; }
     #tab-hangar .frame, #tab-hangar .r-area { min-height: 0; }
     .hall-brand { padding-top: clamp(6px,1vh,12px); padding-bottom: clamp(6px,1vh,12px); }
-    /* 战机立绘容器：严格等比护栏，杜绝拉伸/超出裁切（图二修复） */
-    /* #421 v2 缩小 260→220 释放 40px 给机体信息, 确保装甲/机动/电容 3 条全显 */
-    #tab-hangar .ap-visual { height: 40vh; max-height: 220px; min-height: 0; }
-    #tab-hangar .ap-carousel, #tab-hangar .ap-slide { height: 100%; }
-    #tab-hangar .ap-slide img { height: 100%; width: auto; max-width: 100%; object-fit: contain; }
+    /* 战机立绘容器：完整显示，不被裁切、不拉伸，占左栏主要空间 */
+    #tab-hangar .ap-visual { flex: 1 1 64%; min-height: 0; max-height: 64vh; overflow: hidden; }
+    #tab-hangar .ap-carousel { height: auto; overflow: hidden; }
+    #tab-hangar .ap-slide { height: auto; display: flex; align-items: center; justify-content: center; }
+    #tab-hangar .ap-slide img { height: auto; width: auto; max-height: 100%; max-width: 100%; object-fit: contain; display: block; }
+    #tab-hangar .ap-info { flex: 0 1 36%; min-height: 0; overflow: hidden; }
     /* 法宝金属框：正方形等比，恢复清晰大尺寸质感 */
     #tab-hangar .eq-slot .box, #tab-hangar .shop-card .box { aspect-ratio: 1 / 1; }
     /* 横屏：法宝名称标签防重叠溢出 + 锁定机体标注 + 出击拦截灰显 */
@@ -1712,6 +1736,21 @@
     /* 出击主按钮：固定 44px，完整展示不溢出 */
     #tab-hangar .r-area.deploy-area { flex: 0 0 auto !important; }
     #tab-hangar .launch { height: 44px !important; min-height: 44px !important; flex-shrink: 0 !important; }
+    /* 左栏机体信息模块：横屏下上下排列，完整展示立绘与全部文本 */
+    #tab-hangar .aircraft-panel { overflow-y: auto !important; overflow-x: hidden !important; }
+    #tab-hangar .ap-body { grid-template-columns: 1fr !important; gap: clamp(8px, 1.2cqw, 14px); }
+    #tab-hangar .ap-visual { align-self: center; width: 100%; }
+    #tab-hangar .ap-info { overflow: visible; min-height: 0; width: 100%; }
+    #tab-hangar .ap-bars, #tab-hangar .ap-bars-inline { max-width: none; width: 100%; }
+    #tab-hangar .ap-desc { width: 100%; }
+    /* 极窄横屏（手机横屏）：退化为纵向流，杜绝左栏被右栏 350px 挤压致信息裁切 */
+    @media (max-width: 680px) {
+      #tab-hangar .main { grid-template-columns: 1fr !important; grid-template-rows: auto auto !important; height: auto !important; overflow-y: auto; }
+      #tab-hangar .aircraft-panel { overflow: visible; min-height: 0; }
+      #tab-hangar .ap-body { grid-template-columns: 1fr !important; }
+      #tab-hangar .ap-visual { height: auto; max-height: 30vh; }
+      #tab-hangar .right-col { min-width: 0 !important; }
+    }
   }
   /* 竖屏（手机）：标准自上而下单列垂直流 + 底部吸底出击 */
   @media (orientation: portrait) {
@@ -1719,7 +1758,7 @@
     .hall-content .tab-pane.on { position: relative; inset: auto; height: auto; min-height: 100%; }
     #tab-hangar .main { grid-template-columns: 1fr !important; grid-template-rows: auto auto !important; height: auto !important; gap: clamp(8px,1.6vh,16px); }
     /* 立绘严格控顶：杜绝吃满半屏（图一修复） */
-    #tab-hangar .aircraft-panel { min-height: 0; }
+    #tab-hangar .aircraft-panel { min-height: 0; overflow: visible; }
     #tab-hangar .ap-visual { max-height: 24vh; height: auto; min-height: 0; }
     #tab-hangar .ap-carousel, #tab-hangar .ap-slide { height: auto; max-height: 24vh; }
     #tab-hangar .ap-slide img { width: 100%; max-width: 100%; height: auto; max-height: 24vh; object-fit: contain; }
@@ -2526,6 +2565,16 @@
   <div class="enter-sub">NEON SHANHAI · SKY EXTRACTION</div>
   <div class="enter-tap">点击进入</div>
   <div class="enter-hint">将切换至横屏全屏模式<br>建议横屏握持手机</div>
+</div>
+<!-- 资产加载遮罩（鎏金暗色）：加载中可见，区分「还在加载」与「资产缺失」 -->
+<div id="loadMask">
+  <div class="load-inner">
+    <div class="load-logo">空域撤离</div>
+    <div class="load-sub">NEON SHANHAI · SKY EXTRACTION</div>
+    <div class="load-tip" id="loadTip">正在召唤资产…</div>
+    <div class="load-bar"><div class="load-bar-fill" id="loadBarFill"></div></div>
+    <div class="load-pct" id="loadPct">0%</div>
+  </div>
 </div>
 <canvas id="game"></canvas>
 <div id="tipCard" class="tip-card" style="display:none"></div>

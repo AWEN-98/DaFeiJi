@@ -1107,6 +1107,10 @@
       im.onload = mark;
       im.onerror = mark; // 坏图也计数（避免坏图永久卡死加载门）
       im.src = path;
+      // 预解码：让大图在真正 drawImage 前完成解码，避免首帧同步解码卡顿（加载门已兜底 onload）
+      if (typeof im.decode === 'function') {
+        im.decode().then(mark, function () { /* 解码失败也放行，交给 onload/onerror 兜底 */ });
+      }
       return im;
     },
     isReady: function () {
@@ -1692,7 +1696,7 @@
         showJoystick(x, y);
       } // 右摇杆改为右下角静态 #right-stick-container 独立接收触摸，画布右半屏不再生成浮动瞄准摇杆
     }
-  }, { passive: true });
+  }, { passive: false });
   canvas.addEventListener('touchmove', function (e) {
     if (!isMobile) return;
     for (var i = 0; i < e.changedTouches.length; i++) {
@@ -2075,12 +2079,13 @@
     ];
     var pillarAff = [PHASE.GOLD, PHASE.EMBER, PHASE.GOLD, PHASE.EMBER, PHASE.GOLD];
     for (var i = 0; i < pAnchors.length; i++) phasePillars.push({ x: pAnchors[i].x, y: pAnchors[i].y, r: 26, cd: 0, affinity: pillarAff[i % pillarAff.length], charge: 0, overloadCd: 0, overloadFlash: 0 });
-    var gAnchors = [
-      { x: WORLD_W * 0.46, y: WORLD_H * 0.20 },
-      { x: WORLD_W * 0.22, y: WORLD_H * 0.60 },
-      { x: WORLD_W * 0.78, y: WORLD_H * 0.56 }
-    ];
-    for (var j = 0; j < gAnchors.length; j++) gravityRifts.push({ x: gAnchors[j].x, y: gAnchors[j].y, r: 70, pull: GRAV_RADIUS, core: GRAV_CORE, tearT: 0, spin: rand(0, 6.28), pulse: 0 });
+    // 引力裂缝：随机刷新布点（不再固定锚点）+ 注入漂移速度 vx/vy（updatePhaseAmbient 内缓慢移动 + 边界反弹）
+    var gCount = 3; // 数量稳定为 3，但位置每次开局随机，契合“随机刷新带移动”
+    for (var j = 0; j < gCount; j++) {
+      var gx = rand(WORLD_W * 0.12, WORLD_W * 0.88), gy = rand(WORLD_H * 0.12, WORLD_H * 0.88);
+      var ang = rand(0, 6.28), spd = rand(14, 30); // 漂移速度 14~30 px/s，缓慢游走
+      gravityRifts.push({ x: gx, y: gy, r: 70, pull: GRAV_RADIUS, core: GRAV_CORE, tearT: 0, spin: rand(0, 6.28), pulse: 0, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd });
+    }
     // #381-④ 磁锁秘库：小概率随机刷新（30%）+ 随机锚点（偏右下开阔区，避免贴出生点）；
     // 不生成则本局无秘库（搜刮/熔炼成为主要装备来源，回应 Boss 对"刷装备意义"的质疑）
     if (Math.random() < VAULT_SPAWN_CHANCE) {
@@ -2708,7 +2713,7 @@
     if (c.key === 'silver') return '◆ 银宝箱开启 · 获得 ' + got.length + ' 件战利品';
     return '搜刮 +' + got.length + ' 件';
   }
-  function hexToRgba(hex, a) { var h = hex.replace('#', ''); return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + a + ')'; }
+  function hexToRgba(hex, a) { if (!hex || typeof hex !== 'string') return 'rgba(0,0,0,' + (a == null ? 1 : a) + ')'; var h = hex.replace('#', ''); if (h.length < 6) h = h + '000000'.slice(h.length); return 'rgba(' + parseInt(h.substr(0, 2), 16) + ',' + parseInt(h.substr(2, 2), 16) + ',' + parseInt(h.substr(4, 2), 16) + ',' + a + ')'; }
 
   // ---------- 敌人原型 ----------
   function pickArchetype(tier) {
@@ -4511,7 +4516,7 @@
   function update(dt) {
     gameTime += dt; run.time += dt;
     updateInteractHints();   // 互动物靠近提示 + 最近可交互（§P1）
-    updatePhaseAmbient();    // 引力裂隙向心吸力粒子（复用粒子池）
+    updatePhaseAmbient(dt);    // 引力裂隙向心吸力粒子（复用粒子池）
     updateVeins(dt);         // 灵脉共振（v11）：冷却/吸收/合幕充能
     if (enemiesSlowT > 0) enemiesSlowT -= dt;
     if (hintTimer > 0) hintTimer -= dt;
@@ -6254,8 +6259,22 @@
         }
       }
       if (riftExit) {
-        var ex = riftExit; ctx.save(); ctx.translate(ex.x, ex.y); ctx.rotate(gameTime * 2);
-        for (var r = 0; r < 3; r++) { ctx.strokeStyle = 'rgba(160,110,220,' + (0.65 - r * 0.16) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, ex.r - r * 6, 0, 6.28); ctx.stroke(); }
+        var ex = riftExit; ctx.save(); ctx.translate(ex.x, ex.y);
+        // 地面柔光圆（提高辨识度：之前纯空心环在暗景里几乎看不见，玩家反馈“出口又没了”）
+        var glow = ctx.createRadialGradient(0, 0, 4, 0, 0, ex.r + 26);
+        glow.addColorStop(0, 'rgba(176,111,208,0.42)'); glow.addColorStop(1, 'rgba(176,111,208,0)');
+        ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0, 0, ex.r + 26, 0, 6.28); ctx.fill();
+        // 多层旋转光环（保留紫调，加粗 + 发光描边）
+        ctx.rotate(gameTime * 2);
+        ctx.shadowColor = '#B06FD0'; ctx.shadowBlur = 18;
+        for (var r = 0; r < 3; r++) { ctx.strokeStyle = 'rgba(200,150,250,' + (0.8 - r * 0.18) + ')'; ctx.lineWidth = 4 - r; ctx.beginPath(); ctx.arc(0, 0, ex.r + 4 - r * 7, 0, 6.28); ctx.stroke(); }
+        ctx.shadowBlur = 0; ctx.rotate(-gameTime * 2);
+        // 中心实心发光核心（明确“可触碰离场”）
+        ctx.fillStyle = '#E8DCC4'; ctx.shadowColor = '#B06FD0'; ctx.shadowBlur = 22; ctx.beginPath(); ctx.arc(0, 0, 9, 0, 6.28); ctx.fill(); ctx.shadowBlur = 0;
+        // 文字标签（裂隙内出口此前无文字，极易被忽略）
+        ctx.fillStyle = '#E8DCC4'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+        ctx.fillText('⟲ 出口传送门', 0, -ex.r - 14);
+        ctx.textAlign = 'left';
         ctx.restore();
       }
       drawRiftHud();
@@ -7371,10 +7390,19 @@
   }
 
   // 引力裂缝·向心吸力粒子（复用粒子池，紫色 #B06FD0）+ 核心每 0.2s 撕裂真伤（v12）+ 余烬相炽热拖尾
-  function updatePhaseAmbient() {
+  function updatePhaseAmbient(dt) {
     try {
       for (var gi = 0; gi < gravityRifts.length; gi++) {
         var g = gravityRifts[gi];
+        // 引力裂缝·缓慢漂移 + 世界边界反弹（随机刷新带移动）
+        if (g.vx || g.vy) {
+          g.x += (g.vx || 0) * dt; g.y += (g.vy || 0) * dt;
+          var margin = 90;
+          if (g.x < margin) { g.x = margin; g.vx = Math.abs(g.vx); }
+          else if (g.x > WORLD_W - margin) { g.x = WORLD_W - margin; g.vx = -Math.abs(g.vx); }
+          if (g.y < margin) { g.y = margin; g.vy = Math.abs(g.vy); }
+          else if (g.y > WORLD_H - margin) { g.y = WORLD_H - margin; g.vy = -Math.abs(g.vy); }
+        }
         var a = rand(0, 6.28), sp = rand(40, 70);
         var sx = g.x + Math.cos(a) * g.r * 0.95, sy = g.y + Math.sin(a) * g.r * 0.95;
         spawnParticle({ x: sx, y: sy, vx: -Math.cos(a) * sp, vy: -Math.sin(a) * sp, life: rand(0.3, 0.55), color: '#B06FD0', r: rand(1.3, 2.4) });
@@ -9117,35 +9145,73 @@
   function AllAssetsReady() {
     return AssetManager.isReady() && HtmlAssets.isReady();
   }
-  // 全资产等待：rAF 轮询 + 5s 超时兜底（坏图/404 也放行，不卡死启动）
-  function waitForAllAssets(cb) {
-    if (AllAssetsReady()) { if (cb) cb(); return; }
+  // ---------- 资产加载遮罩（区分「还在加载」与「资产缺失」）----------
+  var loadMaskEl, loadBarFillEl, loadPctEl, loadTipEl;
+  function initLoadMask() {
+    loadMaskEl = document.getElementById('loadMask');
+    loadBarFillEl = document.getElementById('loadBarFill');
+    loadPctEl = document.getElementById('loadPct');
+    loadTipEl = document.getElementById('loadTip');
+  }
+  // 双轨进度聚合（Canvas 资产 + HTML UI 资产），返回 0~1
+  function assetProgress() {
+    var tA = AssetManager.total || 0, lA = AssetManager.loaded || 0;
+    var tH = HtmlAssets.total || 0, lH = HtmlAssets.loaded || 0;
+    var tot = tA + tH, done = Math.min(lA, tA) + Math.min(lH, tH);
+    if (tot === 0) return AllAssetsReady() ? 1 : 0;
+    return done / tot;
+  }
+  function renderLoadProgress() {
+    if (!loadBarFillEl) return;
+    var p = assetProgress();
+    var pct = Math.round(p * 100);
+    loadBarFillEl.style.width = pct + '%';
+    if (loadPctEl) loadPctEl.textContent = pct + '%';
+  }
+  function showLoadMask(tip) {
+    if (!loadMaskEl) initLoadMask();
+    if (!loadMaskEl) return;
+    loadMaskEl.classList.remove('hide');
+    if (loadTipEl) loadTipEl.textContent = tip || '正在召唤资产…';
+    if (loadTipEl) loadTipEl.classList.remove('warn');
+    renderLoadProgress();
+  }
+  function hideLoadMask() {
+    if (!loadMaskEl) initLoadMask();
+    if (!loadMaskEl) return;
+    // 加 .hide：CSS 触发 opacity 0.5s 淡出 + pointer-events:none（淡出期间不挡触控/不挡 canvas）
+    loadMaskEl.classList.add('hide');
+  }
+  // 带遮罩的资产等待：轮询进度更新 UI，6s 超时切换为「加载较慢」提示（不静默、不卡死）
+  function waitAssetsWithMask(cb, opts) {
+    opts = opts || {};
+    showLoadMask(opts.tip);
+    if (AllAssetsReady()) { renderLoadProgress(); hideLoadMask(); if (cb) cb(); return; }
     var t0 = performance.now();
     var poll = function () {
-      if (AllAssetsReady()) { if (cb) cb(); return; }
-      if (performance.now() - t0 > 5000) { if (cb) cb(); return; }
+      renderLoadProgress();
+      if (AllAssetsReady()) { hideLoadMask(); if (cb) cb(); return; }
+      var el = (performance.now() - t0) / 1000;
+      if (el > 6 && loadTipEl && !loadTipEl.classList.contains('warn')) {
+        loadTipEl.classList.add('warn');
+        loadTipEl.textContent = '资产较多，加载较慢…请稍候（若长时间无变化，可能是网络问题）';
+      }
+      if (el > 15) { hideLoadMask(); if (cb) cb(); return; } // 15s 硬兜底，绝不卡死
       requestAnimationFrame(poll);
     };
     requestAnimationFrame(poll);
   }
-  // 启动级全局加载门：鎏金遮罩 → 全部资产就绪（或 5s 超时）→ 淡出遮罩 + 进基地。
-  // 修复 Boss 反馈「首次刷新基地资产不加载」：之前两处启动直接 showScene('base')，
-  // 未等 HTML <img>/CSS background-image 从网络加载完，导致首刷闪空白/破图。
+  // 启动级全局加载门：显示加载遮罩 → 双轨就绪（或超时）→ 淡出遮罩 + 进基地
   function enterBase() {
     if (AllAssetsReady()) { showScene('base'); return; }
-    // 资产未就绪：等待（rAF 轮询 + 超时兜底）后再进基地，期间不显示任何遮罩
-    waitForAllAssets(function () {
-      showScene('base');
-    });
+    waitAssetsWithMask(function () { showScene('base'); }, { tip: '正在召唤基地资产…' });
   }
   function doStartMission() { forgeSel = []; newRun(selectedAircraft, selectedTier); showScene('mission'); if (isMobile) { enterImmersive(true); autoFire = false; } } // 双摇杆架构：开火由右摇杆主导，autoFire 默认关（暂停菜单仍可手动开启）
   function startMission() {
     if (!meta.unlocked[selectedAircraft]) { return; }
-    // 异步图片预加载门：未就绪时等待（不弹遮罩），就绪后出击
     if (!AssetManager.isReady()) {
-      AssetManager.waitForAll(function () {
-        doStartMission();
-      });
+      // 出击前资产未就绪：显示加载遮罩等待（不再静默黑屏）
+      waitAssetsWithMask(function () { doStartMission(); }, { tip: '正在装载出击资产…' });
       return;
     }
     doStartMission();
@@ -9638,6 +9704,8 @@
   // ---------- 启动级全局加载门：预加载 HTML UI 资产 → 等双轨就绪 → 进基地 ----------
   // 首次刷新（含强刷清缓存）时 HTML <img>/CSS background-image 从网络加载慢，base 若先渲染会闪空白。
   // 故先预热全部 base UI 资产并显示鎏金遮罩，就绪（或 5s 超时兜底）后才 showScene('base')。
+  // 预加载前先显示加载遮罩（避免首帧白屏），由 waitAssetsWithMask 在就绪后淡出
+  showLoadMask('正在召唤资产…');
   HtmlAssets.preload();
 
   // ---------- 移动端启动遮罩：首次点击触发全屏+横屏 ----------
