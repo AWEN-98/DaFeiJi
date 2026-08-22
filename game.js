@@ -2408,31 +2408,70 @@
     if (anchors.length < 5) tryPlace(minDist * 0.7);
 
     // 复合楼宇预制组装（直接注入已有的 obstacles 墙体数组，碰撞解算管线不变）
-    var isShenjian = (run && run.block === 'shenjian');
+    var blk = (run && run.block) || 'xuantu';
     for (var bi = 0; bi < anchors.length; bi++) {
       var ax = anchors[bi].x, ay = anchors[bi].y;
       var cx = clamp(ax + rand(-16, 16), 80, WORLD_W - 80);
       var cy = clamp(ay + rand(-16, 16), 80, WORLD_H - 80);
-      if (isShenjian) {
+
+      if (blk === 'shenjian') {
         // 幽壑·沉舰：窄而高的竖井塔柱（竖向走廊结构），玩家在塔柱之间上下穿梭；
         // 上升气流带靠塔柱间净空充当「电梯」，失重漂移由 env 乘子处理（见 updatePlayer）。
         var TW2 = rand(120, 168), TH2 = rand(360, 520);
         obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW2 / 2, hh: TH2 / 2, building: true, helipad: true, seed: rand(0, 1) });
-        // 错位的横隔板（每隔一段出现，制造可借力的踏台与绕柱空间）
         var ledgeN = 2 + (Math.random() * 2 | 0);
         for (var li = 0; li < ledgeN; li++) {
           obstacles.push({ type: 'wall', x: clamp(cx + rand(-TW2 / 2 - 40, TW2 / 2 + 40), 80, WORLD_W - 80), y: clamp(cy + rand(-TH2 / 2 + 60, TH2 / 2 - 60), 80, WORLD_H - 80), hw: rand(28, 46), hh: rand(14, 22), building: true, ledge: true });
         }
         buildingRooftops.push({ x: cx, y: cy - TH2 / 2 - 34, w: TW2, h: TH2 });
+
+      } else if (blk === 'fentian') {
+        // 焚天·熔脊：窄走廊——瘦高塔楼把战场挤成蛇形走道；两侧铺熔岩裂隙（烫脚），贴檐（檐下净空）安全。
+        var FW = rand(96, 132), FH = rand(300, 420);
+        obstacles.push({ type: 'wall', x: cx, y: cy, hw: FW / 2, hh: FH / 2, building: true, helipad: true, seed: rand(0, 1) });
+        // 走廊两侧的熔岩带：贴着塔楼外缘放一排「magma」危险区（橙红，高 dps），逼迫玩家走中间、躲檐下
+        var magmaN = 2 + (Math.random() * 2 | 0);
+        for (var mi = 0; mi < magmaN; mi++) {
+          var mr = rand(46, 72);
+          var mrx = clamp(cx + (Math.random() < 0.5 ? -1 : 1) * (FW / 2 + mr + 24), 120, WORLD_W - 120);
+          var mry = clamp(cy + rand(-FH / 2, FH / 2), 120, WORLD_H - 120);
+          if (pointClearOfWalls(mrx, mry, mr + 30)) {
+            obstacles.push({ type: 'rift', x: mrx, y: mry, r: mr, dps: 16 + t * 3, col: '#C8642A', pulse: rand(0, 6.28), magma: true });
+          }
+        }
+        buildingRooftops.push({ x: cx, y: cy - FH / 2 - 34, w: FW, h: FH });
+
+      } else if (blk === 'xupu') {
+        // 虚泊·镜海：宽矮镜面倒影塔（装饰感更强、横向更宽），配合「真假撤离点」机制制造信息博弈。
+        var XW = rand(180, 230), XH = rand(96, 132);
+        obstacles.push({ type: 'wall', x: cx, y: cy, hw: XW / 2, hh: XH / 2, building: true, helipad: true, seed: rand(0, 1), mirror: true });
+        // 倒影感：在塔楼下方镜像位置放一道「浅」墙（视觉倒影，不强制碰撞惩罚），仅作氛围
+        obstacles.push({ type: 'wall', x: cx, y: cy + XH + rand(20, 40), hw: XW / 2, hh: XH / 2 * 0.6, building: true, mirrorGhost: true });
+        var xkW = rand(60, 96), xkH = rand(36, 56);
+        obstacles.push({ type: 'wall', x: clamp(cx + rand(-16, 40), 80, WORLD_W - 80), y: clamp( (cy + XH / 2 + xkH / 2 + 8), 80, WORLD_H - 80), hw: xkW / 2, hh: xkH / 2, building: true, skirt: true });
+        buildingRooftops.push({ x: cx, y: cy - XH / 2 - 34, w: XW, h: XH });
+
+      } else if (blk === 'jiuyou') {
+        // 九幽·锁城：迷宫网格——大量细窄封印碑（pillar）交错排布，留出可绕行的窄缝；
+        // 破碑逻辑由 game 层另做（此处仅铺设迷宫骨架）。
+        var PW = rand(48, 70), PH = rand(48, 70);
+        obstacles.push({ type: 'wall', x: cx, y: cy, hw: PW / 2, hh: PH / 2, building: true, seal: true, seed: rand(0, 1) });
+        // 环绕 4 个小封印碑（形成局部迷宫格）
+        for (var pi = 0; pi < 4; pi++) {
+          var ang = pi * Math.PI / 2 + rand(-0.4, 0.4);
+          var bx = clamp(cx + Math.cos(ang) * rand(90, 150), 100, WORLD_W - 100);
+          var by = clamp(cy + Math.sin(ang) * rand(90, 150), 100, WORLD_H - 100);
+          obstacles.push({ type: 'wall', x: bx, y: by, hw: rand(28, 44), hh: rand(28, 44), building: true, seal: true });
+        }
+        buildingRooftops.push({ x: cx, y: cy, w: PW, h: PH });
+
       } else {
         // 悬圃·蚀空（基线）：横向铺展的复合塔楼 + L/凹型裙楼（Safe Pocket）
-        var TW = rand(208, 258), TH = rand(140, 182);
+        var TW = rand(208, 258), TH = rand( 140, 182);
         obstacles.push({ type: 'wall', x: cx, y: cy, hw: TW / 2, hh: TH / 2, building: true, helipad: true, seed: rand(0, 1) });
-        // L / 凹型裙楼：右侧竖裙 + 底部横裙 → 天然拐角安全区（Safe Pocket）
         var skW = rand(64, 104), skH = rand(40, 66);
         obstacles.push({ type: 'wall', x: clamp(cx + TW / 2 + skW / 2 + 8, 80, WORLD_W - 80), y: clamp(cy + rand(-26, 26), 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
         obstacles.push({ type: 'wall', x: clamp(cx + rand(-18, 44), 80, WORLD_W - 80), y: clamp(cy + TH / 2 + skH / 2 + 8, 80, WORLD_H - 80), hw: skW / 2, hh: skH / 2, building: true, skirt: true });
-        // 楼顶停机坪锚点（主塔楼正上方开阔空域，战机可飞抵“落地”）
         buildingRooftops.push({ x: cx, y: cy - TH / 2 - 34, w: TW, h: TH });
       }
     }
@@ -3930,6 +3969,15 @@
         gue.extractGuard = i;
       }
     }
+    // 虚泊·镜海：额外生成一个「假撤离点」——外形与真点一致，但踩入会弹回并掉血（信息博弈）。
+    if (run.block === 'xupu') {
+      var da = { x: WORLD_W * 0.5, y: WORLD_H * 0.5 };
+      extractPoints.push({
+        x: da.x - 80, y: da.y - 80, w: 160, h: 160,
+        label: '?', state: 'open', timer: 9999, beacon: false, beaconTimer: 0,
+        prog: 0, guardCd: EXTRACT.guardCd, cd: 0, decoy: true
+      });
+    }
   }
   // ===== 撤离惊动：反制选择 / 惊动触发 / 中断（规则圣经模块二）=====
   function showExfilChoice(ez) {
@@ -4791,11 +4839,11 @@
       player.vy += (targetvy - player.vy) * ak;
     } else {
       // 松键：阻尼滑行（每帧保留 DRAG_COEFF），呈现跟手惯性
-      // 幽壑·沉舰：失重漂移 —— 阻尼大幅降低，松键后保留更多动量，纵向尤为明显（飘忽手感）
+      // 失重漂移（幽壑）：阻尼放宽，纵向尤为明显，模拟飘忽手感
       var driftEnv = (run && run.block === 'shenjian') ? 0.985 : 1;
       var damp = Math.pow(DRAG_COEFF * driftEnv, dt * 60);
       player.vx *= damp;
-      player.vy *= damp * (run && run.block === 'shenjian' ? 0.94 : 1); // 纵向更滑，模拟失重
+      player.vy *= damp * (run && run.block === 'shenjian' ? 0.94 : 1);
       if (Math.hypot(player.vx, player.vy) < 4) { player.vx = 0; player.vy = 0; }
     }
     // 引擎尾焰粒子（移动时）
@@ -4904,6 +4952,7 @@
     if (player.dashAnimT > 0) player.dashAnimT -= dt;
     if (player.galeActive) player.iframe = Math.max(player.iframe, 0.1);
     if (player.flash > 0) player.flash -= dt;
+    if (player._decoyWarn > 0) player._decoyWarn -= dt;
     if ((player.aimLineT || 0) > 0) player.aimLineT -= dt;
     if (screenFlash.a > 0) screenFlash.a = Math.max(0, screenFlash.a - dt * 1.6);
 
@@ -5195,6 +5244,19 @@
         // v12.6：撤离点 state==='open' 即可发起读条（beacon 光柱 / 提前撤离点 均走此分支）
         if (ez.state !== 'open') continue;
         var inside = player.x > ez.x && player.x < ez.x + ez.w && player.y > ez.y && player.y < ez.y + ez.h;
+        if (ez.decoy) {
+          // 虚泊·镜海：假撤离点——外形一致，踩入则弹回中心 + 掉血，不触发撤离
+          if (inside) {
+            var dcx = ez.x + ez.w / 2, dcy = ez.y + ez.h / 2;
+            var dx = player.x - dcx, dy = player.y - dcy, dl = Math.hypot(dx, dy) || 1;
+            var bump = 70; // 弹回力度
+            player.x = dcx + dx / dl * (ez.w / 2 + player.r + 6);
+            player.y = dcy + dy / dl * (ez.h / 2 + player.r + 6);
+            damagePlayer(8); player.flash = Math.max(player.flash || 0, 0.12);
+            if (!player._decoyWarn || player._decoyWarn <= 0) { floatText(dcx, dcy - 30, '撤离点失效！', '#C8642A'); player._decoyWarn = 1.2; }
+          }
+          continue;
+        }
         if (inside) {
           exfil = true;
           if (!exfilStarted) {
@@ -8243,7 +8305,10 @@
   // 仅改地形语言 + 锚点布局 + Boss 组合，机制（相位/灵脉/秘库/动态悬赏）全部复用悬圃。
   var BLOCKS = {
     xuantu: { name: '悬圃·蚀空', glyph: '悬', desc: '悬浮平台 · 相位潮汐', boss: null, env: 'phase' },
-    shenjian: { name: '幽壑·沉舰', glyph: '幽', desc: '垂直竖井 · 失重漂移', boss: 'taowu', env: 'drift' }
+    shenjian: { name: '幽壑·沉舰', glyph: '幽', desc: '垂直竖井 · 失重漂移', boss: 'taowu', env: 'drift' },
+    fentian: { name: '焚天·熔脊', glyph: '焚', desc: '狭窄走廊 · 熔岩烫伤', boss: 'qiongqi', env: 'magma' },
+    xupu: { name: '虚泊·镜海', glyph: '泊', desc: '镜面水域 · 真假撤离', boss: 'taotie', env: 'mirror' },
+    jiuyou: { name: '九幽·锁城', glyph: '幽', desc: '迷宫封印 · 破碑通行', boss: 'hundun', env: 'maze' }
   };
   var selectedBlock = 'xuantu';
   // 出击配置战力预览（机体+永久强化+已装法器）
